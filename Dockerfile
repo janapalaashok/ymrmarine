@@ -1,14 +1,23 @@
 # ---- Stage 1: install YSMS Composer dependencies (phpoffice/phpspreadsheet) ----
+# phpspreadsheet requires the PHP gd extension at install-check time, so it must
+# be present in this build stage too, not just the final image.
 FROM composer:2 AS vendor
 WORKDIR /app
+RUN apk add --no-cache libpng-dev libjpeg-turbo-dev freetype-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install gd
 COPY YSMS/composer.json YSMS/composer.lock ./
 RUN composer install --no-dev --no-interaction --optimize-autoloader
 
 # ---- Stage 2: application image ----
 FROM php:8.2-apache
 
-# Install MySQL/PDO support
-RUN docker-php-ext-install pdo pdo_mysql
+# Install MySQL/PDO support + gd (needed at runtime by phpspreadsheet for image handling)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_mysql gd \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Configure Apache to listen on Cloud Run's port
 RUN sed -i 's/Listen 80/Listen 8080/' /etc/apache2/ports.conf && \
