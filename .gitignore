@@ -1,0 +1,70 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+
+# Secrets & passwords (ee files skip avuthayi)
+.env
+*.env
+.env.*
+env/
+secrets/
+passwords.txt
+credentials.json
+keys.json
+*.key
+*.pem
+*.p12
+.gitkeep
+
+# Logs & temp
+*.log
+/logs/
+/temp/
+*.tmp
+
+# Build
+build/
+dist/
+out/
+*.o
+*.exe
+*.dll
+*.so
+
+# Virtual env
+venv/
+.venv
+pyvenv.cfg
+
+# Node
+node_modules/
+yarn.lock
+package-lock.json
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+
+# Java
+.gradle/
+build/
+*.jar
+
+# Database
+*.db
+*.sqlite
+backup/
+dump/
+
+# IDE specific
+*.swp
+*.swo
+.vscode/
+.idea/

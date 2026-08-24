@@ -1,0 +1,5 @@
+Options -Indexes
+
+# PHP Errors దాచడానికి (లైవ్ లో యూజర్లకు ఎర్రర్స్ కనిపించకూడదు)
+php_flag display_errors Off
+php_value error_reporting 0

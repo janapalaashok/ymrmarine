@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Admin & internal
+Disallow: /admin/
+Disallow: /YSMS/
+Disallow: /config/
+Disallow: /install/
+Disallow: /includes/
+
+Sitemap: https://www.ymrmarine.com/sitemap.php

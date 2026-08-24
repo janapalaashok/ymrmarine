@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+  <title>YMR Marine - Maritime Services & Solutions</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0a1628; --navy2: #0d1e38; --gold: #c9a84c; --gold2: #e8c56a;
+      --white: #ffffff; --light: #f4f6f9; --gray: #8a9bb0; --darkgray: #4a5568;
+      --section-bg: #f8f9fb;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Montserrat', sans-serif; color: var(--navy); background: var(--white); overflow-x: hidden; }
+
+    /* NAVBAR */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 5%; height: 72px; background: rgba(10,22,40,0.92);
+      backdrop-filter: blur(12px); border-bottom: 1px solid rgba(201,168,76,0.15);
+      transition: background 0.3s;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo .aicon { width: 38px; height: 38px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .nav-logo-text .brand { font-size: 15px; font-weight: 800; letter-spacing: 2px; color: #00a3df; }
+    .nav-logo-text .sub { font-size: 9px; letter-spacing: 4px; color: #00a3df; text-transform: uppercase; }
+    .nav-links { display: flex; gap: 32px; list-style: none; }
+    .nav-links a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; transition: color 0.2s; }
+    .nav-links a:hover { color: #00a3df; }
+    .nav-ar { color: #00a3df; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; }
+    .hamburger span { display: block; width: 24px; height: 2px; background: #fff; border-radius: 2px; }
+
+    /* HERO */
+    #home { position: relative; min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #04090f; }
+    .ocean-bg { position: absolute; inset: 0; background: linear-gradient(180deg, #04090f 0%, #071525 35%, #0a2040 60%, #06121e 100%); }
+    .hero-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(201,168,76,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(201,168,76,0.03) 1px, transparent 1px); background-size: 60px 60px; }
+    .stars-layer { position: absolute; inset: 0; }
+    .star { position: absolute; background: #fff; border-radius: 50%; animation: twinkle 3s ease-in-out infinite; }
+    @keyframes twinkle { 0%,100%{opacity:0.2} 50%{opacity:1} }
+    .moon { position: absolute; top: 80px; right: 12%; width: 80px; height: 80px; background: radial-gradient(circle at 38% 38%, #fffde0, #f0c040); border-radius: 50%; box-shadow: 0 0 40px 16px rgba(240,192,64,0.12), 0 0 80px 40px rgba(240,192,64,0.06); }
+    .moon-glow { position: absolute; top: 60px; right: 8%; width: 160px; height: 160px; background: radial-gradient(circle, rgba(240,192,64,0.06) 0%, transparent 70%); border-radius: 50%; }
+    .horizon-glow { position: absolute; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(201,168,76,0.25) 30%, rgba(100,180,255,0.15) 70%, transparent); }
+
+    /* OCEAN WAVES */
+    .ocean-wrap { position: absolute; bottom: 0; left: 0; right: 0; height: 40%; }
+    .wave-base { position: absolute; left: -50%; width: 200%; border-radius: 40%; }
+    .w1 { bottom: 55px; height: 130px; background: rgba(10,32,65,0.88); animation: wroll 9s linear infinite; }
+    .w2 { bottom: 28px; height: 110px; background: rgba(8,24,50,0.93); animation: wroll 6.5s linear infinite reverse; }
+    .w3 { bottom: 0;    height: 90px;  background: rgba(5,14,30,1);    animation: wroll 12s linear infinite; }
+    @keyframes wroll { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+
+    /* SHIMMER LINES */
+    .shimmer-wrap { position: absolute; left: 0; right: 0; height: 70px; overflow: hidden; }
+    .sh-line { position: absolute; height: 1px; background: rgba(201,168,76,0.18); border-radius: 2px; animation: shimmer 4s ease-in-out infinite; }
+    @keyframes shimmer { 0%,100%{opacity:0.08;transform:scaleX(0.5) translateX(-5%)} 50%{opacity:0.5;transform:scaleX(1) translateX(3%)} }
+
+    /* MAIN SHIP */
+    .ship-scene { position: absolute; left: 0; right: 0; animation: shipSail 20s linear infinite; }
+    @keyframes shipSail { 0%{transform:translateX(-80vw)} 100%{transform:translateX(95vw)} }
+    .ship-bob { animation: shipBob 3.5s ease-in-out infinite; }
+    @keyframes shipBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+    .ship-wake { position: absolute; bottom: -4px; right: 100%; width: 180px; height: 22px; background: linear-gradient(to left, rgba(201,168,76,0.18), transparent); border-radius: 0 50% 50% 0; animation: wake 3.5s ease-in-out infinite; }
+    @keyframes wake { 0%,100%{width:140px;opacity:0.5} 50%{width:200px;opacity:1} }
+    .smoke { position: absolute; border-radius: 50%; background: rgba(200,200,200,0.25); animation: smokeUp 3s ease-out infinite; }
+    @keyframes smokeUp { 0%{transform:translate(0,0) scale(0.4);opacity:0.6} 100%{transform:translate(-25px,-70px) scale(2.5);opacity:0} }
+
+    /* SMALL BG SHIP */
+    .small-ship { position: absolute; opacity: 0.18; animation: smallSail 30s linear infinite reverse; }
+    @keyframes smallSail { 0%{transform:translateX(40vw)} 100%{transform:translateX(-80vw)} }
+
+    /* HERO CONTENT */
+    .hero-content { position: relative; z-index: 10; text-align: center; color: #fff; padding: 100px 5% 220px; max-width: 860px; }
+    .hero-eyebrow { display: inline-flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase; color: #00a3df; margin-bottom: 28px; }
+    .hero-eyebrow::before,.hero-eyebrow::after { content:''; display:block; width:40px; height:1px; background:#00a3df; opacity:0.5; }
+    .hero-h1 { font-family:'Playfair Display',serif; font-size:clamp(42px,7vw,80px); font-weight:700; line-height:1.1; margin-bottom:16px; }
+    .hero-h1 span { color:#00a3df; }
+    .hero-sub { font-family:'Playfair Display',serif; font-size:clamp(22px,3.5vw,36px); font-weight:400; color:rgba(255,255,255,0.65); margin-bottom:28px; }
+    .hero-desc { font-size:15px; color:rgba(255,255,255,0.6); line-height:1.8; max-width:600px; margin:0 auto 40px; }
+    .hero-cta { display:inline-flex; align-items:center; gap:10px; padding:16px 36px; background:#00a3df; color:var(--navy); text-decoration:none; font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; border-radius:2px; transition:all 0.3s; }
+    .hero-cta:hover { background:var(--gold2); transform:translateY(-2px); }
+
+    /* SECTIONS */
+    .section { padding: 100px 5%; }
+    .section-bg { background: var(--section-bg); }
+    .eyebrow { font-size:11px; font-weight:700; letter-spacing:4px; text-transform:uppercase; color:#00a3df; margin-bottom:12px; }
+    .section-title { font-family:'Playfair Display',serif; font-size:clamp(28px,4vw,46px); font-weight:700; color:var(--navy); line-height:1.2; }
+    .title-line { width:56px; height:3px; background:#00a3df; margin:20px 0 36px; }
+
+    /* ABOUT */
+    .about-grid { display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:center; max-width:1200px; margin:0 auto; }
+    .about-tags { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:32px; }
+    .about-tag { padding:8px 20px; border:1px solid #00a3df; color:#00a3df; font-size:12px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; border-radius:2px; }
+    .about-text { font-size:15px; line-height:1.9; color:var(--darkgray); }
+    .about-img { position:relative; border-radius:4px; overflow:hidden; box-shadow:0 32px 80px rgba(10,22,40,0.18); }
+    .about-img img { width:100%; height:460px; object-fit:cover; display:block; }
+    .about-badge { position:absolute; bottom:24px; left:24px; background:#00a3df; color:var(--navy); padding:14px 20px; font-size:12px; font-weight:700; letter-spacing:1px; border-radius:2px; }
+
+    /* EVENTS */
+    .events-inner { max-width:1200px; margin:0 auto; }
+    .events-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:32px; }
+    .event-card { background:#fff; border-radius:4px; overflow:hidden; box-shadow:0 8px 40px rgba(10,22,40,0.08); transition:transform 0.3s,box-shadow 0.3s; }
+    .event-card:hover { transform:translateY(-6px); box-shadow:0 20px 60px rgba(10,22,40,0.14); }
+    .event-img-wrap { position:relative; height:220px; overflow:hidden; }
+    .event-img-wrap img { width:100%; height:100%; object-fit:cover; transition:transform 0.5s; }
+    .event-card:hover .event-img-wrap img { transform:scale(1.06); }
+    .event-date { position:absolute; top:16px; left:16px; background:#00a3df; color:var(--navy); padding:8px 14px; text-align:center; border-radius:2px; font-weight:800; line-height:1.2; }
+    .event-date .d { font-size:22px; display:block; }
+    .event-date .m { font-size:11px; letter-spacing:1px; }
+    .event-body { padding:24px; }
+    .event-tag { font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#00a3df; margin-bottom:10px; }
+    .event-title { font-size:16px; font-weight:700; color:var(--navy); margin-bottom:10px; line-height:1.4; }
+    .event-loc { font-size:12px; color:var(--gray); margin-bottom:14px; }
+    .event-desc { font-size:13px; color:var(--darkgray); line-height:1.7; }
+
+    /* SERVICES */
+    #services { background:var(--navy); }
+    #services .section-title { color:#fff; }
+    .services-inner { max-width:1200px; margin:0 auto; }
+    .services-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px; }
+    .svc-card { position:relative; border-radius:4px; overflow:hidden; height:360px; cursor:pointer; }
+    .svc-card img { width:100%; height:100%; object-fit:cover; transition:transform 0.5s; }
+    .svc-card:hover img { transform:scale(1.08); }
+    .svc-overlay { position:absolute; inset:0; background:linear-gradient(to top,rgba(10,22,40,0.92) 0%,rgba(10,22,40,0.28) 60%,transparent 100%); display:flex; flex-direction:column; justify-content:flex-end; padding:28px; transition:background 0.3s; }
+    .svc-card:hover .svc-overlay { background:linear-gradient(to top,rgba(201,168,76,0.88) 0%,rgba(10,22,40,0.5) 70%,transparent 100%); }
+    .svc-icon { width:44px; height:44px; background:rgba(201,168,76,0.18); border:1px solid rgba(201,168,76,0.4); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:20px; margin-bottom:14px; }
+    .svc-name { color:#fff; font-size:18px; font-weight:700; margin-bottom:10px; }
+    .svc-desc { color:rgba(255,255,255,0.88); font-size:13px; line-height:1.7; max-height:0; overflow:hidden; transition:max-height 0.4s; }
+    .svc-card:hover .svc-desc { max-height:120px; }
+
+    /* CLIENTS */
+    .clients-inner { max-width:1200px; margin:0 auto; }
+    .clients-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:28px; }
+    .client-card { background:#fff; border:1px solid #e8ecf2; border-radius:4px; padding:32px; transition:box-shadow 0.3s,border-color 0.3s; }
+    .client-card:hover { box-shadow:0 12px 48px rgba(10,22,40,0.1); border-color:#00a3df; }
+    .client-logo-box { width:80px; height:80px; background:var(--light); border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:20px; overflow:hidden; }
+    .client-logo-box img { max-width:60px; max-height:60px; object-fit:contain; }
+    .client-name { font-size:15px; font-weight:700; color:var(--navy); margin-bottom:8px; }
+    .client-url { font-size:12px; color:#00a3df; margin-bottom:14px; text-decoration:none; display:block; }
+    .client-desc { font-size:13px; color:var(--darkgray); line-height:1.7; font-style:italic; }
+
+    /* MISSION */
+    #mission { background:var(--navy); }
+    .mv-inner { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:48px; }
+    .mv-card { padding:48px; border:1px solid rgba(201,168,76,0.2); border-radius:4px; position:relative; }
+    .mv-card::before { content:''; position:absolute; top:0; left:0; width:4px; height:100%; background:#00a3df; }
+    .mv-icon { font-size:36px; margin-bottom:20px; }
+    .mv-label { font-size:10px; font-weight:700; letter-spacing:4px; text-transform:uppercase; color:#00a3df; margin-bottom:12px; }
+    .mv-title { font-family:'Playfair Display',serif; font-size:26px; color:#fff; margin-bottom:20px; }
+    .mv-text { font-size:14px; color:rgba(255,255,255,0.6); line-height:1.9; }
+
+    /* TEAM */
+    .team-inner { max-width:1200px; margin:0 auto; }
+    .team-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:32px; }
+    .team-card { text-align:center; background:#fff; border-radius:4px; overflow:hidden; box-shadow:0 4px 30px rgba(10,22,40,0.07); transition:transform 0.3s; }
+    .team-card:hover { transform:translateY(-6px); }
+    .team-photo { width:100%; height:260px; object-fit:cover; object-position:top; display:block; }
+    .team-body { padding:24px 20px; }
+    .team-name { font-size:16px; font-weight:700; color:var(--navy); margin-bottom:6px; }
+    .team-role { font-size:12px; color:#00a3df; font-weight:600; letter-spacing:1px; text-transform:uppercase; }
+
+    /* CONTACT */
+    .contact-inner { max-width:1200px; margin:0 auto; display:grid; grid-template-columns:1fr 1.2fr; gap:64px; align-items:start; }
+    .ci-list { list-style:none; margin-bottom:40px; }
+    .ci-list li { display:flex; align-items:flex-start; gap:16px; padding:20px 0; border-bottom:1px solid #e0e6f0; }
+    .ci-icon { width:44px; height:44px; background:var(--navy); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+    .ci-label { font-size:11px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:var(--gray); margin-bottom:4px; }
+    .ci-val { font-size:15px; font-weight:600; color:var(--navy); }
+    .contact-form { background:#fff; padding:40px; border-radius:4px; box-shadow:0 8px 40px rgba(10,22,40,0.08); }
+    .form-title { font-size:20px; font-weight:700; color:var(--navy); margin-bottom:28px; }
+    .fgroup { margin-bottom:20px; }
+    .fgroup label { display:block; font-size:12px; font-weight:600; letter-spacing:1px; color:var(--darkgray); margin-bottom:8px; text-transform:uppercase; }
+    .fgroup input,.fgroup textarea { width:100%; padding:14px 16px; border:1px solid #dde3ee; border-radius:2px; font-family:'Montserrat',sans-serif; font-size:14px; color:var(--navy); background:var(--light); outline:none; transition:border-color 0.2s; }
+    .fgroup input:focus,.fgroup textarea:focus { border-color:#00a3df; }
+    .fgroup textarea { height:110px; resize:vertical; }
+    .char-count { font-size:11px; color:var(--gray); text-align:right; margin-top:4px; }
+    .form-btn { width:100%; padding:16px; background:var(--navy); color:#fff; border:none; font-family:'Montserrat',sans-serif; font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; cursor:pointer; border-radius:2px; transition:background 0.2s; }
+    .form-btn:hover { background:#00a3df; color:var(--navy); }
+
+    /* FOOTER */
+    footer { background:var(--navy); padding:60px 5% 30px; color:rgba(255,255,255,0.7); }
+    .footer-top { display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:48px; padding-bottom:48px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:32px; }
+    .flogo { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+    .flogo .aicon { width:42px; height:42px; background:#00a3df; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:20px; }
+    .flogo-text .brand { font-size:16px; font-weight:800; color:#fff; letter-spacing:2px; }
+    .flogo-text .sub { font-size:9px; letter-spacing:3px; color:#00a3df; }
+    .ftagline { font-size:13px; line-height:1.7; max-width:280px; }
+    .fcol h4 { font-size:12px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#fff; margin-bottom:20px; }
+    .flinks { list-style:none; }
+    .flinks li { margin-bottom:12px; }
+    .flinks a { color:rgba(255,255,255,0.6); text-decoration:none; font-size:13px; transition:color 0.2s; }
+    .flinks a:hover { color:#00a3df; }
+    .fcontact li { font-size:13px; margin-bottom:12px; list-style:none; }
+    .footer-bottom { display:flex; align-items:center; justify-content:space-between; font-size:12px; }
+    .footer-bottom span { color:rgba(255,255,255,0.4); }
+
+    #scrollTop { position:fixed; bottom:32px; right:32px; width:46px; height:46px; background:#00a3df; color:var(--navy); border:none; border-radius:50%; font-size:18px; cursor:pointer; display:none; align-items:center; justify-content:center; box-shadow:0 4px 20px rgba(201,168,76,0.4); z-index:999; transition:background 0.2s; }
+    #scrollTop:hover { background:var(--gold2); }
+
+    @media(max-width:900px){
+      .about-grid,.mv-inner,.contact-inner{grid-template-columns:1fr}
+      .footer-top{grid-template-columns:1fr 1fr}
+      .nav-links{display:none}
+      .hamburger{display:flex}
+      nav.open .nav-links{display:flex;flex-direction:column;position:absolute;top:72px;left:0;right:0;background:var(--navy2);padding:24px 5%;gap:18px}
+    }
+
+@media(max-width:900px){
+
+  .nav-links{
+    display:none;
+    width:100%;
+  }
+
+  nav.open .nav-links{
+    display:flex;
+    flex-direction:column;
+    position:absolute;
+    top:72px;
+    left:0;
+    right:0;
+    background:#0d1e38;
+    padding:20px;
+    gap:15px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.3);
+  }
+
+  .nav-links a{
+    display:block;
+    padding:10px 0;
+  }
+
+  .hamburger{
+    display:flex;
+  }
+}
+    @media(max-width:540px){.footer-top{grid-template-columns:1fr}.section{padding:70px 5%}}
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav id="navbar">
+  <a href="ymr2.html" class="nav-logo">
+    <div class="aicon"><img src="ymr_logo.png" width="35px" height="35px"></div>
+    <div class="nav-logo-text">
+      <div class="brand">YMR MARINE</div>
+      <div class="sub">SOLUTIONS LLP</div>
+    </div>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#home">Home</a></li>
+    <li><a href="#about">About</a></li>
+    <li><a href="#services">Services</a></li>
+    <li><a href="#contact">Contact</a></li>
+    <li><a href="Login.html">Employee Login</a></li>
+  </ul>
+
+<div class="hamburger" id="hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+  </nav>
+
+<!-- HERO -->
+<section id="home">
+  <div class="ocean-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="stars-layer" id="starsLayer"></div>
+  <div class="moon-glow"></div>
+  <div class="moon"></div>
+
+  <!-- Ocean -->
+  <div class="ocean-wrap">
+    <div class="wave-base w1"></div>
+    <div class="wave-base w2"></div>
+    <div class="wave-base w3"></div>
+  </div>
+
+  <!-- Water shimmer -->
+  <div class="shimmer-wrap" id="shimmerWrap" style="bottom:52px;position:absolute;"></div>
+
+  <!-- Horizon glow line -->
+  <div class="horizon-glow" style="bottom:52px;position:absolute;"></div>
+
+  <!-- Distant small ship -->
+  <div class="small-ship" style="bottom:66px;">
+    <svg width="70" height="45" viewBox="0 0 110 65" fill="rgba(255,255,255,0.7)">
+      <rect x="15" y="38" width="75" height="13" rx="3"/>
+      <rect x="25" y="24" width="52" height="15"/>
+      <rect x="36" y="14" width="30" height="10"/>
+      <rect x="46" y="3"  width="4" height="12"/>
+      <rect x="60" y="3"  width="4" height="12"/>
+    </svg>
+  </div>
+
+  <!-- MAIN SHIP sailing across -->
+  <div class="ship-scene" style="bottom:50px;">
+    <div class="ship-bob" style="position:relative;display:inline-block;">
+      <div class="ship-wake"></div>
+      <!-- Smoke -->
+      <div class="smoke" style="width:14px;height:14px;top:-28px;left:108px;animation-delay:0s;"></div>
+      <div class="smoke" style="width:10px;height:10px;top:-18px;left:116px;animation-delay:1.2s;"></div>
+      <div class="smoke" style="width:12px;height:12px;top:-22px;left:104px;animation-delay:2.2s;"></div>
+
+      <!-- DETAILED SHIP SVG -->
+      <svg width="300" height="125" viewBox="0 0 320 130" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 8px 28px rgba(0,0,0,0.55))">
+        <!-- Shadow on water -->
+        <ellipse cx="160" cy="122" rx="128" ry="7" fill="rgba(0,0,0,0.28)"/>
+        <!-- Hull bottom dark -->
+        <path d="M78 112 Q40 108 30 88 L60 78 L260 78 L290 88 Q280 108 242 112 Z" fill="#0c1e3a"/>
+        <!-- Hull main -->
+        <path d="M62 78 L258 78 L252 62 L68 62 Z" fill="#1a3c72"/>
+        <!-- Gold waterline stripe -->
+        <rect x="62" y="76" width="196" height="4" fill="#c9a84c"/>
+        <!-- Deck -->
+        <rect x="60" y="44" width="200" height="19" rx="2" fill="#1e4a8a"/>
+        <!-- Deck planks -->
+        <line x1="85"  y1="44" x2="85"  y2="63" stroke="#2558a0" stroke-width="1"/>
+        <line x1="115" y1="44" x2="115" y2="63" stroke="#2558a0" stroke-width="1"/>
+        <line x1="145" y1="44" x2="145" y2="63" stroke="#2558a0" stroke-width="1"/>
+        <line x1="175" y1="44" x2="175" y2="63" stroke="#2558a0" stroke-width="1"/>
+        <line x1="210" y1="44" x2="210" y2="63" stroke="#2558a0" stroke-width="1"/>
+        <line x1="240" y1="44" x2="240" y2="63" stroke="#2558a0" stroke-width="1"/>
+        <!-- Superstructure rear -->
+        <rect x="88" y="22" width="98" height="23" rx="2" fill="#2a5ca8"/>
+        <!-- Bridge -->
+        <rect x="106" y="8" width="66" height="16" rx="2" fill="#1a3c72"/>
+        <!-- Bridge windows -->
+        <rect x="112" y="13" width="9"  height="6" rx="1" fill="#8fd0f8"/>
+        <rect x="127" y="13" width="9"  height="6" rx="1" fill="#8fd0f8"/>
+        <rect x="142" y="13" width="9"  height="6" rx="1" fill="#8fd0f8"/>
+        <rect x="157" y="13" width="9"  height="6" rx="1" fill="#8fd0f8"/>
+        <!-- Chimneys -->
+        <rect x="102" y="-2" width="15" height="26" rx="2" fill="#12254a"/>
+        <rect x="122" y="4"  width="12" height="20" rx="2" fill="#12254a"/>
+        <rect x="100" y="-4" width="19" height="5"  rx="2" fill="#081430"/>
+        <rect x="120" y="2"  width="16" height="4"  rx="2" fill="#081430"/>
+        <!-- Chimney gold rings -->
+        <rect x="100" y="10" width="19" height="3" fill="#c9a84c"/>
+        <rect x="120" y="14" width="16" height="3" fill="#c9a84c"/>
+        <!-- Mast -->
+        <rect x="158" y="-4" width="3" height="50" fill="#c9a84c"/>
+        <rect x="136" y="4"  width="47" height="2"  fill="#c9a84c"/>
+        <!-- Flag -->
+        <polygon points="161,0 182,5 161,11" fill="#c9a84c"/>
+        <!-- Antenna -->
+        <line x1="162" y1="4" x2="175" y2="-4" stroke="#c9a84c" stroke-width="1.5"/>
+        <!-- Derrick/crane at stern -->
+        <line x1="218" y1="22" x2="218" y2="44" stroke="#3a6ab0" stroke-width="3"/>
+        <line x1="218" y1="28" x2="240" y2="36" stroke="#3a6ab0" stroke-width="2"/>
+        <!-- Bow railing -->
+        <line x1="60" y1="54" x2="60" y2="44"  stroke="#c9a84c" stroke-width="1.5"/>
+        <line x1="74" y1="54" x2="74" y2="44"  stroke="#c9a84c" stroke-width="1.5"/>
+        <line x1="60" y1="44" x2="88" y2="44"  stroke="#c9a84c" stroke-width="1"/>
+        <!-- Anchor -->
+        <circle cx="68" cy="80" r="4" fill="#c9a84c" opacity="0.75"/>
+        <!-- Portholes -->
+        <circle cx="96"  cy="88" r="4" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="116" cy="88" r="4" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="136" cy="88" r="4" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="156" cy="88" r="4" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="176" cy="88" r="4" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="196" cy="88" r="4" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="216" cy="88" r="4" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+        <!-- Bow wave foam -->
+        <path d="M38 108 Q80 103 160 106 Q240 103 282 108" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2.5"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- HERO TEXT -->
+  <div class="hero-content">
+    <div class="hero-eyebrow">Marine Excellence</div>
+    <h1 class="hero-h1">Navigating <span>Excellence</span></h1>
+    <div class="hero-sub">Across Every Sea</div>
+    <p class="hero-desc">Leading Marine services company delivering world-class solutions across global waterways. Registered under Egyptian law (CR No. 33806), providing comprehensive maritime support to clients worldwide.</p>
+    <a href="#services" class="hero-cta">Explore Our Services →</a>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about" class="section">
+  <div class="about-grid">
+    <div>
+      <div class="eyebrow">Who We Are</div>
+      <h2 class="section-title">About Us</h2>
+      <div class="title-line"></div>
+      <div class="about-tags">
+        <span class="about-tag">Marine Expertise</span>
+        <span class="about-tag">Trusted Partner</span>
+        <span class="about-tag">Global Reach</span>
+      </div>
+      <p class="about-text">Leading Marine services company delivering world-class solutions across global waterways. Registered under Egyptian law (CR No. 33806), we provide comprehensive maritime support to clients worldwide with decades of trusted experience.</p>
+    </div>
+    <div class="about-img">
+      <img src="https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=900&q=80" alt="Ship at port"/>
+      <div class="about-badge">⚓ CR No. 33806 · Runwal Elegante, A2605, Lokhandwala, Andheri West , Mumbai , Maharastra 400058</div>
+    </div>
+  </div>
+</section>
+
+<!-- EVENTS 
+<section id="events" class="section section-bg">
+  <div class="events-inner">
+    <div class="eyebrow">Milestones & Achievements</div>
+    <h2 class="section-title">Our Events</h2>
+    <div class="title-line"></div>
+    <div class="events-grid">
+      <div class="event-card">
+        <div class="event-img-wrap">
+          <img src="https://images.unsplash.com/photo-1521791136064-7986c2920216?w=700&q=80" alt="Partnership"/>
+          <div class="event-date"><span class="d">13</span><span class="m">May</span></div>
+        </div>
+        <div class="event-body">
+          <div class="event-tag">Partnership</div>
+          <div class="event-title">Vanguard Next Wave Marine Signs Agency Agreement with Capital Register of Shipping</div>
+          <div class="event-loc">📍 May 13, 2026 · Runwal Elegante, A2605, Lokhandwala, Andheri West , Mumbai , Maharastra 400058</div>
+          <div class="event-desc">YMR is now CRS's official representative in Egypt, authorized to market classification, survey, and audit services across the region. A major milestone for YMR.</div>
+        </div>
+      </div>
+      <div class="event-card">
+        <div class="event-img-wrap">
+          <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=700&q=80" alt="Certification"/>
+        </div>
+        <div class="event-body">
+          <div class="event-tag">Certification</div>
+          <div class="event-title">Bureau Veritas QMS Compliance Achieved</div>
+          <div class="event-loc">📍 Runwal Elegante, A2605, Lokhandwala, Andheri West , Mumbai , Maharastra 400058</div>
+          <div class="event-desc">YMR Marine successfully achieved Bureau Veritas Quality Management System compliance, affirming commitment to international maritime standards.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>-->
+
+<!-- SERVICES -->
+<section id="services" class="section">
+  <div class="services-inner">
+    <div class="eyebrow">What We Offer</div>
+    <h2 class="section-title">Our Services</h2>
+    <div class="title-line" style="background:#00a3df"></div>
+    <div class="services-grid">
+      <div class="svc-card">
+        <img src="https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=700&q=80" alt="Crewing"/>
+        <div class="svc-overlay">
+          <div class="svc-icon">👨‍✈️</div>
+          <div class="svc-name">Crewing</div>
+          <div class="svc-desc">Certified, trained maritime crew across all disciplines sourced and supplied to the highest industry standards.</div>
+        </div>
+      </div>
+      <div class="svc-card">
+        <img src="https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=700&q=80" alt="Maritime Survey"/>
+        <div class="svc-overlay">
+          <div class="svc-icon">🔍</div>
+          <div class="svc-name">Maritime Survey</div>
+          <div class="svc-desc">Trusted marine survey services by certified surveyors delivering accurate assessments to international standards.</div>
+        </div>
+      </div>
+      <div class="svc-card">
+        <img src="https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=700&q=80" alt="Technical Support"/>
+        <div class="svc-overlay">
+          <div class="svc-icon">🔧</div>
+          <div class="svc-name">Technical Support</div>
+          <div class="svc-desc">Expert technical support to keep your fleet at peak performance — fast, reliable solutions that minimize downtime.</div>
+        </div>
+      </div>
+      <div class="svc-card">
+        <img src="https://images.unsplash.com/photo-1605281317010-fe5ffe798166?w=700&q=80" alt="Marine Services"/>
+        <div class="svc-overlay">
+          <div class="svc-icon">🚢</div>
+          <div class="svc-name">Complementary Marine Services</div>
+          <div class="svc-desc">Trusted general ship supplier and Suez Canal transit provider. Best prices & professional follow-up, serving all Egyptian ports 24/7.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLIENTS 
+<section id="clients" class="section section-bg">
+  <div class="clients-inner">
+    <div class="eyebrow">Trusted Partners</div>
+    <h2 class="section-title">Our Clients</h2>
+    <div class="title-line"></div>
+    <div class="clients-grid">
+      <div class="client-card">
+        <div class="client-logo-box"><img src="https://api.YMRmarine.com/uploads/clients/b78a42f7-23be-40ff-a172-518f280a4fe1.webp" alt="St. Kitts" onerror="this.style.display='none'"/></div>
+        <div class="client-name">St. Kitts & Nevis International Ship Registry</div>
+        <a href="https://www.skanregistry.com/" class="client-url" target="_blank">www.skanregistry.com</a>
+        <div class="client-desc">"Honored to be associated with the St. Kitts & Nevis International Ship Registry. Their professional approach and commitment to high maritime standards make them a trusted partner."</div>
+      </div>
+      <div class="client-card">
+        <div class="client-logo-box"><img src="https://api.YMRmarine.com/uploads/clients/d7a7b470-fe37-4656-92ac-db904769f6cb.svg" alt="CRS" onerror="this.style.display='none'"/></div>
+        <div class="client-name">Capital Register of Shipping</div>
+        <a href="https://crsclass.com/" class="client-url" target="_blank">crsclass.com</a>
+        <div class="client-desc">"At CRS Class, classification is about building trust, supporting progress, and helping shape a safer, smarter and more sustainable future for global shipping."</div>
+      </div>
+      <div class="client-card">
+        <div class="client-logo-box"><img src="https://api.YMRmarine.com/uploads/clients/555cb20d-7419-445e-91a7-b68f9c4318eb.png" alt="ADNOC" onerror="this.style.display='none'"/></div>
+        <div class="client-name">Abu Dhabi National Oil Company</div>
+        <a href="https://www.adnoc.ae" class="client-url" target="_blank">www.adnoc.ae</a>
+        <div class="client-desc">The UAE's state-owned oil company and one of the world's largest energy producers, with extensive offshore operations across Abu Dhabi.</div>
+      </div>
+    </div>
+  </div>
+</section>-->
+
+<!-- MISSION / VISION -->
+<section id="mission" class="section">
+  <div style="max-width:1100px;margin:0 auto;text-align:center;margin-bottom:56px;">
+    <div class="eyebrow" style="color:#00a3df">Mission & Vision</div>
+    <h2 class="section-title" style="color:#fff">Our Heading & Horizon</h2>
+  </div>
+  <div class="mv-inner">
+    <div class="mv-card">
+      <div class="mv-icon">🧭</div>
+      <div class="mv-label">Our Heading</div>
+      <div class="mv-title">Mission</div>
+      <div class="mv-text">To deliver excellence in marine services by connecting the world's shipping industry with Egypt's finest maritime talent, and providing expert technical surveys and solutions that protect vessels, reduce risk, and ensure operational continuity with the precision of engineers and the reliability of trusted partners.</div>
+    </div>
+    <div class="mv-card">
+      <div class="mv-icon">🌍</div>
+      <div class="mv-label">Our Horizon</div>
+      <div class="mv-title">Vision</div>
+      <div class="mv-text">To become the leading integrated marine services group in the MENA region — expanding from crew placement and technical surveys into ship management, maintenance, and proprietary maritime technology, setting a new standard for what a modern Egyptian marine company can achieve globally.</div>
+    </div>
+  </div>
+</section>
+
+<!-- TEAM -->
+<section id="team" class="section section-bg">
+  <div class="team-inner">
+    <div class="eyebrow">Meet the Experts</div>
+    <h2 class="section-title">Our Team</h2>
+    <div class="title-line"></div>
+    <div class="team-grid">
+      <div class="team-card">
+        <img class="team-photo" src="https://api.vnwmarine.com/uploads/team/25849af9-05e5-4c7a-a79d-dcd47f3ba83b.png" alt="Ali Nosseir" onerror="this.src='https://ui-avatars.com/api/?name=Ali+Nosseir&size=300&background=0a1628&color=c9a84c'"/>
+        <div class="team-body"><div class="team-name">ALI NOSSEIR</div><div class="team-role">Co Founder and CEO</div></div>
+      </div>
+      <div class="team-card">
+        <img class="team-photo" src="https://api.vnwmarine.com/uploads/team/b4c1a016-0721-4cbc-b181-94f68e3ec5b3.webp" alt="Ahmed Sobhy" onerror="this.src='https://ui-avatars.com/api/?name=Ahmed+Sobhy&size=300&background=0a1628&color=c9a84c'"/>
+        <div class="team-body"><div class="team-name">Ahmed Sobhy</div><div class="team-role">Head of Surveying Department</div></div>
+      </div>
+      <div class="team-card">
+        <img class="team-photo" src="https://api.vnwmarine.com/uploads/team/3f81a6e5-2ad4-47c4-8de7-8371b71f1a51.webp" alt="Abdelrahman Emad" onerror="this.src='https://ui-avatars.com/api/?name=Abdelrahman+Emad&size=300&background=0a1628&color=c9a84c'"/>
+        <div class="team-body"><div class="team-name">Abdelrahman Emad</div><div class="team-role">Marine Master</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact" class="section">
+  <div class="contact-inner">
+    <div>
+      <div class="eyebrow">Get In Touch</div>
+      <h2 class="section-title">Contact Us</h2>
+      <div class="title-line"></div>
+      <ul class="ci-list">
+        <li><div class="ci-icon">📞</div><div><div class="ci-label">Phone</div><div class="ci-val">+919820482713</div></div></li>
+        <li><div class="ci-icon">✉️</div><div><div class="ci-label">Email</div><div class="ci-val">ops@ymrmarine.com</div></div></li>
+        <li><div class="ci-icon">📍</div><div><div class="ci-label">Address</div><div class="ci-val">Runwal Elegante, A2605, Lokhandwala, Andheri West , Mumbai , Maharastra 400058</div></div></li>
+        <li><div class="ci-icon">🌐</div><div><div class="ci-label">Website</div><div class="ci-val">ymrmarine.com</div></div></li>
+      </ul>
+    </div>
+    <div class="contact-form">
+      <div class="form-title">Send Us a Message</div>
+      <div class="fgroup"><label>Name *</label><input type="text" maxlength="50" placeholder="Your full name" oninput="ct(this,'c1')"/><div class="char-count"><span id="c1">0</span>/50</div></div>
+      <div class="fgroup"><label>Email *</label><input type="email" placeholder="your@email.com"/></div>
+      <div class="fgroup"><label>Subject *</label><input type="text" maxlength="100" placeholder="How can we help?" oninput="ct(this,'c2')"/><div class="char-count"><span id="c2">0</span>/100</div></div>
+      <div class="fgroup"><label>Message *</label><textarea maxlength="300" placeholder="Write your message here..." oninput="ct(this,'c3')"></textarea><div class="char-count"><span id="c3">0</span>/300</div></div>
+      <button class="form-btn" onclick="alert('Thank you! We will contact you shortly.')">Send Message</button>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-top">
+    <div>
+      <div class="flogo"><div class="aicon">⚓</div><div class="flogo-text"><div class="brand">YMR MARINE</div><div class="sub">Vanguard Next Wave</div></div></div>
+      <div class="ftagline">Marine Excellence — delivering world-class maritime services across every sea.</div>
+    </div>
+    <div class="fcol">
+      <h4>Quick Links</h4>
+      <ul class="flinks">
+        <li><a href="#home">Home</a></li><li><a href="#about">About</a></li>
+        <!-- <li><a href="#services">Services</a></li><li><a href="#clients">Clients</a></li> -->
+        <li><a href="#mission">Mission & Vision</a></li><li><a href="#contact">Contact</a></li>
+      </ul>
+    </div>
+    <div class="fcol">
+      <h4>Contact Info</h4>
+      <ul class="fcontact">
+        <li>📞 +919820482713</li>
+        <li>✉️ info@ymrmarine.com</li>
+        <li>📍 Runwal Elegante, A2605, Lokhandwala, Andheri West , Mumbai , Maharastra 400058</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 YMR Marine. All rights reserved.</span>
+    <span>Powered by YMR Marine</span>
+  </div>
+</footer>
+
+<button id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+
+// Mobile Menu Toggle
+const hamburger = document.getElementById('hamburger');
+const navbar = document.getElementById('navbar');
+
+hamburger.addEventListener('click', () => {
+    navbar.classList.toggle('open');
+});
+
+document.querySelectorAll('.nav-links a').forEach(link => {
+    link.addEventListener('click', () => {
+        navbar.classList.remove('open');
+    });
+});
+  // Generate stars
+  const sl = document.getElementById('starsLayer');
+  for (let i = 0; i < 130; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const sz = Math.random() * 2.5 + 0.4;
+    s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*55}%;left:${Math.random()*100}%;animation-delay:${Math.random()*4}s;animation-duration:${2+Math.random()*3}s;`;
+    sl.appendChild(s);
+  }
+
+  // Shimmer lines
+  const sw = document.getElementById('shimmerWrap');
+  for (let i = 0; i < 9; i++) {
+    const l = document.createElement('div');
+    l.className = 'sh-line';
+    l.style.cssText = `top:${8+i*8}px;left:${Math.random()*15}%;width:${25+Math.random()*45}%;animation-delay:${Math.random()*4}s;animation-duration:${3+Math.random()*3}s;`;
+    sw.appendChild(l);
+  }
+
+  // Navbar scroll
+  window.addEventListener('scroll', () => {
+    const nav = document.getElementById('navbar');
+    const btn = document.getElementById('scrollTop');
+    nav.style.background = window.scrollY > 80 ? 'rgba(10,22,40,0.98)' : 'rgba(10,22,40,0.92)';
+    btn.style.display = window.scrollY > 300 ? 'flex' : 'none';
+  });
+
+  function ct(el, id) { document.getElementById(id).textContent = el.value.length; }
+</script>
+</body>
+</html>

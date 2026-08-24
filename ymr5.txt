@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="YMR Marine Solutions LLP — Bunker Survey & Pre-Purchase Inspection Survey specialists on India's East Coast. Also offering Draft, Cargo, Condition and On-Hire/Off-Hire surveys. 24/7 response, since 2006.">
+<meta name="keywords" content="bunker survey, pre purchase inspection survey, marine survey company India, draft survey, cargo survey, condition survey, on-hire off-hire survey, ship survey East Coast India, Visakhapatnam marine surveyor, Kakinada marine surveyor, Chennai marine surveyor">
+<title>Bunker Survey & Pre-Purchase Inspection Survey | YMR Marine Solutions LLP</title>
+<link rel="canonical" href="https://www.ymrmarine.com/">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Bunker Survey & Pre-Purchase Inspection Survey | YMR Marine Solutions LLP">
+<meta property="og:description" content="Trusted Bunker Survey and Pre-Purchase Inspection Survey specialists serving shipowners, charterers and traders across India's East Coast since 2006.">
+<meta property="og:url" content="https://ymrmarine.com/">
+<meta property="og:locale" content="en_IN">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Bunker Survey & Pre-Purchase Inspection Survey | YMR Marine Solutions LLP">
+<meta name="twitter:description" content="Marine survey & consultancy specialists — Bunker Survey, Pre-Purchase Inspection Survey and more, across India's East Coast.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+
+<!-- Structured data: highlights Bunker Survey & Pre-Purchase Inspection as core services -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "MaritimeOrganization",
+  "name": "YMR Marine Solutions LLP",
+  "description": "Marine survey and consultancy company on India's East Coast, specialising in Bunker Survey and Pre-Purchase Inspection Survey.",
+  "url": "https://ymrmarine.com/",
+  "areaServed": "IN",
+  "makesOffer": [
+    {
+      "@type": "Offer",
+      "itemOffered": {
+        "@type": "Service",
+        "name": "Bunker Survey",
+        "description": "Accurate measurement and verification of bunker fuel quantities during bunkering operations, on-hire/off-hire, and consumption monitoring."
+      }
+    },
+    {
+      "@type": "Offer",
+      "itemOffered": {
+        "@type": "Service",
+        "name": "Pre-Purchase Inspection Survey",
+        "description": "Thorough technical and commercial due diligence for vessel acquisitions, offering buyers an independent, objective condition assessment."
+      }
+    },
+    { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Draft Survey" } },
+    { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Cargo Survey" } },
+    { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Condition Survey" } },
+    { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "On-Hire / Off-Hire Survey" } }
+  ]
+}
+</script>
+
+<style>
+/* ── RESET & BASE ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:    #0B1E2D;
+  --navy2:   #0F2438;
+  --panel:   #132C3F;
+  --panel2:  #1A3A52;
+  --accent:  #00A8D8;
+  --accent2: #0088B3;
+  --gold:    #C9922E;
+  --cream:   #F0EDE6;
+  --slate:   #8DA8BC;
+  --white:   #FFFFFF;
+  --radius:  14px;
+  /* ── LIGHT THEME (body sections) ── */
+  --bg-light:   #F6F9FB;
+  --bg-light2:  #EBF2F6;
+  --card:       #FFFFFF;
+  --card2:      #E9F2F7;
+  --ink:        #14283A;
+  --ink-soft:   #55707F;
+  --border-lt:  rgba(20,40,58,0.09);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg-light);
+  color: var(--ink);
+  overflow-x: hidden;
+  line-height: 1.65;
+}
+
+p {
+  font-family: 'Lexend', sans-serif;
+  
+  color: var(--ink);
+  overflow-x: hidden;
+  line-height: 1.65;
+}
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-light2); }
+::-webkit-scrollbar-thumb { background: var(--accent2); border-radius: 3px; }
+
+/* ── SELECTION ── */
+::selection { background: var(--accent); color: var(--navy); }
+
+/* ─────────────────────────────────────────
+   NAVBAR
+───────────────────────────────────────── */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  padding: 0;
+  transition: background 0.4s, backdrop-filter 0.4s, box-shadow 0.4s;
+}
+.nav.scrolled {
+  background: rgba(11,30,45,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 1px 0 rgba(0,201,255,0.1);
+}
+.nav-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.nav-logo {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 800;
+  font-size: 1.35rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+.nav-logo .accent, .sec-h2 .accent { color: var(--accent); }
+.nav-logo .rest   { color: var(--cream); }
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  list-style: none;
+}
+.nav-links a {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--slate);
+  text-decoration: none;
+  padding: 0.45rem 0.8rem;
+  border-radius: 8px;
+  transition: color 0.25s, background 0.25s;
+  white-space: nowrap;
+}
+.nav-links a:hover { color: var(--cream); background: rgba(255,255,255,0.06); }
+
+.btn-nav {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  background: var(--accent);
+  color: var(--navy);
+  border: none;
+  padding: 0.6rem 1.4rem;
+  border-radius: 50px;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
+}
+.btn-nav:hover {
+  background: #33d4ff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,201,255,0.35);
+}
+
+/* Hamburger */
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
+.nav-toggle span {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: var(--cream);
+  border-radius: 2px;
+  transition: transform 0.35s, opacity 0.35s;
+}
+.nav-toggle.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-toggle.open span:nth-child(2) { opacity: 0; }
+.nav-toggle.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+.nav-mobile {
+  display: none;
+  flex-direction: column;
+  background: rgba(11,30,45,0.97);
+  backdrop-filter: blur(20px);
+  padding: 1rem 1.5rem 1.5rem;
+  gap: 0.25rem;
+  border-top: 1px solid rgba(0,201,255,0.12);
+}
+.nav-mobile.open { display: flex; }
+.nav-mobile a {
+  font-size: 1rem;
+  color: var(--slate);
+  text-decoration: none;
+  padding: 0.65rem 0.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  transition: color 0.2s;
+}
+.nav-mobile a:hover { color: var(--accent); }
+.nav-mobile .btn-nav { margin-top: 0.75rem; text-align: center; }
+
+/* ─────────────────────────────────────────
+   HERO
+───────────────────────────────────────── */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(11,30,45,0.97) 0%, rgba(11,30,45,0.75) 50%, rgba(11,30,45,0.3) 100%),
+    url('https://images.unsplash.com/photo-1568347877321-f8935c7dc5a3?q=80&w=1374&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center/cover no-repeat;
+}
+/* Grain texture overlay */
+.hero-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 9rem 2rem 4rem;
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+}
+.hero-left { max-width: 680px; }
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1.5rem;
+}
+.hero-eyebrow::before {
+  content: '';
+  display: block;
+  width: 32px;
+  height: 1.5px;
+  background: var(--accent);
+}
+
+.hero-h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 800;
+  font-size: clamp(2.8rem, 6.5vw, 5.2rem);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  color: var(--white);
+  margin-bottom: 1.6rem;
+}
+.hero-h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.hero-sub {
+  font-size: clamp(1rem, 2vw, 1.15rem);
+  color: var(--slate);
+  max-width: 520px;
+  margin-bottom: 2.5rem;
+  font-weight: 400;
+  line-height: 1.7;
+}
+
+.hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 3.5rem;
+}
+.btn-primary-hero {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: var(--accent);
+  color: var(--navy);
+  border: none;
+  padding: 0.9rem 2rem;
+  border-radius: 50px;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
+}
+.btn-primary-hero:hover {
+  background: #33d4ff;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0,201,255,0.4);
+}
+.btn-ghost-hero {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  background: transparent;
+  color: var(--cream);
+  border: 1.5px solid rgba(240,237,230,0.25);
+  padding: 0.9rem 2rem;
+  border-radius: 50px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.3s, background 0.3s, transform 0.3s;
+}
+.btn-ghost-hero:hover {
+  border-color: var(--accent);
+  background: rgba(0,201,255,0.07);
+  transform: translateY(-3px);
+}
+
+/* Hero stats bar */
+.hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.hstat-val {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1;
+}
+.hstat-val span { color: var(--accent); }
+.hstat-label { font-size: 0.78rem; color: var(--slate); margin-top: 0.25rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* ── TICKER ── */
+.ticker-wrap {
+  position: relative;
+  z-index: 2;
+  background: rgba(0,201,255,0.06);
+  border-top: 1px solid rgba(0,201,255,0.15);
+  overflow: hidden;
+  padding: 0.85rem 0;
+}
+.ticker-track {
+  display: flex;
+  gap: 0;
+  width: max-content;
+  animation: ticker 28s linear infinite;
+}
+.ticker-track:hover { animation-play-state: paused; }
+.ticker-item {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--slate);
+  padding: 0 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  white-space: nowrap;
+}
+.ticker-item .dot {
+  width: 4px; height: 4px;
+  background: var(--accent);
+  border-radius: 50%;
+  opacity: 0.6;
+}
+@keyframes ticker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ─────────────────────────────────────────
+   SECTIONS COMMON
+───────────────────────────────────────── */
+.section {
+  padding: 6rem 2rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.section-wrap { width: 100%; }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+.tag::before {
+  content: '';
+  display: block;
+  width: 20px; height: 1.5px;
+  background: var(--accent);
+}
+
+.sec-h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(2rem, 4.5vw, 3.2rem);
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.2rem;
+}
+.sec-body {
+  font-size: 1.05rem;
+  color: var(--ink-soft);
+  max-width: 560px;
+  line-height: 1.75;
+text-align:justify;
+}
+
+/* ─────────────────────────────────────────
+   ABOUT
+───────────────────────────────────────── */
+.about-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5rem;
+  align-items: center;
+}
+.about-img-stack { position: relative; }
+.about-img-main {
+  width: 100%;
+  border-radius: 20px;
+  display: block;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+}
+.about-img-secondary {
+  position: absolute;
+  bottom: -2.5rem;
+  right: -2rem;
+  width: 52%;
+  border-radius: 14px;
+  border: 4px solid var(--card);
+  box-shadow: 0 24px 48px rgba(20,40,58,0.18);
+  aspect-ratio: 4/3;
+  object-fit: cover;
+}
+.cert-pill {
+  position: absolute;
+  top: 1.5rem;
+  left: -2rem;
+  background: var(--card);
+  border: 1px solid rgba(0,168,216,0.25);
+  border-radius: 50px;
+  padding: 0.6rem 1.2rem 0.6rem 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 12px 32px rgba(20,40,58,0.14);
+}
+.cert-icon {
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.cert-text .t1 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.85rem; color: var(--ink); line-height: 1.2; }
+.cert-text .t2 { font-size: 0.72rem; color: var(--ink-soft); }
+
+/* About stats */
+.about-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+.astat {
+  background: var(--card);
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 2px 14px rgba(20,40,58,0.05);
+  transition: border-color 0.3s;
+}
+.astat:hover { border-color: rgba(0,168,216,0.35); }
+.astat-val {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent2);
+  line-height: 1;
+  margin-bottom: 0.2rem;
+}
+.astat-label { font-size: 0.8rem; color: var(--ink-soft); font-weight: 500; }
+
+/* ─────────────────────────────────────────
+   SERVICES
+───────────────────────────────────────── */
+.section-alt { background: var(--bg-light2); }
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-top: 3.5rem;
+}
+.svc-card {
+  background: var(--card);
+  border: 1px solid var(--border-lt);
+  border-radius: 20px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 14px rgba(20,40,58,0.05);
+  transition: border-color 0.35s, transform 0.35s, box-shadow 0.35s;
+  cursor: default;
+}
+.svc-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0,168,216,0.07), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+.svc-card:hover {
+  border-color: rgba(0,168,216,0.4);
+  transform: translateY(-6px);
+  box-shadow: 0 24px 48px rgba(20,40,58,0.14);
+}
+.svc-card.featured {
+  border-color: rgba(0,168,216,0.5);
+  box-shadow: 0 4px 20px rgba(0,168,216,0.12);
+}
+.svc-badge {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--navy);
+  background: var(--gold);
+  padding: 0.3rem 0.7rem;
+  border-radius: 50px;
+}
+.svc-card:hover::before { opacity: 1; }
+.svc-num {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  opacity: 0.6;
+}
+.svc-icon-wrap {
+  width: 52px; height: 52px;
+  background: rgba(0,201,255,0.1);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  color: var(--accent);
+}
+.svc-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.svc-desc { font-size: 0.88rem; color: var(--ink-soft); line-height: 1.65; flex: 1; }
+.svc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  margin-top: auto;
+  transition: gap 0.25s;
+}
+.svc-link:hover { gap: 0.7rem; }
+
+/* ─────────────────────────────────────────
+   WHY US — horizontal feature rows
+───────────────────────────────────────── */
+.why-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-top: 3.5rem;
+}
+.why-item {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  background: var(--card);
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius);
+  padding: 1.75rem;
+  box-shadow: 0 2px 14px rgba(20,40,58,0.05);
+  transition: border-color 0.3s, transform 0.3s;
+}
+.why-item:hover {
+  border-color: rgba(0,168,216,0.3);
+  transform: translateY(-4px);
+}
+.why-icon {
+  width: 46px; height: 46px;
+  background: rgba(0,201,255,0.1);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.why-title { font-family: 'Space Grotesk', sans-serif; font-size: 0.98rem; font-weight: 700; color: var(--ink); margin-bottom: 0.35rem; }
+.why-body { font-size: 0.85rem; color: var(--ink-soft); line-height: 1.65; }
+
+/* ─────────────────────────────────────────
+   OUR TEAM
+───────────────────────────────────────── */
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-top: 3.5rem;
+}
+.team-card {
+  background: var(--card);
+  border: 1px solid var(--border-lt);
+  border-radius: 20px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  box-shadow: 0 2px 14px rgba(20,40,58,0.05);
+  transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+}
+.team-card:hover {
+  border-color: rgba(0,168,216,0.35);
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(20,40,58,0.12);
+}
+.team-avatar {
+  width: 84px; height: 84px;
+  margin: 0 auto 1.1rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 1.6rem;
+  color: var(--white);
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  box-shadow: 0 10px 24px rgba(0,168,216,0.28);
+}
+.team-name { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700; color: var(--ink); margin-bottom: 0.25rem; }
+.team-role {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent2);
+  background: rgba(0,168,216,0.09);
+  padding: 0.25rem 0.75rem;
+  border-radius: 50px;
+  margin-bottom: 0.85rem;
+}
+.team-bio { font-size: 0.85rem; color: var(--ink-soft); line-height: 1.6; }
+.team-social { display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
+.team-social a {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-lt);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  text-decoration: none;
+  transition: color 0.25s, border-color 0.25s, background 0.25s;
+}
+.team-social a:hover { color: var(--accent2); border-color: rgba(0,168,216,0.3); background: rgba(0,168,216,0.08); }
+
+/* ─────────────────────────────────────────
+   PORTS — map-style visual
+───────────────────────────────────────── */
+.ports-intro { max-width: 580px; }
+.ports-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-top: 3rem;
+}
+.port-card {
+  background: var(--card);
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius);
+  padding: 1.5rem 1rem;
+  text-align: center;
+  box-shadow: 0 2px 14px rgba(20,40,58,0.05);
+  transition: border-color 0.3s, transform 0.3s;
+  cursor: default;
+}
+.port-card:hover {
+  border-color: rgba(0,168,216,0.35);
+  transform: translateY(-4px);
+}
+.port-anchor {
+  font-size: 1.4rem;
+  color: var(--accent);
+  margin-bottom: 0.6rem;
+  opacity: 0.7;
+}
+.port-name { font-family: 'Space Grotesk', sans-serif; font-size: 0.88rem; font-weight: 700; color: var(--ink); }
+.port-state { font-size: 0.72rem; color: var(--ink-soft); margin-top: 0.15rem; letter-spacing: 0.06em; text-transform: uppercase; }
+
+.ports-extra {
+  margin-top: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(0,201,255,0.08);
+  border: 1px solid rgba(0,201,255,0.2);
+  border-radius: 50px;
+  padding: 0.6rem 1.4rem;
+  font-size: 0.84rem;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* ─────────────────────────────────────────
+   TESTIMONIALS
+───────────────────────────────────────── */
+.testi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-top: 3.5rem;
+}
+.testi-card {
+  background: var(--card);
+  border: 1px solid var(--border-lt);
+  border-radius: 20px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: 0 2px 14px rgba(20,40,58,0.05);
+}
+.testi-stars { display: flex; gap: 0.25rem; }
+.testi-stars i { color: var(--gold); font-size: 0.85rem; }
+.testi-quote {
+  font-size: 0.96rem;
+  color: var(--ink);
+  line-height: 1.75;
+  font-style: italic;
+  opacity: 0.9;
+}
+.testi-author { display: flex; align-items: center; gap: 0.9rem; margin-top: auto; }
+.testi-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(0,168,216,0.35);
+  background: var(--card2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--accent2);
+  flex-shrink: 0;
+}
+.testi-name { font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; font-weight: 700; color: var(--ink); }
+.testi-role { font-size: 0.76rem; color: var(--ink-soft); }
+
+/* ─────────────────────────────────────────
+   CONTACT
+───────────────────────────────────────── */
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: start;
+}
+.contact-info { display: flex; flex-direction: column; gap: 1rem; }
+.contact-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background: var(--card);
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 2px 14px rgba(20,40,58,0.05);
+}
+.contact-icon {
+  width: 40px; height: 40px;
+  background: rgba(0,201,255,0.1);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.contact-card .ct { font-size: 0.78rem; color: var(--ink-soft); margin-bottom: 0.15rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.contact-card .cv { font-size: 0.92rem; color: var(--ink); font-weight: 500; text-decoration: none; }
+.contact-card .cv:hover { color: var(--accent2); }
+
+.form-group { display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1rem; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-label { font-size: 0.78rem; font-weight: 600; color: var(--ink-soft); letter-spacing: 0.08em; text-transform: uppercase; }
+.form-input, .form-select, .form-textarea {
+  background: var(--card);
+  border: 1.5px solid var(--border-lt);
+  border-radius: 10px;
+  color: var(--ink);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.92rem;
+  padding: 0.75rem 1rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  width: 100%;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.form-input::placeholder, .form-textarea::placeholder { color: var(--ink-soft); opacity: 0.6; }
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0,168,216,0.14);
+}
+.form-select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2355707F' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; padding-right: 2.5rem; }
+.form-select option { background: var(--card); color: var(--ink); }
+.form-textarea { resize: vertical; min-height: 120px; }
+
+.btn-submit {
+  width: 100%;
+  background: var(--accent);
+  color: var(--navy);
+  border: none;
+  border-radius: 50px;
+  padding: 0.95rem 2rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
+}
+.btn-submit:hover {
+  background: #33d4ff;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0,201,255,0.4);
+}
+
+/* Map */
+.map-frame { border-radius: 14px; overflow: hidden; margin-top: 1.5rem; border: 1px solid rgba(0,201,255,0.12); }
+.map-frame iframe { display: block; width: 100%; border: 0; }
+
+/* ─────────────────────────────────────────
+   FOOTER
+───────────────────────────────────────── */
+footer {
+  background: #060F17;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 4rem 2rem 2rem;
+}
+.footer-inner { max-width: 1280px; margin: 0 auto; }
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+.footer-brand .logo-text {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+.footer-brand .logo-text .a { color: var(--accent); }
+.footer-brand .logo-text .b { color: var(--cream); }
+.footer-brand p { font-size: 0.87rem; color: var(--slate); line-height: 1.7; max-width: 280px; }
+.footer-social { display: flex; gap: 0.6rem; margin-top: 1.25rem; }
+.footer-social a {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  background: var(--panel);
+  border: 1px solid rgba(255,255,255,0.07);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--slate);
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: color 0.25s, border-color 0.25s, background 0.25s;
+}
+.footer-social a:hover { color: var(--accent); border-color: rgba(0,201,255,0.3); background: rgba(0,201,255,0.08); }
+.footer-col h6 { font-family: 'Space Grotesk', sans-serif; font-size: 0.82rem; font-weight: 700; color: var(--cream); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1rem; }
+.footer-col ul { list-style: none; }
+.footer-col ul li { margin-bottom: 0.5rem; }
+.footer-col ul li a { font-size: 0.87rem; color: var(--slate); text-decoration: none; transition: color 0.25s; }
+.footer-col ul li a:hover { color: var(--accent); }
+.footer-bottom {
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.footer-bottom p { font-size: 0.82rem; color: var(--slate); }
+
+/* ─────────────────────────────────────────
+   RESPONSIVE
+───────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .about-grid { grid-template-columns: 1fr; gap: 6rem; }
+  .about-img-secondary { right: -1rem; }
+  .services-grid { grid-template-columns: repeat(2, 1fr); }
+  .team-grid { grid-template-columns: repeat(2, 1fr); }
+  .ports-grid { grid-template-columns: repeat(3, 1fr); }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+  .contact-grid { gap: 3rem; }
+}
+
+@media (max-width: 768px) {
+  .nav-links, .btn-nav { display: none; }
+  .nav-toggle { display: flex; }
+  .hero-content { padding: 8rem 1.25rem 3rem; }
+  .about-grid { grid-template-columns: 1fr; gap: 4rem; }
+  .cert-pill { left: 0; top: -1.5rem; }
+  .about-img-secondary { display: none; }
+  .services-grid { grid-template-columns: 1fr; }
+  .team-grid { grid-template-columns: 1fr 1fr; }
+  .why-grid { grid-template-columns: 1fr; }
+  .ports-grid { grid-template-columns: repeat(2, 1fr); }
+  .testi-grid { grid-template-columns: 1fr; }
+  .contact-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+  .form-row { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr; }
+  .footer-brand .logo-text { font-size: 1.2rem; }
+  .section { padding: 4rem 1.25rem; }
+}
+@media (max-width: 768px) {
+  .nav-mobile .btn-nav {
+    display: block !important;
+    width: 100%;
+    text-align: center;
+    margin-top: 12px;
+    color: black;
+  }
+}
+@media (max-width: 480px) {
+  .hero-cta { flex-direction: column; }
+  .btn-primary-hero, .btn-ghost-hero { justify-content: center; }
+  .hero-stats { gap: 1rem 1.5rem; }
+  .ports-grid { grid-template-columns: 1fr 1fr; }
+  .about-stats { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── FADE-IN ON SCROLL ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: none;
+}
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-delay-5 { transition-delay: 0.5s; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: var(--panel2);
+  border: 1px solid rgba(0,201,255,0.3);
+  border-radius: 14px;
+  padding: 1rem 1.5rem;
+  color: var(--cream);
+  font-size: 0.9rem;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: transform 0.4s, opacity 0.4s;
+  max-width: calc(100vw - 2rem);
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast i { color: var(--accent); font-size: 1.1rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, .ticker-track, .reveal { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════ NAVBAR ════════ -->
+<nav class="nav" id="mainNav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+<img src="ymr_logo.png" width="50px" height="50px">
+      <span class="accent">YMR</span>
+      <span class="rest">MARINE</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#about">About</a></li>
+      <li><a href="#services">Services</a></li>
+      <li><a href="#why-us">Why Us</a></li>
+      <li><a href="#team">Team</a></li>
+      <li><a href="#ports">Ports</a></li>
+      <li><a href="#testimonials">Clients</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <a href="https://ymrmarine.infinityfree.me/YSMS/" class="btn-nav">Employee Login</a>
+    <button class="nav-toggle" id="navToggle" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="nav-mobile" id="navMobile">
+    <a href="#about" class="nav-mobile-link">About</a>
+    <a href="#services" class="nav-mobile-link">Services</a>
+    <a href="#why-us" class="nav-mobile-link">Why Us</a>
+    <a href="#team" class="nav-mobile-link">Team</a>
+    <a href="#ports" class="nav-mobile-link">Ports</a>
+    <a href="#testimonials" class="nav-mobile-link">Clients</a>
+    <a href="#contact" class="nav-mobile-link">Contact</a>
+    <a href="https://ymrmarine.infinityfree.me/YSMS/" class="btn-nav">Employee Login</a>
+  </div>
+</nav>
+
+<!-- ════════ HERO ════════ -->
+<section class="hero" id="home">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <div class="hero-left">
+      <div class="hero-eyebrow">Your Global Survey Partner</div>
+      <h1 class="hero-h1">
+        Marine Surveys<br>
+        Done <em>Right.</em>
+      </h1>
+      <p class="hero-sub">YMR Marine Solutions LLP is your trusted partner for <strong>Bunker Survey</strong> and <strong>Pre-Purchase Inspection Survey</strong>, along with draft, cargo, and condition surveys across the globe — with turnaround times that keep your operations on schedule.</p>
+      <div class="hero-cta">
+        <a href="#contact" class="btn-primary-hero">
+          Request a Survey <i class="fas fa-arrow-right"></i>
+        </a>
+        <a href="#services" class="btn-ghost-hero">
+           Our Services
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div>
+          <div class="hstat-val">18<span>+</span></div>
+          <div class="hstat-label">Years Active</div>
+        </div>
+        <div>
+          <div class="hstat-val">5000<span>+</span></div>
+          <div class="hstat-label">Surveys Done</div>
+        </div>
+        <div>
+          <div class="hstat-val">100<span>+</span></div>
+          <div class="hstat-label">Clients</div>
+        </div>
+        <div>
+          <div class="hstat-val">24<span>/7</span></div>
+          <div class="hstat-label">Availability</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PORT TICKER -->
+  <div class="ticker-wrap">
+    <div class="ticker-track" id="ticker">
+      <!-- JS duplicates this for seamless loop -->
+    </div>
+  </div>
+</section>
+
+<!-- ════════ ABOUT ════════ -->
+<section id="about">
+  <div class="section">
+    <div class="about-grid">
+      <div class="reveal">
+        <div class="tag">Who We Are</div>
+        <h2 class="sec-h2">Trusted marine<br>expertise since 2006</h2>
+        <p class="sec-body">We are not just another Survey solution provider in the Maritime world but as a company, we are dedicated to providing survey solutions that are not just above the market standards in terms of quality, but also at the same time equally committed to keeping our numbers sharp.
+
+We truly believe that for all relationships to thrive, they have to be win-win for both our clients and us. With that prospective in mind, our client’s interest is always paramount for us and our communication with them is always clear and transparent.
+
+We are just getting started, and we will continue to strive forward with all our energy and focus. 
+
+We provide solutions for variety of Survey needs Globally in the Maritime sector and every opportunity given to us deeply valued.
+
+Captain Gaurav Yadav the founder of this company has deep knowledge of intricacies of the Stowage plans, Bunker surveys and vessel performance. He travelled across continents on the request of clients to carry out Bunker evaluation Surveys and he is one of the best and he continues to hold the top name in the business. His ideology reflect in the was we carry out our surveys. Trust is the most important factor for businesses to grow mutually and we are totally committed to building the trust with our clients.</p>
+        <p class="sec-body" style="margin-top:1rem;">Every survey is conducted by seasoned marine professionals using calibrated equipment and internationally recognised methodologies.</p>
+        <div class="about-stats">
+          <div class="astat">
+            <div class="astat-val" data-target="18" data-suffix="+">0+</div>
+            <div class="astat-label">Years of experience</div>
+          </div>
+          <div class="astat">
+            <div class="astat-val" data-target="5000" data-suffix="+">0+</div>
+            <div class="astat-label">Surveys completed</div>
+          </div>
+          <div class="astat">
+            <div class="astat-val" data-target="100" data-suffix="+">0+</div>
+            <div class="astat-label">Clients served</div>
+          </div>
+          <div class="astat">
+            <div class="astat-val">24/7</div>
+            <div class="astat-label">Operational support</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="about-img-stack reveal reveal-delay-2">
+        <img src="https://images.unsplash.com/photo-1693045734143-e3ee9235ec62?q=80&w=1632&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Vessel survey operations" class="about-img-main">
+        <img src="https://images.unsplash.com/photo-1658966005677-aeab72abcb52?q=80&w=1471&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Port operations" class="about-img-secondary">
+        <div class="cert-pill">
+          <div class="cert-icon"><i class="fas fa-check"></i></div>
+          <div class="cert-text">
+            <div class="t1">Experienced Surveyors</div>
+            <div class="t2">Quality Assured</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SERVICES ════════ -->
+<div class="section-alt">
+<section id="services">
+  <div class="section">
+    <div class="reveal">
+      <div class="tag">What We Do</div>
+      <h2 class="sec-h2">Comprehensive survey<br>& consultancy services</h2>
+    </div>
+    <div class="services-grid">
+      <div class="svc-card featured reveal reveal-delay-1" id="bunker-survey">
+        <span class="svc-badge">Most Requested</span>
+        <div class="svc-num">S-01</div>
+        <div class="svc-icon-wrap"><i class="fas fa-gas-pump"></i></div>
+        <div class="svc-title">Bunker Survey</div>
+        <p class="svc-desc">Accurate measurement and verification of bunker fuel quantities during bunkering operations, on-hire/off-hire, and consumption monitoring — trusted Bunker Survey specialists across India's East Coast ports.</p>
+        <a href="#contact" class="svc-link">Request Bunker Survey <i class="fas fa-arrow-right"></i></a>
+      </div>
+      <div class="svc-card featured reveal reveal-delay-2" id="pre-purchase-inspection">
+        <span class="svc-badge">Most Requested</span>
+        <div class="svc-num">S-02</div>
+        <div class="svc-icon-wrap"><i class="fas fa-search-dollar"></i></div>
+        <div class="svc-title">Pre-Purchase Inspection Survey</div>
+        <p class="svc-desc">Thorough technical and commercial due diligence for vessel acquisitions — our Pre-Purchase Inspection Survey protects buyers with an independent, objective condition assessment.</p>
+        <a href="#contact" class="svc-link">Request Pre-Purchase Inspection <i class="fas fa-arrow-right"></i></a>
+      </div>
+      <div class="svc-card reveal reveal-delay-3" id="draft-survey">
+        <div class="svc-num">S-03</div>
+        <div class="svc-icon-wrap"><i class="fas fa-ruler-combined"></i></div>
+        <div class="svc-title">Draft Survey</div>
+        <p class="svc-desc">Precise determination of cargo weight through systematic vessel draft readings — the industry-standard method for bulk commodity weighing.</p>
+        <a href="#contact" class="svc-link">Request survey <i class="fas fa-arrow-right"></i></a>
+      </div>
+      <div class="svc-card reveal reveal-delay-1" id="cargo-survey">
+        <div class="svc-num">S-04</div>
+        <div class="svc-icon-wrap"><i class="fas fa-boxes"></i></div>
+        <div class="svc-title">Cargo Survey</div>
+        <p class="svc-desc">Detailed inspection, tally, and condition assessment of all cargo types — bulk, breakbulk, containers, and project cargo — at load and discharge.</p>
+        <a href="#contact" class="svc-link">Request survey <i class="fas fa-arrow-right"></i></a>
+      </div>
+      <div class="svc-card reveal reveal-delay-2" id="condition-survey">
+        <div class="svc-num">S-05</div>
+        <div class="svc-icon-wrap"><i class="fas fa-ship"></i></div>
+        <div class="svc-title">Condition Survey</div>
+        <p class="svc-desc">Comprehensive assessment of hull, machinery, and equipment condition — for P&I, insurance, or vessel acquisition purposes.</p>
+        <a href="#contact" class="svc-link">Request survey <i class="fas fa-arrow-right"></i></a>
+      </div>
+      <div class="svc-card reveal reveal-delay-3" id="onhire-offhire-survey">
+        <div class="svc-num">S-06</div>
+        <div class="svc-icon-wrap"><i class="fas fa-exchange-alt"></i></div>
+        <div class="svc-title">On-Hire / Off-Hire</div>
+        <p class="svc-desc">Detailed condition and bunker surveys marking charter commencement and termination — protecting both owners and charterers from disputes.</p>
+        <a href="#contact" class="svc-link">Request survey <i class="fas fa-arrow-right"></i></a>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- ════════ WHY US ════════ -->
+<section id="why-us">
+  <div class="section">
+    <div class="reveal">
+      <div class="tag">Our Edge</div>
+      <h2 class="sec-h2">Why shipowners &amp;<br>traders choose <span class="accent">YMR</span></h2>
+    </div>
+    <div class="why-grid">
+      <div class="why-item reveal reveal-delay-1">
+        <div class="why-icon"><i class="fas fa-chart-line"></i></div>
+        <div>
+          <div class="why-title">Measurement Accuracy</div>
+          <p class="why-body">Calibrated instruments, verified procedures, and double-checked calculations mean our figures stand up to dispute — every time.</p>
+        </div>
+      </div>
+      <div class="why-item reveal reveal-delay-2">
+        <div class="why-icon"><i class="fas fa-user-shield"></i></div>
+        <div>
+          <div class="why-title">Seasoned Professionals</div>
+          <p class="why-body">Our surveyors carry deep sea, port, and terminal experience. They know what to look for before the paperwork begins.</p>
+        </div>
+      </div>
+      <div class="why-item reveal reveal-delay-3">
+        <div class="why-icon"><i class="fas fa-bolt"></i></div>
+        <div>
+          <div class="why-title">Fast Turnaround</div>
+          <p class="why-body">Draft reports delivered within hours of survey completion. Laytime doesn't wait — neither do we.</p>
+        </div>
+      </div>
+      <div class="why-item reveal reveal-delay-4">
+        <div class="why-icon"><i class="fas fa-globe-asia"></i></div>
+        <div>
+          <div class="why-title">International Standards</div>
+          <p class="why-body">Every survey follows IMO, SOLAS, ASTM, and ISO guidelines so your counterparty in London or Singapore can rely on our reports without question.</p>
+        </div>
+      </div>
+      <div class="why-item reveal reveal-delay-1">
+        <div class="why-icon"><i class="fas fa-handshake"></i></div>
+        <div>
+          <div class="why-title">Independent &amp; Transparent</div>
+          <p class="why-body">We work for our clients, not for the cargo or the vessel. Our neutrality is non-negotiable.</p>
+        </div>
+      </div>
+      <div class="why-item reveal reveal-delay-2">
+        <div class="why-icon"><i class="fas fa-headset"></i></div>
+        <div>
+          <div class="why-title">24 / 7 Availability</div>
+          <p class="why-body">Ships don't keep business hours. Our team is reachable around the clock for urgent survey requests and on-site mobilisation.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ OUR TEAM ════════ -->
+<section id="team">
+  <div class="section">
+    <div class="reveal">
+      <div class="tag">The People Behind It</div>
+      <h2 class="sec-h2">Meet our team</h2>
+      <p class="sec-body">A compact, experienced team keeping every survey accurate, on time, and dispute-proof.</p>
+    </div>
+    <div class="team-grid">
+      <div class="team-card reveal reveal-delay-1">
+        <div class="team-avatar">GY</div>
+        <div class="team-name">Capt. Gaurav Yadav</div>
+        <div class="team-role">Director</div>
+        <p class="team-bio">Leads YMR's survey operations with over two decades of seafaring and marine consultancy experience.</p>
+        <div class="team-social">
+          <a href="#contact" aria-label="Email"><i class="fas fa-envelope"></i></a>
+          <a href="#contact" aria-label="Phone"><i class="fas fa-phone"></i></a>
+        </div>
+      </div>
+      <div class="team-card reveal reveal-delay-2">
+        <div class="team-avatar">AD</div>
+        <div class="team-name">Apurva Dandekar</div>
+        <div class="team-role">Global Survey Coordinator</div>
+        <p class="team-bio">Coordinates bunker, draft and cargo survey assignments across the Globe, end to end.</p>
+        <div class="team-social">
+          <a href="#contact" aria-label="Email"><i class="fas fa-envelope"></i></a>
+          <a href="#contact" aria-label="Phone"><i class="fas fa-phone"></i></a>
+        </div>
+      </div>
+      <div class="team-card reveal reveal-delay-3">
+        <div class="team-avatar">PB</div>
+        <div class="team-name">Prakash Bommali</div>
+        <div class="team-role">Survey Coordinator</div>
+        <p class="team-bio">Manages scheduling, client communication, and onboard coordination for every survey job.</p>
+        <div class="team-social">
+          <a href="#contact" aria-label="Email"><i class="fas fa-envelope"></i></a>
+          <a href="#contact" aria-label="Phone"><i class="fas fa-phone"></i></a>
+        </div>
+      </div>
+      <div class="team-card reveal reveal-delay-4">
+        <div class="team-avatar">AJ</div>
+        <div class="team-name">Ashok Janapala</div>
+        <div class="team-role">Surveyor & IT Admin</div>
+        <p class="team-bio">Keeps YMR's survey management systems, reports, and digital infrastructure running smoothly.</p>
+        <div class="team-social">
+          <a href="#contact" aria-label="Email"><i class="fas fa-envelope"></i></a>
+          <a href="#contact" aria-label="Phone"><i class="fas fa-phone"></i></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ PORTS ════════ -->
+<div class="section-alt">
+<section id="ports">
+  <div class="section">
+    <div class="reveal ports-intro">
+      <div class="tag">Coverage</div>
+      <h2 class="sec-h2">Major ports covered<br>across India</h2>
+      <p class="sec-body">From major ports across the globe, we mobilise quickly to deliver reliable marine surveying services wherever our clients operate.</p>
+    </div>
+    <div class="ports-grid">
+      <div class="port-card reveal reveal-delay-1"><div class="port-anchor"><i class="fas fa-anchor"></i></div><div class="port-name">India</div><div class="port-state">All Ports</div></div>
+      <div class="port-card reveal reveal-delay-2"><div class="port-anchor"><i class="fas fa-anchor"></i></div><div class="port-name">Malaysia</div><div class="port-state">All Ports</div></div>
+      <div class="port-card reveal reveal-delay-3"><div class="port-anchor"><i class="fas fa-anchor"></i></div><div class="port-name">Phillippines</div><div class="port-state">All Ports</div></div>
+      <div class="port-card reveal reveal-delay-4"><div class="port-anchor"><i class="fas fa-anchor"></i></div><div class="port-name">Srilanka</div><div class="port-state">All Ports</div></div>
+      <div class="port-card reveal reveal-delay-1"><div class="port-anchor"><i class="fas fa-anchor"></i></div><div class="port-name">Bangladesh</div><div class="port-state">All Ports</div></div>
+      <div class="port-card reveal reveal-delay-2"><div class="port-anchor"><i class="fas fa-anchor"></i></div><div class="port-name">Indonesia</div><div class="port-state">All Ports</div></div>
+      <div class="port-card reveal reveal-delay-3"><div class="port-anchor"><i class="fas fa-anchor"></i></div><div class="port-name">Middle East</div><div class="port-state">Dubai, Oman, Quatar</div></div>
+      <div class="port-card reveal reveal-delay-4"><div class="port-anchor"><i class="fas fa-anchor"></i></div><div class="port-name">China</div><div class="port-state">All Ports</div></div>
+      <div class="port-card reveal reveal-delay-4"><div class="port-anchor"><i class="fas fa-anchor"></i></div><div class="port-name">Africa</div><div class="port-state">All Ports</div></div>
+<div class="port-card reveal reveal-delay-4"><div class="port-anchor"><i class="fas fa-anchor"></i></div><div class="port-name">Singapore</div><div class="port-state">All Ports</div></div>
+<div class="port-card reveal reveal-delay-4"><div class="port-anchor"><i class="fas fa-anchor"></i></div><div class="port-name">Australia</div><div class="port-state">All Ports</div></div>
+      <div class="port-card reveal reveal-delay-4"><div class="port-anchor"><i class="fas fa-anchor"></i></div><div class="port-name">USA</div><div class="port-state">All Ports</div></div>
+    </div>
+
+    <div class="reveal">
+      <div class="ports-extra">
+        <i class="fas fa-ship"></i>
+        Extended coverage — Europe on request
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- ════════ TESTIMONIALS ════════ -->
+<section id="testimonials">
+  <div class="section">
+    <div class="reveal">
+      <div class="tag">Client Voice</div>
+      <h2 class="sec-h2">What our clients say</h2>
+    </div>
+    <div class="testi-grid">
+      <div class="testi-card reveal reveal-delay-1">
+        <div class="testi-stars">
+          <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+        </div>
+        <p class="testi-quote">"YMR Marine provided exceptional service during our recent bunker survey in Visakhapatnam. Their professionalism and accuracy were outstanding — report was in our hands within four hours of completion."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">SS</div>
+          <div>
+            <div class="testi-name">Mr. Sathisha Setty</div>
+            <div class="testi-role">Operation Manager, Opulence Voyage</div>
+          </div>
+        </div>
+      </div>
+      <div class="testi-card reveal reveal-delay-2">
+        <div class="testi-stars">
+          <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+        </div>
+        <p class="testi-quote">"Fast turnaround and a highly detailed draft survey report. We've been using YMR as our go-to partner for all East Coast surveys for three years. Consistent, reliable, no surprises."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">KR</div>
+          <div>
+            <div class="testi-name">Kodanda Sriram</div>
+            <div class="testi-role">Vessel Operator, Aequor Shipping</div>
+          </div>
+        </div>
+      </div>
+      <div class="testi-card reveal reveal-delay-3">
+        <div class="testi-stars">
+          <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+        </div>
+        <p class="testi-quote">"The pre-purchase inspection saved us from a costly mistake. YMR's surveyor flagged structural concerns our own team had missed. Invaluable service."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">AK</div>
+          <div>
+            <div class="testi-name">Arun Kumar</div>
+            <div class="testi-role">Director, Sunrise Maritime</div>
+          </div>
+        </div>
+      </div>
+      <div class="testi-card reveal reveal-delay-4">
+        <div class="testi-stars">
+          <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+        </div>
+        <p class="testi-quote">"We rely on YMR for all our bunker surveys at India & Malaysia. Their team understands the pressures of port operations and never causes delays."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">SV</div>
+          <div>
+            <div class="testi-name">Suresh Venkat</div>
+            <div class="testi-role">Chartering Manager, Indo Bulk Carriers</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ CONTACT ════════ -->
+<div class="section-alt">
+<section id="contact">
+  <div class="section">
+    <div class="contact-grid">
+      <div class="reveal">
+        <div class="tag">Get In Touch</div>
+        <h2 class="sec-h2">Start your survey<br>request today</h2>
+        <p class="sec-body" style="margin-bottom:2rem;">Our team is available 24/7. Fill the form and we'll confirm your survey within the hour.</p>
+        <div class="contact-info">
+          <div class="contact-card">
+            <div class="contact-icon"><i class="fas fa-building"></i></div>
+            <div>
+              <div class="ct">Office</div>
+              <span class="cv">A2605, Runwal Elegante,Lokhandwala,Andheri West, Mumabi, India-400058</span>
+            </div>
+          </div>
+          <div class="contact-card">
+            <div class="contact-icon"><i class="fas fa-envelope"></i></div>
+            <div>
+              <div class="ct">Email</div>
+              <a href="mailto:operations@ymrmarine.com" class="cv">ops@ymrmarine.com</a>
+            </div>
+          </div>
+          <div class="contact-card">
+            <div class="contact-icon"><i class="fas fa-phone"></i></div>
+            <div>
+              <div class="ct">Phone</div>
+              <a href="tel:+919820482713" class="cv">+91 982 048 2713</a>
+            </div>
+          </div>
+          <div class="contact-card">
+            <div class="contact-icon"><i class="fas fa-clock"></i></div>
+            <div>
+              <div class="ct">Availability</div>
+              <span class="cv">24 / 7 — including weekends & holidays</span>
+            </div>
+          </div>
+        </div>
+        <div class="map-frame">
+          <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3769.245493327357!2d72.82607257551237!3d19.140728382077274!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7b63d7835eeeb%3A0x4c4aec6827db0ef8!2sRunwal%20Elegante!5e0!3m2!1sen!2sin!4v1782339052372!5m2!1sen!2sin" width="600" height="250" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+        </div>
+      </div>
+
+      <div class="reveal reveal-delay-2">
+        <form id="contactForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Your Name</label>
+              <input type="text" class="form-input" placeholder="John Smith" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Company</label>
+              <input type="text" class="form-input" placeholder="ABC Shipping Ltd" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-input" placeholder="you@company.com" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="tel" class="form-input" placeholder="+91 00000 00000">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Service Required</label>
+            <select class="form-select form-input">
+              <option value="">Select a service…</option>
+              <option>Bunker Survey</option>
+              <option>Draft Survey</option>
+              <option>Cargo Survey</option>
+              <option>Condition Survey</option>
+              <option>Pre-Purchase Inspection</option>
+              <option>On-Hire / Off-Hire Survey</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Port / Location</label>
+            <input type="text" class="form-input" placeholder="e.g. Visakhapatnam">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Message</label>
+            <textarea class="form-textarea" placeholder="Tell us more about your requirements, vessel name, ETA…"></textarea>
+          </div>
+          <button type="submit" class="btn-submit">
+            Send Request <i class="fas fa-arrow-right"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- ════════ FOOTER ════════ -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="logo-text"><img src="ymr_logo.png" width="40px" height="40px"><span class="a">YMR</span> <span class="b">MARINE</span></div>
+        <p>Your trusted partner for professional marine surveys and consultancy services acroos the Globe — delivering precision since 2006.</p>
+        <div class="footer-social">
+          <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+          <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+          <a href="mailto:operations@ymrmarine.com" aria-label="Email"><i class="fas fa-envelope"></i></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h6>Company</h6>
+        <ul>
+          <li><a href="#about">About Us</a></li>
+          <li><a href="#why-us">Why Choose Us</a></li>
+          <li><a href="#team">Our Team</a></li>
+          <li><a href="#ports">Port Coverage</a></li>
+          <li><a href="#contact">Contact</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h6>Services</h6>
+        <ul>
+          <li><a href="#bunker-survey">Bunker Survey</a></li>
+	  <strong><li><a href="#pre-purchase-inspection">Pre-Purchase Inspection Survey</a></li> </strong>          
+	  <li><a href="#services">Draft Survey</a></li>
+          <li><a href="#services">Cargo Survey</a></li>
+          <li><a href="#services">Condition Survey</a></li>
+          
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h6>Contact</h6>
+        <ul>
+          <li><a href="mailto:ops@ymrmarine.com">ops@ymrmarine.com</a></li>
+          <li><a href="tel:+919820482713">+91 982 048 2713</a></li>
+          <li><a href="#contact">A2605, Runwal Elegante,Lokhandwala,Andheri West, Mumabi, India-400058</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 YMR Marine Solutions LLP. All Rights Reserved.</p>
+      <p>Designed for excellence in maritime services</p>
+    </div>
+  </div>
+</footer>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <i class="fas fa-check-circle"></i>
+  <span>Request sent! We'll be in touch within the hour.</span>
+</div>
+
+<script>
+/* ── TICKER BUILD ── */
+const ports = ['Visakhapatnam','Gangavaram','Kakinada','Krishnapatnam','Paradip','Haldia','Chennai','Tuticorin','Mangalore','Cochin'];
+const track = document.getElementById('ticker');
+let html = '';
+// Build twice for seamless loop
+[...ports,...ports].forEach(p => {
+  html += `<span class="ticker-item"><span class="dot"></span>${p}</span>`;
+});
+track.innerHTML = html;
+
+/* ── NAVBAR ── */
+const nav = document.getElementById('mainNav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 40);
+}, { passive: true });
+
+const toggle = document.getElementById('navToggle');
+const mobile = document.getElementById('navMobile');
+toggle.addEventListener('click', () => {
+  toggle.classList.toggle('open');
+  mobile.classList.toggle('open');
+});
+mobile.querySelectorAll('a').forEach(a => {
+  a.addEventListener('click', () => {
+    toggle.classList.remove('open');
+    mobile.classList.remove('open');
+  });
+});
+
+/* ── SMOOTH SCROLL ── */
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const id = a.getAttribute('href');
+    if (id === '#') return;
+    const t = document.querySelector(id);
+    if (!t) return;
+    e.preventDefault();
+    const offset = nav.offsetHeight + 16;
+    window.scrollTo({ top: t.getBoundingClientRect().top + scrollY - offset, behavior: 'smooth' });
+  });
+});
+
+/* ── REVEAL ON SCROLL ── */
+const revealEls = document.querySelectorAll('.reveal');
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
+}, { threshold: 0.12 });
+revealEls.forEach(el => io.observe(el));
+
+/* ── COUNTERS ── */
+const counterEls = document.querySelectorAll('[data-target]');
+const cio = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    const el = e.target;
+    const end = parseInt(el.dataset.target);
+    const suffix = el.dataset.suffix || '';
+    let start = 0;
+    const dur = 1800;
+    const step = end / (dur / 16);
+    const timer = setInterval(() => {
+      start = Math.min(start + step, end);
+      el.textContent = Math.floor(start) + suffix;
+      if (start >= end) clearInterval(timer);
+    }, 16);
+    cio.unobserve(el);
+  });
+}, { threshold: 0.5 });
+counterEls.forEach(el => cio.observe(el));
+
+/* ── FORM ── */
+document.getElementById('contactForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const toast = document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 4000);
+  this.reset();
+});
+</script>
+</body>
+</html>

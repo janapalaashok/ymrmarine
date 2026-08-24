@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Marine Photo Report Generator</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+<style>
+:root{--navy:#0a2540;--blue:#1a4a7a;--teal:#0d6e6e;--accent:#00b4d8;--light:#e8f4f8}
+body{font-family:system-ui,sans-serif;background:linear-gradient(135deg,#f0f7fa,#e0eef5);min-height:100vh}
+.hero{background:linear-gradient(135deg,var(--navy),var(--blue) 60%,var(--teal));color:#fff;padding:1.6rem 0;margin-bottom:1.3rem}
+.hero h1{font-size:1.5rem;font-weight:700;margin:0}
+.card{border:none;border-radius:14px;box-shadow:0 6px 24px rgba(10,37,64,.1);margin-bottom:1.1rem}
+.card-header{background:linear-gradient(90deg,var(--navy),var(--blue));color:#fff;font-weight:600;border:none;border-radius:14px 14px 0 0!important}
+.form-control,.form-select{border-radius:8px}
+.btn-marine{background:linear-gradient(135deg,var(--navy),var(--blue));border:none;color:#fff;font-weight:600;border-radius:10px;padding:.65rem 1.4rem}
+.btn-marine:hover{color:#fff;opacity:.92}
+.upload-zone{border:2.5px dashed #a0c4d8;border-radius:12px;background:var(--light);padding:1.2rem;text-align:center;cursor:pointer}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:#d6f0f8}
+.photo-item{background:#fff;border:1px solid #e0eaf0;border-radius:12px;padding:.75rem;margin-bottom:.6rem}
+.photo-item.dragging{opacity:.45;border:2px dashed var(--accent)}
+.photo-thumb{width:90px;height:68px;object-fit:cover;border-radius:8px}
+.cat-badge{font-size:.72rem;font-weight:600}
+.template-ok{background:#e8f6f0;border-left:4px solid #28a745;border-radius:8px;padding:.6rem 1rem;font-size:.88rem}
+.cat-section{border:1px solid #d0e0ec;border-radius:12px;padding:1rem;margin-bottom:1rem;background:#f8fcfe}
+.cat-section h6{color:var(--navy);font-weight:700;margin-bottom:.6rem}
+</style>
+</head>
+<body>
+<div class="hero"><div class="container d-flex align-items-center gap-3">
+<div class="bg-white bg-opacity-25 rounded-circle p-2 d-flex align-items-center justify-content-center" style="width:46px;height:46px"><i class="bi bi-camera-fill fs-5 text-white"></i></div>
+<div><h1>YMR - Photo Report Generator</h1><p class="mb-0 opacity-75 small"></p></div>
+</div></div>
+
+<div class="container pb-5">
+<!-- Report Details -->
+<div class="card"><div class="card-header py-2"><i class="bi bi-ship me-1"></i> Report Details</div>
+<div class="card-body"><div class="row g-3">
+<div class="col-md-4"><label class="form-label small fw-semibold">Vessel Name</label><input type="text" class="form-control" id="vesselName" placeholder="Ocean Explorer"/></div>
+<div class="col-md-4"><label class="form-label small fw-semibold">Survey Date </label><input type="date" class="form-control" id="surveyDate"/></div>
+<div class="col-md-4"><label class="form-label small fw-semibold">Report Number</label><input type="text" class="form-control" id="reportNumber" placeholder="YMR-2026-10142"/></div>
+</div></div></div>
+
+<!-- Template -->
+<div class="card"><div class="card-header py-2"><i class="bi bi-file-earmark-word me-1"></i> Word Template (required)</div>
+<div class="card-body">
+<div class="upload-zone" id="templateZone" onclick="document.getElementById('templateInput').click()">
+<i class="bi bi-cloud-upload fs-2 text-primary"></i>
+<p class="mb-0 mt-1 fw-semibold">Upload YMR Photo Report Template (.docx)</p>
+<input type="file" id="templateInput" accept=".docx" class="d-none"/>
+</div>
+<div id="templateStatus" class="mt-2" style="display:none"><div class="template-ok d-flex justify-content-between align-items-center">
+<span><i class="bi bi-check-circle-fill text-success me-1"></i><span id="templateName"></span></span>
+<button class="btn btn-sm btn-outline-danger" onclick="clearTemplate()"><i class="bi bi-x"></i></button>
+</div></div></div></div>
+
+<!-- Category + Upload -->
+<div class="card"><div class="card-header py-2 d-flex justify-content-between">
+<span><i class="bi bi-images me-1"></i> Upload Photos by Category</span>
+<span class="badge bg-info" id="photoCount">0</span>
+</div>
+<div class="card-body">
+<div class="row g-2 mb-3 align-items-end">
+<div class="col-md-5">
+<label class="form-label small fw-semibold">Select Category</label>
+<select class="form-select" id="categorySelect">
+<option value="Ship Side">Ship Side</option>
+<option value="Deck Side">Deck Side</option>
+<option value="Hold No. 1">Hold No. 1</option>
+<option value="Hold No. 2">Hold No. 2</option>
+<option value="Hold No. 3">Hold No. 3</option>
+<option value="Hold No. 4">Hold No. 4</option>
+<option value="Hold No. 5">Hold No. 5</option>
+<option value="Hold No. 6">Hold No. 6</option>
+<option value="Hold No. 7">Hold No. 7</option>
+<option value="Hold No. 8">Hold No. 8</option>
+<option value="Hold No. 9">Hold No. 9</option>
+<option value="General">General</option>
+</select>
+</div>
+<div class="col-md-7">
+<div class="upload-zone py-3" id="photoZone">
+<i class="bi bi-images fs-4 text-primary"></i>
+<p class="mb-0 small fw-semibold">Click or drop photos for selected category</p>
+<input type="file" id="photoInput" accept="image/*" multiple class="d-none"/>
+</div>
+</div>
+</div>
+<div id="photoList"></div>
+<div id="photoControls" class="mt-2" style="display:none">
+<button class="btn btn-outline-secondary btn-sm" onclick="clearAllPhotos()"><i class="bi bi-trash3 me-1"></i>Clear All</button>
+</div>
+</div></div>
+
+<div class="text-center mt-3">
+<button class="btn btn-marine btn-lg" id="generateBtn" onclick="generateReport()"><i class="bi bi-download me-1"></i> Generate Photo Report</button>
+<!--<p class="text-muted small mt-2">Categories · dropdown descriptions · reorder · 2 photos/page</p> -->
+</div>
+</div>
+
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1100">
+<div id="toast" class="toast align-items-center text-bg-dark border-0"><div class="d-flex"><div class="toast-body" id="toastBody"></div>
+<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+/* ===== Default description options (first = default selected) ===== */
+var DESC_OPTIONS = [
+  "General condition of structure",
+  "Corrosion / wastage observed",
+  "Coating condition",
+  "No visible defects",
+  "Damage / deformation noted",
+  "Other (see remarks)"
+];
+
+var photos = [];
+var templateAB = null;
+var dragSrc = null;
+document.getElementById('surveyDate').valueAsDate = new Date();
+
+function toast(msg, err) {
+  var el = document.getElementById('toast');
+  document.getElementById('toastBody').textContent = msg;
+  el.classList.toggle('text-bg-danger', !!err);
+  el.classList.toggle('text-bg-dark', !err);
+  new bootstrap.Toast(el, {delay:4000}).show();
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function xmlEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+/* Template */
+document.getElementById('templateInput').onchange = async function(e) {
+  var f = e.target.files[0];
+  if (!f || !/\.docx$/i.test(f.name)) { toast('Select .docx', true); return; }
+  templateAB = await f.arrayBuffer();
+  document.getElementById('templateName').textContent = f.name;
+  document.getElementById('templateStatus').style.display = 'block';
+  toast('Template: ' + f.name);
+};
+var tz = document.getElementById('templateZone');
+tz.ondragover = function(e){e.preventDefault();this.classList.add('dragover')};
+tz.ondragleave = function(){this.classList.remove('dragover')};
+tz.ondrop = function(e){e.preventDefault();this.classList.remove('dragover');if(e.dataTransfer.files[0]){document.getElementById('templateInput').files=e.dataTransfer.files;document.getElementById('templateInput').dispatchEvent(new Event('change'))}};
+function clearTemplate(){templateAB=null;document.getElementById('templateInput').value='';document.getElementById('templateStatus').style.display='none'}
+
+/* Photos */
+var pz = document.getElementById('photoZone');
+pz.onclick = function(){document.getElementById('photoInput').click()};
+pz.ondragover = function(e){e.preventDefault();this.classList.add('dragover')};
+pz.ondragleave = function(){this.classList.remove('dragover')};
+pz.ondrop = function(e){e.preventDefault();this.classList.remove('dragover');addPhotos(e.dataTransfer.files)};
+document.getElementById('photoInput').onchange = function(e){addPhotos(e.target.files);e.target.value=''};
+
+async function addPhotos(list) {
+  var files = Array.from(list).filter(function(f){return f.type.indexOf('image/')===0});
+  if (!files.length) { toast('No images', true); return; }
+  var cat = document.getElementById('categorySelect').value;
+  var defaultDesc = DESC_OPTIONS[0];
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    var url = URL.createObjectURL(file);
+    var ab = await file.arrayBuffer();
+    var dims = await new Promise(function(res){
+      var img = new Image();
+      img.onload = function(){res({w:img.naturalWidth,h:img.naturalHeight})};
+      img.onerror = function(){res({w:800,h:600})};
+      img.src = url;
+    });
+    var ext = file.type.indexOf('png')>=0 ? 'png' : (file.type.indexOf('gif')>=0 ? 'gif' : 'jpeg');
+    photos.push({
+      file: file, url: url, ab: ab,
+      desc: defaultDesc,
+      category: cat,
+      w: dims.w, h: dims.h, ext: ext
+    });
+  }
+  renderPhotos();
+  toast(files.length + ' photo(s) added to "' + cat + '"');
+}
+
+function descDropdownHtml(selected, idx) {
+  var opts = '';
+  for (var i = 0; i < DESC_OPTIONS.length; i++) {
+    var sel = (DESC_OPTIONS[i] === selected) ? ' selected' : '';
+    opts += '<option value="'+esc(DESC_OPTIONS[i])+'"'+sel+'>'+esc(DESC_OPTIONS[i])+'</option>';
+  }
+  return '<select class="form-select form-select-sm" onchange="photos['+idx+'].desc=this.value">'+opts+'</select>';
+}
+
+function renderPhotos() {
+  var list = document.getElementById('photoList');
+  list.innerHTML = '';
+  document.getElementById('photoCount').textContent = photos.length;
+  document.getElementById('photoControls').style.display = photos.length ? 'block' : 'none';
+
+  /* Group by category for display, but keep global order for report */
+  var byCat = {};
+  photos.forEach(function(p, i) {
+    if (!byCat[p.category]) byCat[p.category] = [];
+    byCat[p.category].push({p: p, i: i});
+  });
+
+  var catOrder = ["Ship Side","Deck Side","Hold No. 1","Hold No. 2","Hold No. 3","Hold No. 4","Hold No. 5","Hold No. 6","Hold No. 7","Hold No. 8","Hold No. 9","General"];
+  catOrder.forEach(function(cat) {
+    if (!byCat[cat] || !byCat[cat].length) return;
+    var sec = document.createElement('div');
+    sec.className = 'cat-section';
+    sec.innerHTML = '<h6><i class="bi bi-folder2-open me-1"></i>'+esc(cat)+' <span class="badge bg-secondary">'+byCat[cat].length+'</span></h6>';
+    byCat[cat].forEach(function(item) {
+      var p = item.p, i = item.i;
+      var div = document.createElement('div');
+      div.className = 'photo-item';
+      div.draggable = true;
+      div.dataset.i = i;
+      div.innerHTML =
+        '<div class="d-flex gap-2 align-items-start">'+
+          '<div class="position-relative flex-shrink-0">'+
+            '<img src="'+p.url+'" class="photo-thumb"/>'+
+            '<span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-primary" style="font-size:.65rem">'+(i+1)+'</span>'+
+          '</div>'+
+          '<div class="flex-grow-1">'+
+            '<label class="form-label small mb-0">Description</label>'+
+            descDropdownHtml(p.desc, i)+
+            '<div class="mt-1 d-flex gap-1 flex-wrap align-items-center">'+
+              '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="moveP('+i+',-1)"'+(i===0?' disabled':'')+' title="Move up"><i class="bi bi-arrow-up"></i></button>'+
+              '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="moveP('+i+',1)"'+(i===photos.length-1?' disabled':'')+' title="Move down"><i class="bi bi-arrow-down"></i></button>'+
+              '<button type="button" class="btn btn-sm btn-outline-danger" onclick="delP('+i+')" title="Delete"><i class="bi bi-trash"></i></button>'+
+              '<span class="badge cat-badge bg-light text-dark border">'+esc(p.category)+'</span>'+
+              '<span class="text-muted small ms-auto">'+esc(p.file.name)+'</span>'+
+            '</div>'+
+          '</div>'+
+        '</div>';
+      div.addEventListener('dragstart', function(){dragSrc=i;div.classList.add('dragging')});
+      div.addEventListener('dragend', function(){div.classList.remove('dragging')});
+      div.addEventListener('dragover', function(e){e.preventDefault()});
+      div.addEventListener('drop', function(e){
+        e.preventDefault();
+        var t = +div.dataset.i;
+        if (dragSrc !== null && dragSrc !== t) {
+          var m = photos.splice(dragSrc, 1)[0];
+          photos.splice(t, 0, m);
+          renderPhotos();
+        }
+        dragSrc = null;
+      });
+      sec.appendChild(div);
+    });
+    list.appendChild(sec);
+  });
+}
+
+function moveP(i, d) {
+  var j = i + d;
+  if (j < 0 || j >= photos.length) return;
+  var t = photos[i]; photos[i] = photos[j]; photos[j] = t;
+  renderPhotos();
+}
+function delP(i) {
+  URL.revokeObjectURL(photos[i].url);
+  photos.splice(i, 1);
+  renderPhotos();
+}
+function clearAllPhotos() {
+  photos.forEach(function(p){URL.revokeObjectURL(p.url)});
+  photos = [];
+  renderPhotos();
+  toast('All photos cleared');
+}
+
+/* XML helpers */
+function fixSplits(xml) {
+  xml = xml.replace(/\{\{([A-Z0-9_]+)<\/w:t>([\s\S]*?)<w:t[^>]*>\}\}/g, '{{$1}}');
+  xml = xml.replace(/\{\{([A-Z0-9_]+)\s*<\/w:t>([\s\S]*?)<w:t[^>]*>\s*\}\}/g, '{{$1}}');
+  return xml;
+}
+function applyMap(xml, map) {
+  xml = fixSplits(xml);
+  var keys = Object.keys(map).sort(function(a,b){return b.length-a.length});
+  for (var i=0;i<keys.length;i++) xml = xml.split(keys[i]).join(map[keys[i]]);
+  return xml;
+}
+function nextRid(rels) {
+  var max=0, re=/Id="rId(\d+)"/g, m;
+  while ((m=re.exec(rels))!==null) { var n=parseInt(m[1],10); if(n>max) max=n; }
+  return max+1;
+}
+function imageDrawing(rId, cx, cy, name) {
+  return '<w:r><w:rPr/><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">'+
+    '<wp:extent cx="'+cx+'" cy="'+cy+'"/><wp:effectExtent l="0" t="0" r="0" b="0"/>'+
+    '<wp:docPr id="'+Math.floor(Math.random()*90000+1)+'" name="'+name+'" descr="'+name+'"/>'+
+    '<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>'+
+    '<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'+
+    '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'+
+    '<pic:nvPicPr><pic:cNvPr id="0" name="'+name+'"/><pic:cNvPicPr><a:picLocks noChangeAspect="1"/></pic:cNvPicPr></pic:nvPicPr>'+
+    '<pic:blipFill><a:blip r:embed="'+rId+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'+
+    '<pic:spPr bwMode="auto"><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm>'+
+    '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:ln><a:noFill/></a:ln></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>';
+}
+
+function rebuildPhotoRows(docXml, nPhotos) {
+  var tblStart = docXml.search(/<w:tbl[\s>]/), tblEnd = docXml.lastIndexOf('</w:tbl>');
+  if (tblStart < 0 || tblEnd < 0) return docXml;
+  var before = docXml.substring(0, tblStart);
+  var tblXml = docXml.substring(tblStart, tblEnd + 8);
+  var after = docXml.substring(tblEnd + 8);
+  var rowRe = /<w:tr\b[\s\S]*?<\/w:tr>/g, rows = [], m;
+  while ((m = rowRe.exec(tblXml)) !== null) rows.push(m[0]);
+  var firstTr = tblXml.search(/<w:tr\b/);
+  var tblHead = firstTr >= 0 ? tblXml.substring(0, firstTr) : '';
+  var photoTemplate = null, nonPhoto = [];
+  for (var i = 0; i < rows.length; i++) {
+    if (/PHOTO_|NUM_|DESC_|\{\{PHOTO_/.test(rows[i])) {
+      if (!photoTemplate) photoTemplate = rows[i];
+    } else nonPhoto.push(rows[i]);
+  }
+  if (!photoTemplate) return docXml;
+  var newRows = '';
+  for (var n = 1; n <= nPhotos; n++) {
+    var row = photoTemplate;
+    row = row.replace(/PHOTO_\d+/g, 'PHOTO_' + n);
+    row = row.replace(/NUM_\d+/g, 'NUM_' + n);
+    row = row.replace(/DESC_\d+/g, 'DESC_' + n);
+    if (n % 2 === 0 && n < nPhotos) {
+      var lastP = row.lastIndexOf('</w:p>');
+      if (lastP >= 0) row = row.substring(0, lastP) + '<w:r><w:br w:type="page"/></w:r>' + row.substring(lastP);
+    }
+    newRows += row;
+  }
+  return before + tblHead + nonPhoto.join('') + newRows + '</w:tbl>' + after;
+}
+
+function findRunStart(doc, tPos) {
+  var searchFrom = tPos;
+  while (searchFrom > 0) {
+    var cand = doc.lastIndexOf('<w:r', searchFrom - 1);
+    if (cand < 0) return -1;
+    var ch = doc.charAt(cand + 4);
+    if (ch === '>' || ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') return cand;
+    searchFrom = cand;
+  }
+  return -1;
+}
+
+async function generateReport() {
+  var vessel = document.getElementById('vesselName').value.trim();
+  var dateVal = document.getElementById('surveyDate').value;
+  var reportNo = document.getElementById('reportNumber').value.trim();
+  if (!vessel || !dateVal || !reportNo) { toast('Fill all Report Details', true); return; }
+  if (!templateAB) { toast('Upload YMR template first', true); return; }
+  if (!photos.length) { toast('Upload at least 1 photo', true); return; }
+  if (typeof JSZip === 'undefined') { toast('JSZip not loaded', true); return; }
+
+  var btn = document.getElementById('generateBtn'), orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
+
+  try {
+    var dateFmt = new Date(dateVal + 'T00:00:00').toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+    var zip = await JSZip.loadAsync(templateAB);
+    if (!zip.file('word/document.xml')) throw new Error('Invalid template');
+
+    /* Description includes category prefix for clarity */
+    var map = {
+      '{{VESSEL}}': xmlEsc(vessel),
+      '{{REPORT_NO}}': xmlEsc(reportNo),
+      '{{DATE}}': xmlEsc(dateFmt)
+    };
+    for (var i = 0; i < photos.length; i++) {
+      var n = i + 1;
+      map['{{NUM_' + n + '}}'] = String(n);
+      var fullDesc = photos[i].category + ' – ' + photos[i].desc;
+      map['{{DESC_' + n + '}}'] = xmlEsc(fullDesc);
+    }
+    for (var n = photos.length + 1; n <= 50; n++) {
+      map['{{NUM_' + n + '}}'] = '';
+      map['{{DESC_' + n + '}}'] = '';
+      map['{{PHOTO_' + n + '}}'] = '';
+    }
+
+    var docXml = await zip.file('word/document.xml').async('string');
+    docXml = rebuildPhotoRows(docXml, photos.length);
+    docXml = applyMap(docXml, map);
+
+    var xmlFiles = Object.keys(zip.files).filter(function(p){return p.endsWith('.xml') && p.indexOf('word/media/') !== 0});
+    for (var fi = 0; fi < xmlFiles.length; fi++) {
+      if (xmlFiles[fi] === 'word/document.xml') continue;
+      var content = await zip.file(xmlFiles[fi]).async('string');
+      zip.file(xmlFiles[fi], applyMap(content, map));
+    }
+
+    var rels = await zip.file('word/_rels/document.xml.rels').async('string');
+    var ct = await zip.file('[Content_Types].xml').async('string');
+    var rid = nextRid(rels);
+    var EMU = 914400, maxW = 5.5, maxH = 4.5;
+
+    for (var i = 0; i < photos.length; i++) {
+      var p = photos[i], n = i + 1;
+      var mediaName = 'photo_' + n + '.' + (p.ext === 'jpeg' ? 'jpg' : p.ext);
+      zip.file('word/media/' + mediaName, p.ab);
+      var rId = 'rId' + rid; rid++;
+      rels = rels.replace('</Relationships>',
+        '<Relationship Id="'+rId+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/'+mediaName+'"/></Relationships>');
+      var ext = p.ext === 'jpeg' ? 'jpg' : p.ext;
+      var mime = p.ext === 'png' ? 'image/png' : (p.ext === 'gif' ? 'image/gif' : 'image/jpeg');
+      if (ct.indexOf('Extension="'+ext+'"') < 0)
+        ct = ct.replace('</Types>', '<Default Extension="'+ext+'" ContentType="'+mime+'"/></Types>');
+      var wIn = p.w / 96, hIn = p.h / 96, scale = Math.min(maxW / wIn, maxH / hIn, 1);
+      var cx = Math.round(wIn * scale * EMU), cy = Math.round(hIn * scale * EMU);
+      var drawing = imageDrawing(rId, cx, cy, 'Photo' + n);
+      var token = '{{PHOTO_' + n + '}}';
+      var tPos = docXml.indexOf(token);
+      if (tPos >= 0) {
+        var runStart = findRunStart(docXml, tPos);
+        var runEnd = docXml.indexOf('</w:r>', tPos);
+        if (runStart >= 0 && runEnd >= 0) {
+          runEnd += 6;
+          if (runEnd - runStart > 0 && runEnd - runStart < 2500)
+            docXml = docXml.substring(0, runStart) + drawing + docXml.substring(runEnd);
+        }
+        docXml = docXml.split(token).join('');
+      }
+    }
+
+    zip.file('word/_rels/document.xml.rels', rels);
+    zip.file('[Content_Types].xml', ct);
+    zip.file('word/document.xml', docXml);
+
+    var blob = await zip.generateAsync({
+      type: 'blob',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      compression: 'DEFLATE'
+    });
+    var safe = vessel.replace(/[\\/:*?"<>|]/g, '_').trim() || 'Vessel';
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = safe + ' Photo Report.docx';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){URL.revokeObjectURL(a.href)}, 8000);
+    toast('Downloaded: ' + a.download + ' (' + photos.length + ' photos)');
+  } catch (e) {
+    console.error(e);
+    toast('Error: ' + (e.message || e), true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
+}
+</script>
+</body>
+</html>

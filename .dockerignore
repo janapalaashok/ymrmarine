@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env
+*.env
+.env.*
+*.md
+!README.md
+.idea
+.vscode
+*.log
+YSMS/vendor
