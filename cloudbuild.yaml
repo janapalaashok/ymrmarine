@@ -15,7 +15,7 @@ steps:
       - 'push'
       - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine:$COMMIT_SHA'
 
-  # 3. Deploy to Cloud Run + attach Cloud SQL
+  # 3. Deploy to Cloud Run — full explicit config (env vars, secrets, Cloud SQL, storage volumes)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -30,6 +30,19 @@ steps:
       - 'managed'
       - '--add-cloudsql-instances'
       - 'ymr-sms:asia-south1:ymrmarine'
+      - '--set-env-vars'
+      - 'YMR_DB_HOST=/cloudsql/ymr-sms:asia-south1:ymrmarine,YMR_DB_USER=ymrmarine,YMR_DB_NAME=ymrmarine,YSMS_DB_HOST=/cloudsql/ymr-sms:asia-south1:ymrmarine,YSMS_DB_USER=ysms_user,YSMS_DB_NAME=ysms_db'
+      - '--set-secrets'
+      - 'YMR_DB_PASS=YMR_DB_PASS:latest,YSMS_DB_PASS=YSMS_DB_PASS:latest,YSMS_SMTP_PASSWORD=YSMS_SMTP_PASSWORD:latest'
+      - '--add-volume'
+      - 'name=uploads,type=cloud-storage,bucket=ymrmarine-uploads'
+      - '--add-volume-mount'
+      - 'volume=uploads,mount-path=/var/www/html/assets/uploads'
+      - '--add-volume'
+      - 'name=ysms-uploads,type=cloud-storage,bucket=ymrmarine-ysms-uploads'
+      - '--add-volume-mount'
+      - 'volume=ysms-uploads,mount-path=/var/www/html/YSMS/uploads'
+      - '--allow-unauthenticated'
 
 images:
   - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine:$COMMIT_SHA'
