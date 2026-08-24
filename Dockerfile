@@ -3,7 +3,7 @@
 # be present in this build stage too, not just the final image.
 # Using "composer update" (not "install") since composer.lock isn't kept in sync here —
 # Cloud Build has internet access to resolve fresh from Packagist.
-FROM composer:2 AS vendor
+FROM composer:2-php8.3 AS vendor
 WORKDIR /app
 RUN apk add --no-cache libpng-dev libjpeg-turbo-dev freetype-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -12,7 +12,7 @@ COPY YSMS/composer.json ./
 RUN composer update --no-dev --no-interaction --optimize-autoloader
 
 # ---- Stage 2: application image ----
-FROM php:8.2-apache
+FROM php:8.3-apache
 
 # Install MySQL/PDO support + gd (needed at runtime by phpspreadsheet for image handling)
 RUN apt-get update && apt-get install -y --no-install-recommends \
