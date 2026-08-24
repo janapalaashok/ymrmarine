@@ -1,13 +1,15 @@
-# ---- Stage 1: install YSMS Composer dependencies (phpoffice/phpspreadsheet) ----
+# ---- Stage 1: install YSMS Composer dependencies (phpoffice/phpspreadsheet, phpmailer) ----
 # phpspreadsheet requires the PHP gd extension at install-check time, so it must
 # be present in this build stage too, not just the final image.
+# Using "composer update" (not "install") since composer.lock isn't kept in sync here —
+# Cloud Build has internet access to resolve fresh from Packagist.
 FROM composer:2 AS vendor
 WORKDIR /app
 RUN apk add --no-cache libpng-dev libjpeg-turbo-dev freetype-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install gd
-COPY YSMS/composer.json YSMS/composer.lock ./
-RUN composer install --no-dev --no-interaction --optimize-autoloader
+COPY YSMS/composer.json ./
+RUN composer update --no-dev --no-interaction --optimize-autoloader
 
 # ---- Stage 2: application image ----
 FROM php:8.2-apache
