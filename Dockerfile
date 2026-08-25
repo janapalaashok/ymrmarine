@@ -3,9 +3,9 @@
 # be present in this build stage too, not just the final image.
 FROM composer:2 AS vendor
 WORKDIR /app
-RUN apk add --no-cache libpng-dev libjpeg-turbo-dev freetype-dev \
+RUN apk add --no-cache libpng-dev libjpeg-turbo-dev freetype-dev libzip-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd
+    && docker-php-ext-install gd zip
 COPY YSMS/composer.json ./
 # The builder image's own PHP may be older than what packages request; the
 # actual app runs on PHP 8.3 (final stage below), so it's safe to skip this
@@ -15,11 +15,12 @@ RUN composer update --no-dev --no-interaction --optimize-autoloader --ignore-pla
 # ---- Stage 2: application image ----
 FROM php:8.3-apache
 
-# Install MySQL/PDO support + gd (needed at runtime by phpspreadsheet for image handling)
+# Install MySQL/PDO support + gd + zip (phpspreadsheet needs both gd for images
+# and zip since .xlsx files are ZIP archives internally)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
+        libpng-dev libjpeg62-turbo-dev libfreetype6-dev libzip-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo pdo_mysql gd \
+    && docker-php-ext-install pdo pdo_mysql gd zip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Configure Apache to listen on Cloud Run's port
