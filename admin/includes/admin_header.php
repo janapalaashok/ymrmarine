@@ -1,5 +1,9 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
+// Buffer output so that header('Location: ...') redirects still work even after
+// this file has printed HTML further down (PHP can't send headers after real output,
+// but a buffered — not yet flushed — output doesn't block header() calls).
+ob_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/functions.php';
 requireLogin();
