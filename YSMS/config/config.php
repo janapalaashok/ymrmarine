@@ -81,6 +81,21 @@ function sanitize($data) {
     return htmlspecialchars(trim($data), ENT_QUOTES, 'UTF-8');
 }
 
+/**
+ * Ensures a vessel name always carries a single, consistent "MV. " prefix —
+ * whatever the admin/surveyor typed (with or without "MV", "M.V.", any
+ * case, extra spaces). Never doubles an existing prefix.
+ */
+function normalizeVesselName(string $name): string {
+    $name = trim($name);
+    if ($name === '') return $name;
+    if (preg_match('/^m\.?\s*v\.?\s*/i', $name)) {
+        $rest = preg_replace('/^m\.?\s*v\.?\s*/i', '', $name);
+        return 'MV. ' . ltrim($rest);
+    }
+    return 'MV. ' . $name;
+}
+
 // 🌟 ఒక సర్వేకి బహుళ Survey Types ఎంచుకున్నప్పుడు, వాటన్నింటినీ "+" తో కలిపి చూపించడానికి హెల్పర్
 // (survey_type_ids కాలమ్ ఖాళీగా ఉంటే, పాత రికార్డుల కోసం $fallback_name ఇస్తుంది)
 function getCombinedSurveyTypeNames($db, $ids_csv, $fallback_name = '') {

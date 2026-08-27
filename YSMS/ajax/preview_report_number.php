@@ -21,5 +21,6 @@ try {
         'format' => 'YMR/{CLIENT}/{YYYY}/{MM}/{NNNN}',
     ]);
 } catch (Throwable $e) {
-    echo json_encode(['success' => false, 'message' => $e->getMessage(), 'report_number' => '']);
+    error_log('Report number preview error: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Could not generate a preview number right now.', 'report_number' => '']);
 }

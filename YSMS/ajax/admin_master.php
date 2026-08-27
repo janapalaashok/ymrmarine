@@ -119,8 +119,11 @@ try {
             $val = trim((string)($_POST[$name] ?? ''));
 
             if ($f['type'] === 'password') {
-                // Password only participates when a value was actually supplied.
-                if ($val === '') continue;
+                // Password only participates when a value was actually supplied,
+                // and — enforced here server-side, not just hidden in the UI —
+                // an existing surveyor's password can never be changed through
+                // this generic edit form, only at creation time.
+                if ($val === '' || ($module === 'surveyors' && $action === 'edit')) continue;
             }
 
             if (!empty($f['required']) && $val === '') {

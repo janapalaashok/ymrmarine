@@ -383,6 +383,9 @@ $(document).ready(function() {
         $('#adminFormModalTitle').text((row ? 'Edit ' : 'Add ') + mod.singular);
         let fieldsHtml = '';
         mod.fields.forEach(function(f) {
+            // Password may only be set at creation time — an existing surveyor's
+            // password should never be changeable from this admin edit form.
+            if (f.type === 'password' && row) return;
             const val = row && row[f.name] != null ? row[f.name] : '';
             fieldsHtml += '<div class="admin-field-group">';
             fieldsHtml += '<label>' + escapeHtml(f.label) + (f.required ? ' *' : '') + '</label>';

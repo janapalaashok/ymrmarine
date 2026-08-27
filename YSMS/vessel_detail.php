@@ -34,7 +34,7 @@ try {
 
 // 🌟 అడ్మిన్ మాత్రమే వెసెల్/సర్వే వివరాలను మార్చగలరు (existing workflow, this page)
 if ($is_admin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_survey_details'])) {
-    $u_vessel_name = trim($_POST['vessel_name']);
+    $u_vessel_name = normalizeVesselName(trim($_POST['vessel_name']));
     $u_client_id = (int)$_POST['client_id'];
     $u_agent_name = trim($_POST['agent_name']);
     $u_port_id = (int)$_POST['port_id'];
@@ -136,14 +136,17 @@ if (!$survey) { die("Survey details missing."); }
 // changing the ?id= in the URL. Admins are unrestricted, matching existing
 // admin permissions elsewhere in this file.
 if (!$is_admin && (int)$survey['surveyor_id'] !== (int)$current_user_id) {
-        http_response_code(403);
+    http_response_code(403);
     include 'includes/header.php';
     ?>
     <style>
         .no-access-wrap { min-height: calc(100vh - 160px); padding: 30px 20px; display: flex; align-items: center; justify-content: center; }
         .no-access-card { max-width: 520px; width: 100%; padding: 38px 24px; border-radius: 20px; background: #fff; border: 1px solid var(--border-color); box-shadow: 0 12px 28px rgba(15,23,42,.07); text-align: center; }
         .no-access-icon { width: 68px; height: 68px; margin: 0 auto 18px; border-radius: 18px; display: flex; align-items: center; justify-content: center; background: #fef2f2; color: #b91c1c; font-size: 28px; }
-       .no-access-card .blue-action-btn { margin-left: auto; margin-right: auto; }
+        /* .blue-action-btn is display:flex/width:100% by default (mobile-first),
+           so on desktop it hugs the left edge of this centered card instead of
+           centering itself — force it to center within this card specifically. */
+        .no-access-card .blue-action-btn { margin-left: auto; margin-right: auto; }
     </style>
     <div class="scroll-content">
         <?php $page_title = 'Access Denied'; $back_url = 'index.php'; $page_testid = 'no-access'; include 'includes/top_app_bar.php'; ?>

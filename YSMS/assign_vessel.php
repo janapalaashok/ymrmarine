@@ -111,7 +111,7 @@ $survey_types = $db->query("SELECT * FROM survey_types")->fetchAll();
 
 // ఫార్మ్ సబ్మిషన్ ప్రాసెస్
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $vessel_name = trim($_POST['vessel_name']);
+    $vessel_name = normalizeVesselName(trim($_POST['vessel_name']));
     $client_id = (int)$_POST['client_id'];
     $agent_name = trim($_POST['agent_name']);
     $port_id = (int)$_POST['port_id'];

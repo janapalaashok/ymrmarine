@@ -116,6 +116,6 @@ try {
         http_response_code(500);
         header('Content-Type: text/plain; charset=utf-8');
     }
-    echo 'Export Error: ' . $e->getMessage();
+    error_log('Export error: ' . $e->getMessage()); echo 'Something went wrong while generating this export. Please try again, or contact support if it keeps happening.';
     exit;
 }

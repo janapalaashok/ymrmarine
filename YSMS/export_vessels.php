@@ -71,7 +71,8 @@ try {
     while (ob_get_level() > 0) { ob_end_clean(); }
     http_response_code(500);
     header('Content-Type: text/plain; charset=utf-8');
-    echo 'Export DB Error: ' . $e->getMessage();
+    error_log('Vessel export error: ' . $e->getMessage());
+    echo 'Something went wrong while generating this export. Please try again, or contact support if it keeps happening.';
     exit;
 }
 

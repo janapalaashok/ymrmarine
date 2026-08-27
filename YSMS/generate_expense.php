@@ -104,6 +104,7 @@ try {
 } catch (Throwable $e) {
     while (ob_get_level() > 0) { ob_end_clean(); }
     http_response_code(500);
-    echo 'Expense export error: ' . htmlspecialchars($e->getMessage());
+    error_log('Expense export error: ' . $e->getMessage());
+    echo 'Something went wrong while generating this export. Please try again, or contact support if it keeps happening.';
     exit;
 }
