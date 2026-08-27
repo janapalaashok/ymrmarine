@@ -136,8 +136,31 @@ if (!$survey) { die("Survey details missing."); }
 // changing the ?id= in the URL. Admins are unrestricted, matching existing
 // admin permissions elsewhere in this file.
 if (!$is_admin && (int)$survey['surveyor_id'] !== (int)$current_user_id) {
-    http_response_code(403);
-    die("You do not have permission to view this record.");
+        http_response_code(403);
+    include 'includes/header.php';
+    ?>
+    <style>
+        .no-access-wrap { min-height: calc(100vh - 160px); padding: 30px 20px; display: flex; align-items: center; justify-content: center; }
+        .no-access-card { max-width: 520px; width: 100%; padding: 38px 24px; border-radius: 20px; background: #fff; border: 1px solid var(--border-color); box-shadow: 0 12px 28px rgba(15,23,42,.07); text-align: center; }
+        .no-access-icon { width: 68px; height: 68px; margin: 0 auto 18px; border-radius: 18px; display: flex; align-items: center; justify-content: center; background: #fef2f2; color: #b91c1c; font-size: 28px; }
+    </style>
+    <div class="scroll-content">
+        <?php $page_title = 'Access Denied'; $back_url = 'index.php'; $page_testid = 'no-access'; include 'includes/top_app_bar.php'; ?>
+        <main class="no-access-wrap" data-testid="no-access-page">
+            <section class="no-access-card">
+                <div class="no-access-icon"><i class="fa-solid fa-lock"></i></div>
+                <h2 class="fw-bold text-dark" style="font-size:22px;" data-testid="no-access-heading">Access Denied</h2>
+                <p class="text-muted mb-4" style="font-size:13px;" data-testid="no-access-message">
+                    You don't have permission to view this survey. It isn't assigned to your account.
+                </p>
+                <a href="index.php" class="blue-action-btn text-decoration-none" data-testid="no-access-home-link"><i class="fa-solid fa-house"></i> Return Home</a>
+            </section>
+        </main>
+    </div>
+    <?php
+    include 'includes/nav.php';
+    include 'includes/footer.php';
+    exit;
 }
 
 // అడ్మిన్ ఎడిట్ ఫారమ్ కోసం డ్రాప్‌డౌన్ లిస్టులు (clients, ports, survey types, surveyors)
