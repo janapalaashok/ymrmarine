@@ -5,8 +5,9 @@ checkAuth();
 $db = getDB();
 $role = $_SESSION['role'];
 $user_id = $_SESSION['user_id'];
+$client_id = ($role === 'Client') ? getClientIdForUser($db, $user_id) : 0;
 
-// ⚙️ రోల్ బేస్డ్ మెట్రిక్స్ కాలిక్యులేషన్స్ (Admin vs Surveyor)
+// ⚙️ రోల్ బేస్డ్ మెట్రిక్స్ కాలిక్యులేషన్స్ (Admin vs Surveyor vs Client)
 if ($role === 'Admin') {
     $pending_vessels = $db->query("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Vessel'")->fetchColumn();
     $pending_reports = $db->query("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Report'")->fetchColumn();
@@ -23,6 +24,35 @@ if ($role === 'Admin') {
 
     // అడ్మిన్ కి O20 (LSMGO) రికవరీ సమ్
     $total_lsmgo = $db->query("SELECT SUM(lsmgo_recovery) FROM surveys WHERE lsmgo_recovery IS NOT NULL")->fetchColumn();
+} elseif ($role === 'Client') {
+    // క్లైంట్ కి తన కంపెనీ వెసెల్స్ మాత్రమే
+    $stmt_v = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Vessel' AND client_id = ?");
+    $stmt_v->execute([$client_id]);
+    $pending_vessels = $stmt_v->fetchColumn();
+
+    $stmt_r = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Report' AND client_id = ?");
+    $stmt_r->execute([$client_id]);
+    $pending_reports = $stmt_r->fetchColumn();
+
+    $stmt_c = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Completed' AND client_id = ?");
+    $stmt_c->execute([$client_id]);
+    $completed_vessels = $stmt_c->fetchColumn();
+
+    $stmt_t_rec = $db->prepare("SELECT SUM(recovery_amount) FROM surveys WHERE recovery_amount IS NOT NULL AND client_id = ?");
+    $stmt_t_rec->execute([$client_id]);
+    $total_recovery = $stmt_t_rec->fetchColumn();
+
+    $stmt_m_rec = $db->prepare("SELECT SUM(recovery_amount) FROM surveys WHERE recovery_amount IS NOT NULL AND client_id = ? AND MONTH(COALESCE(survey_completed_date, report_uploaded_date)) = MONTH(CURDATE()) AND YEAR(COALESCE(survey_completed_date, report_uploaded_date)) = YEAR(CURDATE())");
+    $stmt_m_rec->execute([$client_id]);
+    $month_recovery = $stmt_m_rec->fetchColumn();
+
+    $stmt_vlsfo = $db->prepare("SELECT SUM(vlsfo_recovery) FROM surveys WHERE vlsfo_recovery IS NOT NULL AND client_id = ?");
+    $stmt_vlsfo->execute([$client_id]);
+    $total_vlsfo = $stmt_vlsfo->fetchColumn();
+
+    $stmt_lsmgo = $db->prepare("SELECT SUM(lsmgo_recovery) FROM surveys WHERE lsmgo_recovery IS NOT NULL AND client_id = ?");
+    $stmt_lsmgo->execute([$client_id]);
+    $total_lsmgo = $stmt_lsmgo->fetchColumn();
 } else {
     // సర్వేయర్ కి కేవలం తనకు assign చేసినవి మాత్రమే
     $stmt_v = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Vessel' AND surveyor_id = ?");
@@ -67,6 +97,19 @@ if ($role === 'Admin') {
     $avg_ships_per_month = $months_span > 0 ? round(((float)$avg_ships) / (float)$months_span, 1) : 0;
     $avg_recovery_per_ship = $db->query("SELECT AVG(recovery_amount) FROM surveys WHERE recovery_amount IS NOT NULL AND recovery_amount > 0")->fetchColumn();
     $avg_recovery_per_surveyor = $db->query("SELECT AVG(t.s) FROM (SELECT SUM(recovery_amount) AS s FROM surveys WHERE recovery_amount IS NOT NULL GROUP BY surveyor_id) t")->fetchColumn();
+} elseif ($role === 'Client') {
+    $stmt_recent = $db->prepare("SELECT vessel_name, vlsfo_recovery, lsmgo_recovery, recovery_amount FROM surveys WHERE recovery_amount IS NOT NULL AND client_id = ? ORDER BY COALESCE(survey_completed_date, report_uploaded_date) DESC, id DESC LIMIT 1");
+    $stmt_recent->execute([$client_id]);
+    $recent_row = $stmt_recent->fetch(PDO::FETCH_ASSOC);
+    $stmt_avg = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Completed' AND client_id = ?");
+    $stmt_avg->execute([$client_id]);
+    $avg_ships = $stmt_avg->fetchColumn();
+    $stmt_ms = $db->prepare("SELECT GREATEST(1, TIMESTAMPDIFF(MONTH, MIN(COALESCE(survey_completed_date, report_uploaded_date, assign_date)), CURDATE()) + 1) FROM surveys WHERE client_id = ? AND status IN ('Completed','Pending Report')");
+    $stmt_ms->execute([$client_id]);
+    $months_span = $stmt_ms->fetchColumn();
+    $avg_ships_per_month = $months_span > 0 ? round(((float)$avg_ships) / (float)$months_span, 1) : 0;
+    $avg_recovery_per_ship = null;
+    $avg_recovery_per_surveyor = null;
 } else {
     $stmt_recent = $db->prepare("SELECT vessel_name, vlsfo_recovery, lsmgo_recovery, recovery_amount FROM surveys WHERE recovery_amount IS NOT NULL AND surveyor_id = ? ORDER BY COALESCE(survey_completed_date, report_uploaded_date) DESC, id DESC LIMIT 1");
     $stmt_recent->execute([$user_id]);
@@ -87,6 +130,34 @@ $recent_lsmgo = !empty($recent_row['lsmgo_recovery']) ? number_format((float)$re
 $avg_ships_per_month_disp = number_format((float)$avg_ships_per_month, 1);
 $avg_recovery_per_ship_disp = !empty($avg_recovery_per_ship) ? number_format((float)$avg_recovery_per_ship, 3) . ' MT' : '0.000 MT';
 $avg_recovery_per_surveyor_disp = !empty($avg_recovery_per_surveyor) ? number_format((float)$avg_recovery_per_surveyor, 3) . ' MT' : '0.000 MT';
+
+// 🌟 Super Admin only: ships-by-country and recovery-by-country/port breakdown.
+// (survey fee/monetary revenue tracking isn't in the database yet — this
+// section uses recovery quantities, the only revenue-adjacent figures
+// currently tracked, as a stand-in until fee tracking is added.)
+$ships_by_country = [];
+$recovery_by_country = [];
+$recovery_by_port = [];
+if (!empty($_SESSION['is_super_admin'])) {
+    ensurePortsCountryColumn($db);
+    $ships_by_country = $db->query("
+        SELECT COALESCE(NULLIF(p.country, ''), 'Unspecified') AS country, COUNT(*) AS ship_count
+        FROM surveys s JOIN ports p ON s.port_id = p.id
+        GROUP BY country ORDER BY ship_count DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    $recovery_by_country = $db->query("
+        SELECT COALESCE(NULLIF(p.country, ''), 'Unspecified') AS country, SUM(s.recovery_amount) AS total_recovery
+        FROM surveys s JOIN ports p ON s.port_id = p.id
+        WHERE s.recovery_amount IS NOT NULL
+        GROUP BY country ORDER BY total_recovery DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    $recovery_by_port = $db->query("
+        SELECT p.port_name, SUM(s.recovery_amount) AS total_recovery
+        FROM surveys s JOIN ports p ON s.port_id = p.id
+        WHERE s.recovery_amount IS NOT NULL
+        GROUP BY p.port_name ORDER BY total_recovery DESC LIMIT 8
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
 
 // 🌟 డెసిమల్స్ 3 స్థానాలకు మార్చి (0.000) వెనుక 'MT' యాడ్ చేయడం
 $total_recovery = !empty($total_recovery) ? number_format((float)$total_recovery, 3) . ' MT' : '0.000 MT';
@@ -190,6 +261,58 @@ include 'includes/header.php';
         </div>
         <?php endif; ?>
     </div>
+
+    <?php if (!empty($_SESSION['is_super_admin'])): ?>
+    <!-- 🌟 Super Admin only: revenue/coverage breakdown by country & port -->
+    <div class="overview-section mt-4 px-3">
+        <div class="fw-bold text-dark mb-2" style="font-size:15px;"><i class="fa-solid fa-globe text-primary me-1"></i> Global Coverage & Recovery</div>
+        <div class="super-admin-breakdown-grid">
+            <div class="breakdown-card">
+                <div class="breakdown-card-title"><i class="fa-solid fa-ship"></i> Ships by Country</div>
+                <?php if (empty($ships_by_country)): ?>
+                    <div class="breakdown-empty">No survey data yet.</div>
+                <?php else: foreach ($ships_by_country as $row): ?>
+                    <div class="breakdown-row">
+                        <span><?= sanitize($row['country']) ?></span>
+                        <span class="breakdown-val"><?= (int)$row['ship_count'] ?></span>
+                    </div>
+                <?php endforeach; endif; ?>
+            </div>
+            <div class="breakdown-card">
+                <div class="breakdown-card-title"><i class="fa-solid fa-chart-line"></i> Recovery by Country</div>
+                <?php if (empty($recovery_by_country)): ?>
+                    <div class="breakdown-empty">No recovery data yet.</div>
+                <?php else: foreach ($recovery_by_country as $row): ?>
+                    <div class="breakdown-row">
+                        <span><?= sanitize($row['country']) ?></span>
+                        <span class="breakdown-val"><?= number_format((float)$row['total_recovery'], 2) ?> MT</span>
+                    </div>
+                <?php endforeach; endif; ?>
+            </div>
+            <div class="breakdown-card">
+                <div class="breakdown-card-title"><i class="fa-solid fa-anchor"></i> Top Ports by Recovery</div>
+                <?php if (empty($recovery_by_port)): ?>
+                    <div class="breakdown-empty">No recovery data yet.</div>
+                <?php else: foreach ($recovery_by_port as $row): ?>
+                    <div class="breakdown-row">
+                        <span><?= sanitize($row['port_name']) ?></span>
+                        <span class="breakdown-val"><?= number_format((float)$row['total_recovery'], 2) ?> MT</span>
+                    </div>
+                <?php endforeach; endif; ?>
+            </div>
+        </div>
+        <div class="text-muted mt-2" style="font-size:11px;">Showing bunker recovery quantities by location. Survey fee / monetary revenue tracking isn't set up yet.</div>
+    </div>
+    <style>
+        .super-admin-breakdown-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+        .breakdown-card { background: #fff; border: 1px solid var(--border-color); border-radius: 14px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(15,23,42,.04); }
+        .breakdown-card-title { font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .breakdown-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
+        .breakdown-row:last-child { border-bottom: none; }
+        .breakdown-val { font-weight: 700; color: var(--text-dark); }
+        .breakdown-empty { font-size: 12px; color: var(--text-muted); }
+    </style>
+    <?php endif; ?>
 
     <!-- Quick links: stacked on mobile, one neat row on desktop -->
     <div class="dashboard-action-links">

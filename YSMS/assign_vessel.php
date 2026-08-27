@@ -4,10 +4,11 @@ require_once 'includes/mailer.php';
 require_once 'includes/report_number.php';
 require_once 'includes/notifications.php';
 checkAuth();
-if (($_SESSION['role'] ?? '') !== 'Admin') {
+if (!in_array($_SESSION['role'] ?? '', ['Admin', 'Client'], true)) {
     header('Location: index.php');
     exit;
 }
+$is_client_role = (($_SESSION['role'] ?? '') === 'Client');
 
 $db = getDB();
 $error = '';
@@ -102,6 +103,12 @@ try {
     // short_code column may not exist yet on first load
     $clients = $db->query("SELECT id, company_name FROM clients ORDER BY company_name ASC")->fetchAll();
 }
+$my_client_id = 0;
+if ($is_client_role) {
+    $my_client_id = getClientIdForUser($db, (int)$_SESSION['user_id']);
+    // A client-role user may only ever assign vessels under their own company.
+    $clients = array_values(array_filter($clients, fn($c) => (int)$c['id'] === $my_client_id));
+}
 
 // 3. సర్వేయర్స్ లిస్ట్ తెచ్చుకోవడం (role_id = 2)
 $surveyors = $db->query("SELECT id, full_name FROM users WHERE role_id = 2 AND status = 'Active'")->fetchAll();
@@ -112,7 +119,7 @@ $survey_types = $db->query("SELECT * FROM survey_types")->fetchAll();
 // ఫార్మ్ సబ్మిషన్ ప్రాసెస్
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $vessel_name = normalizeVesselName(trim($_POST['vessel_name']));
-    $client_id = (int)$_POST['client_id'];
+    $client_id = $is_client_role ? $my_client_id : (int)$_POST['client_id'];
     $agent_name = trim($_POST['agent_name']);
     $port_id = (int)$_POST['port_id'];
 
@@ -613,7 +620,9 @@ include 'includes/top_app_bar.php';
                             <?php foreach($clients as $client): ?>
                                 <li class="ss-option" data-value="<?= $client['id'] ?>" data-name="<?= strtolower(sanitize($client['company_name'])) ?>" data-short="<?= sanitize(strtoupper(trim($client['short_code'] ?? ''))) ?>"><?= sanitize($client['company_name']) ?><?php if (!empty($client['short_code'])): ?> <span style="color:#64748b;font-weight:600;">(<?= sanitize(strtoupper($client['short_code'])) ?>)</span><?php endif; ?></li>
                             <?php endforeach; ?>
+                            <?php if (!$is_client_role): ?>
                             <li class="ss-option ss-option-other" data-value="other_client" data-name="other">+ Other (Add New Client)</li>
+                            <?php endif; ?>
                         </ul>
                     </div>
                 </div>
@@ -622,11 +631,13 @@ include 'includes/top_app_bar.php';
                     <?php foreach($clients as $client): ?>
                         <option value="<?= $client['id'] ?>"><?= sanitize($client['company_name']) ?></option>
                     <?php endforeach; ?>
+                    <?php if (!$is_client_role): ?>
                     <option value="other_client">Other</option>
+                    <?php endif; ?>
                 </select>
             </div>
             <!-- Client "Other" టెక్స్ట్ ఫీల్డ్ (డైనమిక్, AJAX సేవ్) -->
-            <div id="otherClientContainer">
+            <div id="otherClientContainer" <?= $is_client_role ? 'style="display:none;"' : '' ?>>
                 <div class="form-group-custom m-0">
                     <label class="text-primary"><i class="fa-solid fa-pen"></i> Enter Client Name *</label>
                     <div class="d-flex gap-2">

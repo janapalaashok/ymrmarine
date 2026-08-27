@@ -19,6 +19,40 @@ $survey = $stmt->fetch();
 
 if (!$survey) { die("Report asset not found."); }
 
+$current_user_id = $_SESSION['user_id'];
+$is_admin = ($_SESSION['role'] === 'Admin');
+if (!$is_admin && (int)$survey['surveyor_id'] !== (int)$current_user_id) {
+    $isOwnClient = (($_SESSION['role'] ?? '') === 'Client') && (int)$survey['client_id'] === getClientIdForUser($db, $current_user_id);
+    if (!$isOwnClient) {
+    http_response_code(403);
+    include 'includes/header.php';
+    ?>
+    <style>
+        .no-access-wrap { min-height: calc(100vh - 160px); padding: 30px 20px; display: flex; align-items: center; justify-content: center; }
+        .no-access-card { max-width: 520px; width: 100%; padding: 38px 24px; border-radius: 20px; background: #fff; border: 1px solid var(--border-color); box-shadow: 0 12px 28px rgba(15,23,42,.07); text-align: center; }
+        .no-access-icon { width: 68px; height: 68px; margin: 0 auto 18px; border-radius: 18px; display: flex; align-items: center; justify-content: center; background: #fef2f2; color: #b91c1c; font-size: 28px; }
+        .no-access-card .blue-action-btn { margin-left: auto; margin-right: auto; }
+    </style>
+    <div class="scroll-content">
+        <?php $page_title = 'Access Denied'; $back_url = 'index.php'; $page_testid = 'no-access'; include 'includes/top_app_bar.php'; ?>
+        <main class="no-access-wrap" data-testid="no-access-page">
+            <section class="no-access-card">
+                <div class="no-access-icon"><i class="fa-solid fa-lock"></i></div>
+                <h2 class="fw-bold text-dark" style="font-size:22px;" data-testid="no-access-heading">Access Denied</h2>
+                <p class="text-muted mb-4" style="font-size:13px;" data-testid="no-access-message">
+                    You don't have permission to view this report. It isn't assigned to your account.
+                </p>
+                <a href="index.php" class="blue-action-btn text-decoration-none" data-testid="no-access-home-link"><i class="fa-solid fa-house"></i> Return Home</a>
+            </section>
+        </main>
+    </div>
+    <?php
+    include 'includes/nav.php';
+    include 'includes/footer.php';
+    exit;
+    }
+}
+
 // 🌟 మునుపటి స్టేజ్ లో అప్‌లోడ్ చేసిన ఫైల్స్ లిస్ట్ తీసుకోవడం
 $uploads_stmt = $db->prepare("SELECT * FROM uploads WHERE survey_id = ?");
 $uploads_stmt->execute([$id]);
@@ -156,6 +190,7 @@ include 'includes/header.php';
     </div>
 
     <div class="detail-bottom-row">
+    <?php if (($_SESSION['role'] ?? '') !== 'Client'): ?>
     <!-- 🌟 DOWNLOAD SECTION -->
     <div class="detail-files-panel px-3 my-3">
         <div class="fw-bold text-dark mb-2" style="font-size: 13px;"><i class="fa-solid fa-folder-open text-warning me-1"></i> Download Pre-Uploaded Survey Files</div>
@@ -221,6 +256,7 @@ include 'includes/header.php';
 
         </form>
     </div>
+    <?php endif; ?>
     </div><!-- /.detail-bottom-row -->
 
     <!-- 🌟 Confirmation modal shown when Upload and Move is clicked without a report document -->

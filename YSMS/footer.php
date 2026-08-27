@@ -17,8 +17,8 @@
             <span>Add Surveyor</span>
         </a>
         
-        <!-- 3. Add Client — temporarily linked to Coming Soon page -->
-        <a href="coming_soon.php?feature=Add+Client" class="fab-option-item" data-testid="fab-add-client-link">
+        <!-- 3. Add Client -->
+        <a href="add_client.php" class="fab-option-item" data-testid="fab-add-client-link">
             <i class="fa-solid fa-user-plus text-success" style="width: 24px; text-align: center;"></i> 
             <span>Add Client</span>
         </a>

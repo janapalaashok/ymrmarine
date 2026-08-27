@@ -28,6 +28,9 @@ $fields = $cfg['fields'];
 $fkChecks = $cfg['fk_checks'] ?? [];
 
 $db = getDB();
+if ($module === 'ports') {
+    ensurePortsCountryColumn($db);
+}
 
 /**
  * Ensure clients.address_line1 / address_line2 exist.

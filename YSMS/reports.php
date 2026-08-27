@@ -5,6 +5,7 @@ checkAuth();
 $db = getDB();
 $role = $_SESSION['role'];
 $user_id = $_SESSION['user_id'];
+$client_id = ($role === 'Client') ? getClientIdForUser($db, $user_id) : 0;
 
 /* Mobile: full list */
 if ($role === 'Admin') {
@@ -19,6 +20,18 @@ if ($role === 'Admin') {
         ORDER BY s.id DESC
     ");
     $stmt->execute();
+} elseif ($role === 'Client') {
+    $stmt = $db->prepare("
+        SELECT s.*, c.company_name, u.full_name as surveyor_name, st.type_name, p.port_name
+        FROM surveys s
+        JOIN clients c ON s.client_id = c.id
+        LEFT JOIN users u ON s.surveyor_id = u.id
+        LEFT JOIN survey_types st ON s.survey_type_id = st.id
+        LEFT JOIN ports p ON s.port_id = p.id
+        WHERE s.status = 'Pending Report' AND s.client_id = ?
+        ORDER BY s.id DESC
+    ");
+    $stmt->execute([$client_id]);
 } else {
     $stmt = $db->prepare("
         SELECT s.*, c.company_name, u.full_name as surveyor_name, st.type_name, p.port_name
@@ -59,7 +72,7 @@ $sort = trim((string)($_GET['sort'] ?? 'newest'));
 
 $where = ["s.status = 'Pending Report'"];
 $params = [];
-if ($role !== 'Admin') { $where[] = 's.surveyor_id = ?'; $params[] = $user_id; }
+if ($role === 'Client') { $where[] = 's.client_id = ?'; $params[] = $client_id; } elseif ($role !== 'Admin') { $where[] = 's.surveyor_id = ?'; $params[] = $user_id; }
 if ($q !== '') {
     $where[] = '(s.vessel_name LIKE ? OR c.company_name LIKE ? OR s.agent_name LIKE ? OR st.type_name LIKE ? OR p.port_name LIKE ? OR u.full_name LIKE ?)';
     $like = '%' . $q . '%';

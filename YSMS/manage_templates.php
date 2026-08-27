@@ -302,12 +302,12 @@ include 'includes/header.php';
                         </div>
                         <div class="d-flex flex-wrap gap-2">
                             <button type="button" class="template-rename-btn" onclick="document.getElementById('rename-form-<?= $t_index ?>').classList.toggle('d-none')" data-testid="template-rename-button-<?= $t_index ?>"><i class="fa-solid fa-pen"></i> Edit</button>
-                            <form method="POST" class="d-inline" data-testid="template-delete-form-<?= $t_index ?><?= csrf_field() ?>" onsubmit="return confirm('Delete this template? This cannot be undone.');">
+                            <form method="POST" class="d-inline" data-testid="template-delete-form-<?= $t_index ?>" onsubmit="return confirm('Delete this template? This cannot be undone.');"><?= csrf_field() ?>
                                 <input type="hidden" name="template_id" value="<?= (int)$t['id'] ?>">
                                 <button type="submit" name="delete_template" class="template-delete-btn" data-testid="template-delete-button-<?= $t_index ?>"><i class="fa-solid fa-trash"></i> Delete</button>
                             </form>
                         </div>
-                        <form method="POST" id="rename-form-<?= $t_index ?><?= csrf_field() ?>" class="template-rename-form d-none" data-testid="template-rename-form-<?= $t_index ?>">
+                        <form method="POST" id="rename-form-<?= $t_index ?>" class="template-rename-form d-none" data-testid="template-rename-form-<?= $t_index ?>"><?= csrf_field() ?>
                             <input type="hidden" name="template_id" value="<?= (int)$t['id'] ?>">
                             <input type="text" name="new_template_name" class="form-control" value="<?= sanitize($t['template_name']) ?>" required data-testid="template-rename-name-input-<?= $t_index ?>">
                             <input type="text" name="new_survey_type" class="form-control" value="<?= sanitize($t['survey_type'] ?? '') ?>" placeholder="Survey Type (optional)" data-testid="template-rename-type-input-<?= $t_index ?>">
@@ -349,7 +349,7 @@ include 'includes/header.php';
                                     <button type="submit" name="delete_template" class="template-delete-btn"><i class="fa-solid fa-trash"></i> Delete</button>
                                 </form>
                             </div>
-                            <form method="POST" id="rename-form-desk-<?= $t_index ?><?= csrf_field() ?>" class="template-rename-form d-none">
+                            <form method="POST" id="rename-form-desk-<?= $t_index ?>" class="template-rename-form d-none"><?= csrf_field() ?>
                                 <input type="hidden" name="template_id" value="<?= (int)$t['id'] ?>">
                                 <input type="text" name="new_template_name" class="form-control" value="<?= sanitize($t['template_name']) ?>" required>
                                 <input type="text" name="new_survey_type" class="form-control" value="<?= sanitize($t['survey_type'] ?? '') ?>" placeholder="Survey Type (optional)">

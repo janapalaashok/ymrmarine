@@ -89,6 +89,13 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
             <span>Cancelled</span>
         </a>
 
+        <?php if ($user_role === 'Client'): ?>
+        <div class="desktop-sidebar-section-label desktop-only-nav">Quick Actions</div>
+        <a href="assign_vessel.php" class="nav-item-btn desktop-only-nav <?= ($current_page == 'assign_vessel.php') ? 'active' : '' ?>" data-testid="sidebar-assign-vessel-link">
+            <i class="fa-solid fa-ship"></i>
+            <span>Assign Vessel</span>
+        </a>
+        <?php endif; ?>
         <?php if ($user_role === 'Admin'): ?>
         <!-- Desktop only: FAB Quick Actions as sidebar links -->
         <div class="desktop-sidebar-section-label desktop-only-nav">Quick Actions</div>
@@ -100,7 +107,7 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
             <i class="fa-solid fa-user-gear"></i>
             <span>Add Surveyor</span>
         </a>
-        <a href="coming_soon.php?feature=Add+Client" class="nav-item-btn desktop-only-nav" data-testid="sidebar-add-client-link">
+        <a href="add_client.php" class="nav-item-btn desktop-only-nav <?= ($current_page == 'add_client.php') ? 'active' : '' ?>" data-testid="sidebar-add-client-link">
             <i class="fa-solid fa-user-plus"></i>
             <span>Add Client</span>
         </a>
@@ -108,6 +115,12 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
             <i class="fa-solid fa-user-shield"></i>
             <span>Admin Controls</span>
         </a>
+        <?php if (!empty($_SESSION['is_super_admin'])): ?>
+        <a href="add_admin.php" class="nav-item-btn desktop-only-nav <?= ($current_page == 'add_admin.php') ? 'active' : '' ?>" data-testid="sidebar-add-admin-link">
+            <i class="fa-solid fa-user-tie"></i>
+            <span>Add Admin</span>
+        </a>
+        <?php endif; ?>
         
         <!-- Inside the navbar.php file, inside the <ul> tag, add this li: -->
 

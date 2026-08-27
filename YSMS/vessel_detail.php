@@ -136,6 +136,8 @@ if (!$survey) { die("Survey details missing."); }
 // changing the ?id= in the URL. Admins are unrestricted, matching existing
 // admin permissions elsewhere in this file.
 if (!$is_admin && (int)$survey['surveyor_id'] !== (int)$current_user_id) {
+    $isOwnClient = ($role === 'Client') && (int)$survey['client_id'] === getClientIdForUser($db, $current_user_id);
+    if (!$isOwnClient) {
     http_response_code(403);
     include 'includes/header.php';
     ?>
@@ -165,7 +167,9 @@ if (!$is_admin && (int)$survey['surveyor_id'] !== (int)$current_user_id) {
     include 'includes/nav.php';
     include 'includes/footer.php';
     exit;
+    }
 }
+$is_client_viewer = ($role === 'Client');
 
 // అడ్మిన్ ఎడిట్ ఫారమ్ కోసం డ్రాప్‌డౌన్ లిస్టులు (clients, ports, survey types, surveyors)
 if ($edit_mode) {
@@ -400,6 +404,7 @@ include 'includes/header.php';
                 ?>
             </span></div>
         </div>
+    <?php if (!$is_client_viewer): ?>
     <div class="form-box mx-3 p-3 bg-white rounded-3 border shadow-sm mt-2">
         <div class="fw-bold text-dark mb-3" style="font-size: 14px;"><i class="fa-solid fa-cloud-arrow-up text-primary"></i> Upload Required Reports</div>
         
@@ -443,6 +448,7 @@ include 'includes/header.php';
             <button type="submit" class="blue-action-btn w-100" style="background: #1e3a8a;">Submit & Send</button>
         </form>
     </div>
+    <?php endif; ?>
         </div><!-- /.detail-main-row -->
         <?php if (!empty($remarks_full) && strlen($remarks_full) > 150): ?>
         <div class="modal fade" id="remarksModal" tabindex="-1" aria-hidden="true" data-testid="vessel-detail-remarks-modal">

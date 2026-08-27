@@ -44,6 +44,7 @@ return [
         'order_by'   => 'port_name',
         'fields'     => [
             ['name' => 'port_name', 'label' => 'Port Name', 'type' => 'text', 'required' => true],
+            ['name' => 'country', 'label' => 'Country', 'type' => 'text', 'required' => false],
         ],
         'fk_checks'  => [
             ['table' => 'surveys', 'column' => 'port_id'],

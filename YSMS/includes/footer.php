@@ -17,8 +17,8 @@
             <span>Add Surveyor</span>
         </a>
         
-        <!-- 3. Add Client — temporarily linked to Coming Soon page -->
-        <a href="coming_soon.php?feature=Add+Client" class="fab-option-item" data-testid="fab-add-client-link">
+        <!-- 3. Add Client -->
+        <a href="add_client.php" class="fab-option-item" data-testid="fab-add-client-link">
             <i class="fa-solid fa-user-plus text-success" style="width: 24px; text-align: center;"></i> 
             <span>Add Client</span>
         </a>
@@ -28,6 +28,12 @@
             <i class="fa-solid fa-user-shield text-primary" style="width: 24px; text-align: center;"></i> 
             <span>Admin Controls</span>
         </a>
+        <?php if (!empty($_SESSION['is_super_admin'])): ?>
+        <a href="add_admin.php" class="fab-option-item" data-testid="fab-add-admin-link">
+            <i class="fa-solid fa-user-tie text-warning" style="width: 24px; text-align: center;"></i> 
+            <span>Add Admin</span>
+        </a>
+        <?php endif; ?>
         
         <button class="btn btn-light w-100 mt-3 rounded-3 fw-bold text-danger" id="closeFabBtn" style="font-size: 14px; padding: 12px;" data-testid="fab-close-button">Close</button>
     </div>

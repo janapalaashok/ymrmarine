@@ -24,7 +24,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             rate_limit_clear($rateKey);
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['role_name'];
+            // Super Admin has every permission Admin has, plus one extra
+            // capability (creating other Admin logins). Rather than teaching
+            // every existing "role === 'Admin'" check in the codebase about a
+            // second role name, a Super Admin's session role is stored as
+            // 'Admin' so all existing admin-gated pages work unchanged — the
+            // one extra capability is gated separately via is_super_admin.
+            $_SESSION['role'] = ($user['role_name'] === 'Super Admin') ? 'Admin' : $user['role_name'];
+            $_SESSION['is_super_admin'] = ($user['role_name'] === 'Super Admin');
             $_SESSION['full_name'] = $user['full_name'];
             $_SESSION['avatar'] = !empty($user['avatar']) ? $user['avatar'] : (!empty($user['profile_pic']) ? $user['profile_pic'] : null);
             header("Location: index.php");

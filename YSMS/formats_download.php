@@ -313,14 +313,14 @@ include 'includes/header.php';
                                 <a href="<?= sanitize($format['path']) ?>" download class="format-download-btn" data-testid="format-download-button-<?= $format_index ?>"><i class="fa-solid fa-download"></i> Download</a>
                                 <?php if (($_SESSION['role'] ?? '') === 'Admin'): ?>
                                     <button type="button" class="format-modify-btn" onclick="document.getElementById('modify-form-<?= $format_index ?>').classList.toggle('d-none')" data-testid="format-modify-button-<?= $format_index ?>"><i class="fa-solid fa-rotate"></i> Modify</button>
-                                    <form method="POST" class="d-inline" data-testid="format-delete-form-<?= $format_index ?><?= csrf_field() ?>" onsubmit="return confirm('Delete this format? This cannot be undone.');">
+                                    <form method="POST" class="d-inline" data-testid="format-delete-form-<?= $format_index ?>" onsubmit="return confirm('Delete this format? This cannot be undone.');"><?= csrf_field() ?>
                                         <input type="hidden" name="file_path" value="<?= sanitize($format['path']) ?>">
                                         <button type="submit" name="delete_format" class="format-delete-btn" data-testid="format-delete-button-<?= $format_index ?>"><i class="fa-solid fa-trash"></i> Delete</button>
                                     </form>
                                 <?php endif; ?>
                             </div>
                             <?php if (($_SESSION['role'] ?? '') === 'Admin'): ?>
-                                <form method="POST" enctype="multipart/form-data" id="modify-form-<?= $format_index ?><?= csrf_field() ?>" class="format-modify-form d-none" data-testid="format-modify-form-<?= $format_index ?>">
+                                <form method="POST" enctype="multipart/form-data" id="modify-form-<?= $format_index ?>" class="format-modify-form d-none" data-testid="format-modify-form-<?= $format_index ?>"><?= csrf_field() ?>
                                     <input type="hidden" name="old_file_path" value="<?= sanitize($format['path']) ?>">
                                     <input type="file" name="modify_format_file" accept=".xls,.xlsx,.xlsm" required class="form-control" data-testid="format-modify-file-input-<?= $format_index ?>">
                                     <button type="submit" name="modify_format" data-testid="format-modify-submit-button-<?= $format_index ?>"><i class="fa-solid fa-upload me-1"></i> Replace</button>
@@ -370,7 +370,7 @@ include 'includes/header.php';
                                 <?php endif; ?>
                             </div>
                             <?php if (($_SESSION['role'] ?? '') === 'Admin'): ?>
-                                <form method="POST" enctype="multipart/form-data" id="modify-form-desk-<?= $format_index ?><?= csrf_field() ?>" class="format-modify-form d-none">
+                                <form method="POST" enctype="multipart/form-data" id="modify-form-desk-<?= $format_index ?>" class="format-modify-form d-none"><?= csrf_field() ?>
                                     <input type="hidden" name="old_file_path" value="<?= sanitize($format['path']) ?>">
                                     <input type="file" name="modify_format_file" accept=".xls,.xlsx,.xlsm" required class="form-control">
                                     <button type="submit" name="modify_format"><i class="fa-solid fa-upload me-1"></i> Replace</button>

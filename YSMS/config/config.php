@@ -96,6 +96,28 @@ function normalizeVesselName(string $name): string {
     return 'MV. ' . $name;
 }
 
+/** For a Client-role user, returns their linked clients.id (0 if not linked/not a client). */
+function getClientIdForUser(PDO $db, int $userId): int {
+    $stmt = $db->prepare('SELECT id FROM clients WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    return (int)$stmt->fetchColumn();
+}
+
+/** Safety net: ensure ports.country exists (used by the country revenue dashboard cards). */
+function ensurePortsCountryColumn(PDO $db): void {
+    static $done = false;
+    if ($done) return;
+    try {
+        $cols = $db->query("SHOW COLUMNS FROM ports LIKE 'country'")->fetchAll();
+        if (empty($cols)) {
+            $db->exec("ALTER TABLE ports ADD COLUMN country VARCHAR(100) DEFAULT NULL");
+        }
+        $done = true;
+    } catch (Exception $e) {
+        error_log('ensurePortsCountryColumn: ' . $e->getMessage());
+    }
+}
+
 // 🌟 ఒక సర్వేకి బహుళ Survey Types ఎంచుకున్నప్పుడు, వాటన్నింటినీ "+" తో కలిపి చూపించడానికి హెల్పర్
 // (survey_type_ids కాలమ్ ఖాళీగా ఉంటే, పాత రికార్డుల కోసం $fallback_name ఇస్తుంది)
 function getCombinedSurveyTypeNames($db, $ids_csv, $fallback_name = '') {
