@@ -55,19 +55,22 @@ if (!function_exists('upload_max_bytes')) {
         return '';
     }
 
-       // Common MIME sets by extension, since real files vary across
-    // Office/LibreOffice versions and OSes.
-    const UPLOAD_MIMES_PDF = ['application/pdf'];
-    const UPLOAD_MIMES_XLSX = [
+          // Common MIME sets by extension, since real files vary across
+    // Office/LibreOffice versions and OSes. Using define() rather than the
+    // "const" keyword — const declarations aren't allowed inside a
+    // conditional block (this whole block is wrapped in the
+    // !function_exists(...) check above), only define() can be conditional.
+    define('UPLOAD_MIMES_PDF', ['application/pdf']);
+    define('UPLOAD_MIMES_XLSX', [
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'application/zip', // .xlsx is a zip container; some finfo builds report this
         'application/vnd.ms-excel',
-    ];
-    const UPLOAD_MIMES_DOC = [
+    ]);
+    define('UPLOAD_MIMES_DOC', [
         'application/msword',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'application/zip',
-    ];
-    const UPLOAD_MIMES_IMAGE = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    const UPLOAD_MIMES_ZIP = ['application/zip', 'application/x-zip-compressed'];
+    ]);
+    define('UPLOAD_MIMES_IMAGE', ['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+    define('UPLOAD_MIMES_ZIP', ['application/zip', 'application/x-zip-compressed']);
 }
