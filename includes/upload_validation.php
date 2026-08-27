@@ -55,7 +55,7 @@ if (!function_exists('upload_max_bytes')) {
         return '';
     }
 
-    // Common MIME sets by extension, since real files vary across
+       // Common MIME sets by extension, since real files vary across
     // Office/LibreOffice versions and OSes.
     const UPLOAD_MIMES_PDF = ['application/pdf'];
     const UPLOAD_MIMES_XLSX = [
