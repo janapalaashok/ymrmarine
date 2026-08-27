@@ -253,7 +253,7 @@ include 'includes/header.php';
                         <strong><?= sanitize($photo_tpl_info['name']) ?></strong>
                         <span class="text-muted"> · <?= number_format($photo_tpl_info['size'] / 1024, 1) ?> KB · <?= sanitize($photo_tpl_info['updated_at']) ?></span>
                     </div>
-                    <form method="POST" class="d-inline" onsubmit="return confirm('Remove Photo Report template? Surveyors will not be able to generate until you upload again.');">
+                    <form method="POST" class="d-inline" onsubmit="return confirm('Remove Photo Report template? Surveyors will not be able to generate until you upload again.');"><?= csrf_field() ?>
                         <button type="submit" name="delete_photo_report_template" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash me-1"></i>Remove</button>
                     </form>
                 </div>
@@ -264,7 +264,7 @@ include 'includes/header.php';
                     No Photo Report template uploaded yet. Surveyors will see <strong>“Contact Admin”</strong> until you upload one.
                 </div>
             <?php endif; ?>
-            <form method="POST" enctype="multipart/form-data" class="template-upload-form">
+            <form method="POST" enctype="multipart/form-data" class="template-upload-form"><?= csrf_field() ?>
                 <input type="file" name="photo_template_file" accept=".docx" required class="form-control">
                 <button type="submit" name="upload_photo_report_template"><i class="fa-solid fa-upload me-1"></i> Upload / Replace Photo Report Template</button>
             </form>
@@ -277,7 +277,7 @@ include 'includes/header.php';
         <section class="template-upload-panel" data-testid="template-upload-panel">
             <div class="fw-bold text-dark mb-2" style="font-size:13px;"><i class="fa-solid fa-cloud-arrow-up text-primary me-1"></i> Upload New Template</div>
             <?php if ($template_upload_error): ?><div class="alert alert-danger py-2" style="font-size:12px;" data-testid="template-upload-error-message"><?= sanitize($template_upload_error) ?></div><?php endif; ?>
-            <form method="POST" enctype="multipart/form-data" class="template-upload-form" data-testid="template-upload-form">
+            <form method="POST" enctype="multipart/form-data" class="template-upload-form" data-testid="template-upload-form"><?= csrf_field() ?>
                 <input type="text" name="template_name" class="form-control" placeholder="Template Name (e.g. Off Hire Bunker Survey)" required data-testid="template-name-input">
                 <input type="text" name="survey_type" class="form-control" placeholder="Survey Type (optional)" data-testid="template-survey-type-input">
                 <input type="file" name="template_file" accept=".docx" required class="form-control" data-testid="template-upload-file-input">
@@ -302,12 +302,12 @@ include 'includes/header.php';
                         </div>
                         <div class="d-flex flex-wrap gap-2">
                             <button type="button" class="template-rename-btn" onclick="document.getElementById('rename-form-<?= $t_index ?>').classList.toggle('d-none')" data-testid="template-rename-button-<?= $t_index ?>"><i class="fa-solid fa-pen"></i> Edit</button>
-                            <form method="POST" class="d-inline" data-testid="template-delete-form-<?= $t_index ?>" onsubmit="return confirm('Delete this template? This cannot be undone.');">
+                            <form method="POST" class="d-inline" data-testid="template-delete-form-<?= $t_index ?><?= csrf_field() ?>" onsubmit="return confirm('Delete this template? This cannot be undone.');">
                                 <input type="hidden" name="template_id" value="<?= (int)$t['id'] ?>">
                                 <button type="submit" name="delete_template" class="template-delete-btn" data-testid="template-delete-button-<?= $t_index ?>"><i class="fa-solid fa-trash"></i> Delete</button>
                             </form>
                         </div>
-                        <form method="POST" id="rename-form-<?= $t_index ?>" class="template-rename-form d-none" data-testid="template-rename-form-<?= $t_index ?>">
+                        <form method="POST" id="rename-form-<?= $t_index ?><?= csrf_field() ?>" class="template-rename-form d-none" data-testid="template-rename-form-<?= $t_index ?>">
                             <input type="hidden" name="template_id" value="<?= (int)$t['id'] ?>">
                             <input type="text" name="new_template_name" class="form-control" value="<?= sanitize($t['template_name']) ?>" required data-testid="template-rename-name-input-<?= $t_index ?>">
                             <input type="text" name="new_survey_type" class="form-control" value="<?= sanitize($t['survey_type'] ?? '') ?>" placeholder="Survey Type (optional)" data-testid="template-rename-type-input-<?= $t_index ?>">
@@ -344,12 +344,12 @@ include 'includes/header.php';
                         <td>
                             <div class="tpl-actions">
                                 <button type="button" class="template-rename-btn" onclick="document.getElementById('rename-form-desk-<?= $t_index ?>').classList.toggle('d-none')"><i class="fa-solid fa-pen"></i> Edit</button>
-                                <form method="POST" class="d-inline" onsubmit="return confirm('Delete this template? This cannot be undone.');">
+                                <form method="POST" class="d-inline" onsubmit="return confirm('Delete this template? This cannot be undone.');"><?= csrf_field() ?>
                                     <input type="hidden" name="template_id" value="<?= (int)$t['id'] ?>">
                                     <button type="submit" name="delete_template" class="template-delete-btn"><i class="fa-solid fa-trash"></i> Delete</button>
                                 </form>
                             </div>
-                            <form method="POST" id="rename-form-desk-<?= $t_index ?>" class="template-rename-form d-none">
+                            <form method="POST" id="rename-form-desk-<?= $t_index ?><?= csrf_field() ?>" class="template-rename-form d-none">
                                 <input type="hidden" name="template_id" value="<?= (int)$t['id'] ?>">
                                 <input type="text" name="new_template_name" class="form-control" value="<?= sanitize($t['template_name']) ?>" required>
                                 <input type="text" name="new_survey_type" class="form-control" value="<?= sanitize($t['survey_type'] ?? '') ?>" placeholder="Survey Type (optional)">

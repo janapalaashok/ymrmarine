@@ -112,7 +112,7 @@ include 'includes/header.php';
             <div class="alert alert-danger py-2"><?= sanitize($error) ?></div>
         <?php endif; ?>
 
-        <form method="POST" autocomplete="off">
+        <form method="POST" autocomplete="off"><?= csrf_field() ?>
             <div class="surveyor-grid">
                 <div class="surveyor-field">
                     <label>First Name *</label>

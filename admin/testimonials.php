@@ -46,7 +46,7 @@ $items = $pdo->query('SELECT * FROM testimonials ORDER BY sort_order')->fetchAll
   <div class="card-title"><?= $edit ? 'Edit Testimonial' : 'Add Testimonial' ?>
     <?php if ($edit): ?><a href="testimonials.php" class="btn btn-sm-action btn-secondary">Cancel</a><?php endif; ?>
   </div>
-  <form method="POST">
+  <form method="POST"><?= csrf_field() ?>
     <input type="hidden" name="id" value="<?= $edit['id'] ?? 0 ?>">
     <div class="form-grid">
       <div class="form-group full">

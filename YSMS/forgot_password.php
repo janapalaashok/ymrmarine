@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="alert alert-<?= $messageType === 'danger' ? 'danger' : ($messageType === 'success' ? 'success' : 'info') ?> py-2 mb-3"><?= sanitize($message) ?></div>
         <?php endif; ?>
 
-        <form action="forgot_password.php" method="POST" novalidate>
+        <form action="forgot_password.php" method="POST" novalidate><?= csrf_field() ?>
             <label class="form-label" for="email">Email Address</label>
             <input type="email" class="form-control mb-3" id="email" name="email" placeholder="you@company.com" required autofocus>
             <button type="submit" class="btn-primary-glow"><i class="fa-solid fa-paper-plane me-2"></i>Send Reset Link</button>

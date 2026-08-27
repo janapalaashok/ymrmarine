@@ -29,8 +29,9 @@ function e(?string $str): string {
 
 function uploadImage(array $file, string $subdir = ''): ?string {
     if ($file['error'] !== UPLOAD_ERR_OK || $file['size'] <= 0) return null;
-    $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!in_array($file['type'], $allowed)) return null;
+    require_once __DIR__ . '/upload_validation.php';
+    // Real content check, not just the browser-supplied $file['type'].
+    if (upload_validate($file, UPLOAD_MIMES_IMAGE) !== '') return null;
 
     $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
     $name = uniqid('img_') . '.' . strtolower($ext);

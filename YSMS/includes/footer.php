@@ -171,5 +171,31 @@
 })();
 </script>
 
+<script>
+// Auto-attach the CSRF token to same-origin POST requests made via fetch(),
+// so existing AJAX calls across YSMS don't each need to be edited individually.
+(function () {
+  var token = <?= json_encode(csrf_token()) ?>;
+  var origFetch = window.fetch;
+  window.fetch = function (input, init) {
+    init = init || {};
+    var method = (init.method || (input && input.method) || 'GET').toUpperCase();
+    if (method === 'POST') {
+      init.headers = new Headers(init.headers || {});
+      if (!init.headers.has('X-CSRF-Token')) init.headers.set('X-CSRF-Token', token);
+    }
+    return origFetch(input, init);
+  };
+  // Also cover jQuery-based AJAX calls used on a few YSMS pages.
+  if (window.jQuery) {
+    jQuery(document).ajaxSend(function (event, jqxhr, settings) {
+      if ((settings.type || 'GET').toUpperCase() === 'POST') {
+        jqxhr.setRequestHeader('X-CSRF-Token', token);
+      }
+    });
+  }
+})();
+</script>
+
 </body>
 </html>

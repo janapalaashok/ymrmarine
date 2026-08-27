@@ -3,8 +3,20 @@
 date_default_timezone_set('Asia/Kolkata');
 
 if (session_status() === PHP_SESSION_NONE) {
+    // Secure session cookie flags — conditional 'secure' so this doesn't
+    // break a plain-HTTP local dev environment if one is ever used.
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure' => $isHttps,
+    ]);
     session_start();
 }
+require_once __DIR__ . '/../../includes/csrf.php';
 
 // 🔐 మీ లైవ్ సర్వర్ / cPanel డేటాబేస్ కనెక్షన్ వివరాలు
 // (env variable సెట్ చేసి ఉంటే దాన్ని వాడుతుంది, లేకపోతే కింద ఉన్న డిఫాల్ట్ విలువలనే వాడుతుంది —
@@ -62,6 +74,7 @@ function checkAuth() {
         header("Location: login.php");
         exit();
     }
+    csrf_require();
 }
 
 function sanitize($data) {

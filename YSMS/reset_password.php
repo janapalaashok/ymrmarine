@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <?php if ($validToken): ?>
-        <form action="reset_password.php" method="POST" novalidate>
+        <form action="reset_password.php" method="POST" novalidate><?= csrf_field() ?>
             <input type="hidden" name="token" value="<?= sanitize($token) ?>">
             <label class="form-label" for="password">New Password</label>
             <input type="password" class="form-control mb-3" id="password" name="password" placeholder="Minimum 6 characters" required minlength="6" autofocus>

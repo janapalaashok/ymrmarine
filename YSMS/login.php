@@ -1,27 +1,38 @@
 <?php
 require_once 'config/config.php';
+require_once __DIR__ . '/../includes/rate_limit.php';
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username']);
     $password = trim($_POST['password']);
-    
-    $db = getDB();
-    $stmt = $db->prepare("SELECT u.*, r.name as role_name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.username = ? AND u.status = 'Active'");
-    $stmt->execute([$username]);
-    $user = $stmt->fetch();
-    
-    // ప్లెయిన్ టెక్స్ట్ లేదా హ్యాష్... ఏది మ్యాచ్ అయినా లాగిన్ అనుమతిస్తుంది
-    if ($user && ($password === $user['password'] || password_verify($password, $user['password']) || hash_equals($user['password'], crypt($password, $user['password'])))) {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['username'] = $user['username'];
-        $_SESSION['role'] = $user['role_name'];
-        $_SESSION['full_name'] = $user['full_name'];
-        $_SESSION['avatar'] = !empty($user['avatar']) ? $user['avatar'] : (!empty($user['profile_pic']) ? $user['profile_pic'] : null);
-        header("Location: index.php");
-        exit;
-    } else {
+    $rateKey = ($_SERVER['REMOTE_ADDR'] ?? 'unknown') . '|' . strtolower($username);
+    $wait = rate_limit_check($rateKey);
+
+    if (!csrf_valid()) {
         $error = "Invalid credential parameters. Please check username/password.";
+    } elseif ($wait > 0) {
+        $error = "Too many attempts. Please wait " . $wait . " seconds and try again.";
+    } else {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT u.*, r.name as role_name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.username = ? AND u.status = 'Active'");
+        $stmt->execute([$username]);
+        $user = $stmt->fetch();
+
+        // ప్లెయిన్ టెక్స్ట్ లేదా హ్యాష్... ఏది మ్యాచ్ అయినా లాగిన్ అనుమతిస్తుంది
+        if ($user && ($password === $user['password'] || password_verify($password, $user['password']) || hash_equals($user['password'], crypt($password, $user['password'])))) {
+            rate_limit_clear($rateKey);
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role_name'];
+            $_SESSION['full_name'] = $user['full_name'];
+            $_SESSION['avatar'] = !empty($user['avatar']) ? $user['avatar'] : (!empty($user['profile_pic']) ? $user['profile_pic'] : null);
+            header("Location: index.php");
+            exit;
+        } else {
+            rate_limit_record_failure($rateKey);
+            $error = "Invalid credential parameters. Please check username/password.";
+        }
     }
 }
 ?>
@@ -185,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="auth-alert"><i class="fa-solid fa-circle-exclamation"></i><span><?= sanitize($error) ?></span></div>
             <?php endif; ?>
 
-            <form action="login.php" method="POST" novalidate>
+            <form action="login.php" method="POST" novalidate><?= csrf_field() ?>
                 <div class="field-group">
                     <label class="field-label" for="username">Username</label>
                     <div class="field-wrap">

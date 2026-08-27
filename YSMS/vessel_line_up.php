@@ -344,7 +344,7 @@ include 'includes/header.php';
                 Last fetched: <strong><?= sanitize($lineup['fetched_at'] ?? '-') ?></strong>
                 <?= !empty($lineup['from_cache']) ? ' (cached)' : ' (live)' ?>
             </div>
-            <form method="POST">
+            <form method="POST"><?= csrf_field() ?>
                 <button type="submit" name="refresh_lineup" class="lu-refresh-btn" data-testid="lineup-refresh-button"><i class="fa-solid fa-rotate me-1"></i> Refresh Now</button>
             </form>
         </div>

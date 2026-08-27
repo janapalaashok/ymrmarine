@@ -187,7 +187,7 @@ include 'includes/header.php';
     <div class="form-box mx-3 p-3 bg-white rounded-3 border shadow-sm">
         <div class="fw-bold text-dark mb-3" style="font-size: 14px;"><i class="fa-solid fa-cloud-arrow-up text-primary"></i> Upload Final Documentation</div>
         
-        <form action="ajax/upload_handler.php" method="POST" enctype="multipart/form-data" id="reportUploadForm">
+        <form action="ajax/upload_handler.php" method="POST" enctype="multipart/form-data" id="reportUploadForm"><?= csrf_field() ?>
             <input type="hidden" name="survey_id" value="<?= $survey['id'] ?>">
             <input type="hidden" name="current_status" value="<?= $survey['status'] ?>">
             <input type="hidden" name="no_report_confirmed" id="noReportConfirmed" value="0">

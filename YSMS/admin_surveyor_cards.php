@@ -133,13 +133,13 @@ include 'includes/header.php';
                         <div class="sc-actions">
                             <?php if (!empty($card_info['path']) && is_file($card_info['path'])): ?>
                                 <a href="<?= sanitize($card_info['path']) ?>" download class="sc-btn sc-btn-download" data-testid="surveyor-card-download-<?= $card_key ?>-<?= (int)$s['id'] ?>"><i class="fa-solid fa-download"></i></a>
-                                <form method="POST" onsubmit="return confirm('Remove this file?');" data-testid="surveyor-card-remove-form-<?= $card_key ?>-<?= (int)$s['id'] ?>">
+                                <form method="POST" onsubmit="return confirm('Remove this file?');" data-testid="surveyor-card-remove-form-<?= $card_key ?><?= csrf_field() ?>-<?= (int)$s['id'] ?>">
                                     <input type="hidden" name="user_id" value="<?= (int)$s['id'] ?>">
                                     <input type="hidden" name="card_type" value="<?= $card_key ?>">
                                     <button type="submit" name="remove_card" class="sc-btn sc-btn-remove" data-testid="surveyor-card-remove-<?= $card_key ?>-<?= (int)$s['id'] ?>"><i class="fa-solid fa-trash"></i></button>
                                 </form>
                             <?php endif; ?>
-                            <form method="POST" enctype="multipart/form-data" class="d-inline" data-testid="surveyor-card-upload-form-<?= $card_key ?>-<?= (int)$s['id'] ?>">
+                            <form method="POST" enctype="multipart/form-data" class="d-inline" data-testid="surveyor-card-upload-form-<?= $card_key ?><?= csrf_field() ?>-<?= (int)$s['id'] ?>">
                                 <input type="hidden" name="user_id" value="<?= (int)$s['id'] ?>">
                                 <input type="hidden" name="card_type" value="<?= $card_key ?>">
                                 <input type="file" name="card_file" accept=".pdf,.jpg,.jpeg,.png" class="sc-file-input" id="file-<?= $card_key ?>-<?= (int)$s['id'] ?>" onchange="this.form.submit();">

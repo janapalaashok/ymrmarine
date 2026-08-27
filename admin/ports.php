@@ -41,7 +41,7 @@ $ports = $pdo->query('SELECT * FROM ports ORDER BY sort_order')->fetchAll();
   <div class="card-title"><?= $edit ? 'Edit Port' : 'Add Port / Region' ?>
     <?php if ($edit): ?><a href="ports.php" class="btn btn-sm-action btn-secondary">Cancel</a><?php endif; ?>
   </div>
-  <form method="POST">
+  <form method="POST"><?= csrf_field() ?>
     <input type="hidden" name="id" value="<?= $edit['id'] ?? 0 ?>">
     <div class="form-grid">
       <div class="form-group">

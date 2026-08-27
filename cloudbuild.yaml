@@ -16,6 +16,8 @@ steps:
       - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine:$COMMIT_SHA'
 
   # 3. Deploy to Cloud Run — full explicit config (env vars, secrets, Cloud SQL, storage volumes)
+  # This is deliberately explicit rather than relying on Cloud Run to carry over the
+  # previous revision's config, so every auto-deploy is reproducible from this file alone.
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:

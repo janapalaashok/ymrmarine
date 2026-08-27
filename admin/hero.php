@@ -29,7 +29,7 @@ $h = $pdo->query('SELECT * FROM hero WHERE id = 1')->fetch() ?: [];
 ?>
 <div class="card">
   <div class="card-title">Hero Section</div>
-  <form method="POST" enctype="multipart/form-data">
+  <form method="POST" enctype="multipart/form-data"><?= csrf_field() ?>
     <div class="form-grid">
       <div class="form-group">
         <label>Eyebrow Text</label>

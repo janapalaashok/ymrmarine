@@ -55,7 +55,7 @@ $members = $pdo->query('SELECT * FROM team ORDER BY sort_order')->fetchAll();
   <div class="card-title"><?= $edit ? 'Edit Member' : 'Add Team Member' ?>
     <?php if ($edit): ?><a href="team.php" class="btn btn-sm-action btn-secondary">Cancel</a><?php endif; ?>
   </div>
-  <form method="POST" enctype="multipart/form-data">
+  <form method="POST" enctype="multipart/form-data"><?= csrf_field() ?>
     <input type="hidden" name="id" value="<?= $edit['id'] ?? 0 ?>">
     <div class="form-grid">
       <div class="form-group">

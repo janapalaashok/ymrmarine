@@ -1,4 +1,4 @@
-# ---- Stage 1: install YSMS Composer dependencies (phpoffice/phpspreadsheet, phpmailer) ----
+# ---- Stage 1: install YSMS Composer dependencies (phpoffice/phpspreadsheet) ----
 # phpspreadsheet requires the PHP gd extension at install-check time, so it must
 # be present in this build stage too, not just the final image.
 FROM composer:2 AS vendor

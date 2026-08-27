@@ -588,7 +588,7 @@ include 'includes/top_app_bar.php';
     <?php if($error): ?><div class="alert alert-danger mx-3 mt-3 py-2" style="font-size:12px;"><?= $error ?></div><?php endif; ?>
 
     <!-- Assignment Form -->
-    <form action="assign_vessel.php" method="POST" id="assignVesselForm" enctype="multipart/form-data">
+    <form action="assign_vessel.php" method="POST" id="assignVesselForm" enctype="multipart/form-data"><?= csrf_field() ?>
         <div class="form-box-custom shadow-sm" style="padding-top:20px;">
             
             <div class="form-group-custom" id="vesselNameField">

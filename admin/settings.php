@@ -22,7 +22,7 @@ foreach ($stmt->fetchAll() as $row) $s[$row['setting_key']] = $row['setting_valu
 ?>
 <div class="card">
   <div class="card-title">General Site Settings</div>
-  <form method="POST" enctype="multipart/form-data">
+  <form method="POST" enctype="multipart/form-data"><?= csrf_field() ?>
     <div class="form-grid">
       <div class="form-group">
         <label>Site Name</label>

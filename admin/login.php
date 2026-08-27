@@ -1,7 +1,18 @@
 <?php
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'httponly' => true,
+    'samesite' => 'Lax',
+    'secure' => $isHttps,
+]);
 session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/rate_limit.php';
 
 if (isLoggedIn()) redirect('index.php');
 
@@ -9,15 +20,25 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = trim($_POST['username'] ?? '');
     $pass = $_POST['password'] ?? '';
-    $stmt = getDB()->prepare('SELECT * FROM admins WHERE username = ? LIMIT 1');
-    $stmt->execute([$user]);
-    $admin = $stmt->fetch();
-    if ($admin && password_verify($pass, $admin['password'])) {
-        $_SESSION['admin_id'] = $admin['id'];
-        $_SESSION['admin_name'] = $admin['full_name'];
-        redirect('index.php');
+    $rateKey = ($_SERVER['REMOTE_ADDR'] ?? 'unknown') . '|' . strtolower($user);
+    $wait = rate_limit_check($rateKey);
+    if (!csrf_valid()) {
+        $error = 'Invalid username or password';
+    } elseif ($wait > 0) {
+        $error = 'Too many attempts. Please wait ' . $wait . ' seconds and try again.';
+    } else {
+        $stmt = getDB()->prepare('SELECT * FROM admins WHERE username = ? LIMIT 1');
+        $stmt->execute([$user]);
+        $admin = $stmt->fetch();
+        if ($admin && password_verify($pass, $admin['password'])) {
+            rate_limit_clear($rateKey);
+            $_SESSION['admin_id'] = $admin['id'];
+            $_SESSION['admin_name'] = $admin['full_name'];
+            redirect('index.php');
+        }
+        rate_limit_record_failure($rateKey);
+        $error = 'Invalid username or password';
     }
-    $error = 'Invalid username or password';
 }
 ?>
 <!DOCTYPE html>
@@ -54,7 +75,7 @@ input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgb
   <h1>Admin Panel</h1>
   <p class="sub">Sign in to manage website content</p>
   <?php if ($error): ?><div class="error"><i class="fas fa-exclamation-circle"></i> <?= e($error) ?></div><?php endif; ?>
-  <form method="POST">
+  <form method="POST"><?= csrf_field() ?>
     <div class="form-group">
       <label>Username</label>
       <input type="text" name="username" required autofocus placeholder="admin">
@@ -65,7 +86,6 @@ input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgb
     </div>
     <button type="submit" class="btn">Sign In <i class="fas fa-arrow-right"></i></button>
   </form>
-  <p class="hint">Default: <strong>admin</strong> / <strong>admin123</strong></p>
 </div>
 </body>
 </html>

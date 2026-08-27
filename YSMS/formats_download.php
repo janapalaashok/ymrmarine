@@ -286,7 +286,7 @@ include 'includes/header.php';
             <section class="format-upload-panel" data-testid="format-upload-panel">
                 <div class="fw-bold text-dark mb-2" style="font-size:13px;"><i class="fa-solid fa-cloud-arrow-up text-primary me-1"></i> Upload Survey Format</div>
                 <?php if ($format_upload_error): ?><div class="alert alert-danger py-2" style="font-size:12px;" data-testid="format-upload-error-message"><?= sanitize($format_upload_error) ?></div><?php endif; ?>
-                <form method="POST" enctype="multipart/form-data" class="format-upload-form" data-testid="format-upload-form">
+                <form method="POST" enctype="multipart/form-data" class="format-upload-form" data-testid="format-upload-form"><?= csrf_field() ?>
                     <input type="file" name="format_file" accept=".xls,.xlsx,.xlsm" required class="form-control" data-testid="format-upload-file-input">
                     <button type="submit" name="upload_format" data-testid="format-upload-submit-button"><i class="fa-solid fa-upload me-1"></i> Upload</button>
                 </form>
@@ -313,14 +313,14 @@ include 'includes/header.php';
                                 <a href="<?= sanitize($format['path']) ?>" download class="format-download-btn" data-testid="format-download-button-<?= $format_index ?>"><i class="fa-solid fa-download"></i> Download</a>
                                 <?php if (($_SESSION['role'] ?? '') === 'Admin'): ?>
                                     <button type="button" class="format-modify-btn" onclick="document.getElementById('modify-form-<?= $format_index ?>').classList.toggle('d-none')" data-testid="format-modify-button-<?= $format_index ?>"><i class="fa-solid fa-rotate"></i> Modify</button>
-                                    <form method="POST" class="d-inline" data-testid="format-delete-form-<?= $format_index ?>" onsubmit="return confirm('Delete this format? This cannot be undone.');">
+                                    <form method="POST" class="d-inline" data-testid="format-delete-form-<?= $format_index ?><?= csrf_field() ?>" onsubmit="return confirm('Delete this format? This cannot be undone.');">
                                         <input type="hidden" name="file_path" value="<?= sanitize($format['path']) ?>">
                                         <button type="submit" name="delete_format" class="format-delete-btn" data-testid="format-delete-button-<?= $format_index ?>"><i class="fa-solid fa-trash"></i> Delete</button>
                                     </form>
                                 <?php endif; ?>
                             </div>
                             <?php if (($_SESSION['role'] ?? '') === 'Admin'): ?>
-                                <form method="POST" enctype="multipart/form-data" id="modify-form-<?= $format_index ?>" class="format-modify-form d-none" data-testid="format-modify-form-<?= $format_index ?>">
+                                <form method="POST" enctype="multipart/form-data" id="modify-form-<?= $format_index ?><?= csrf_field() ?>" class="format-modify-form d-none" data-testid="format-modify-form-<?= $format_index ?>">
                                     <input type="hidden" name="old_file_path" value="<?= sanitize($format['path']) ?>">
                                     <input type="file" name="modify_format_file" accept=".xls,.xlsx,.xlsm" required class="form-control" data-testid="format-modify-file-input-<?= $format_index ?>">
                                     <button type="submit" name="modify_format" data-testid="format-modify-submit-button-<?= $format_index ?>"><i class="fa-solid fa-upload me-1"></i> Replace</button>
@@ -363,14 +363,14 @@ include 'includes/header.php';
                                 <a href="<?= sanitize($format['path']) ?>" download class="format-download-btn"><i class="fa-solid fa-download"></i> Download</a>
                                 <?php if (($_SESSION['role'] ?? '') === 'Admin'): ?>
                                     <button type="button" class="format-modify-btn" onclick="document.getElementById('modify-form-desk-<?= $format_index ?>').classList.toggle('d-none')"><i class="fa-solid fa-pen"></i> Modify</button>
-                                    <form method="POST" class="d-inline" onsubmit="return confirm('Delete this format? This cannot be undone.');">
+                                    <form method="POST" class="d-inline" onsubmit="return confirm('Delete this format? This cannot be undone.');"><?= csrf_field() ?>
                                         <input type="hidden" name="file_path" value="<?= sanitize($format['path']) ?>">
                                         <button type="submit" name="delete_format" class="format-delete-btn"><i class="fa-solid fa-trash"></i> Delete</button>
                                     </form>
                                 <?php endif; ?>
                             </div>
                             <?php if (($_SESSION['role'] ?? '') === 'Admin'): ?>
-                                <form method="POST" enctype="multipart/form-data" id="modify-form-desk-<?= $format_index ?>" class="format-modify-form d-none">
+                                <form method="POST" enctype="multipart/form-data" id="modify-form-desk-<?= $format_index ?><?= csrf_field() ?>" class="format-modify-form d-none">
                                     <input type="hidden" name="old_file_path" value="<?= sanitize($format['path']) ?>">
                                     <input type="file" name="modify_format_file" accept=".xls,.xlsx,.xlsm" required class="form-control">
                                     <button type="submit" name="modify_format"><i class="fa-solid fa-upload me-1"></i> Replace</button>

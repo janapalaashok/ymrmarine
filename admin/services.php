@@ -171,7 +171,7 @@ while (count($editFaq) < 3) $editFaq[] = ['q' => '', 'a' => ''];
       <?php endif; ?>
     <?php endif; ?>
   </div>
-  <form method="POST" enctype="multipart/form-data">
+  <form method="POST" enctype="multipart/form-data"><?= csrf_field() ?>
     <input type="hidden" name="id" value="<?= $edit['id'] ?? 0 ?>">
     <input type="hidden" name="existing_hero_image" value="<?= e($edit['hero_image'] ?? '') ?>">
     <input type="hidden" name="existing_page_image" value="<?= e($edit['page_image'] ?? '') ?>">

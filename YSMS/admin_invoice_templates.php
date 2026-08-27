@@ -109,7 +109,7 @@ include 'includes/header.php';
         <div class="bg-white rounded-3 border shadow-sm p-3 mb-3">
             <div class="fw-bold mb-2" style="font-size:14px;"><i class="fa-solid fa-upload text-primary me-1"></i> Upload Invoice Template</div>
             <p class="text-muted mb-2" style="font-size:12px;">Upload a .xlsx invoice layout. Use placeholders such as <code>{{INVOICE_NO}}</code>, <code>{{CLIENT}}</code>, <code>{{UNIT}}</code> in cells.</p>
-            <form method="POST" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data"><?= csrf_field() ?>
                 <input type="hidden" name="upload_template" value="1">
                 <div class="mb-2">
                     <label class="form-label small fw-semibold">Template Name *</label>
@@ -135,7 +135,7 @@ include 'includes/header.php';
                     </div>
                     <div class="d-flex gap-1 flex-shrink-0">
                         <a href="<?= sanitize($t['file_path']) ?>" class="btn btn-sm btn-light border" download title="Download"><i class="fa-solid fa-download"></i></a>
-                        <form method="POST" onsubmit="return confirm('Delete this template?');" class="m-0">
+                        <form method="POST" onsubmit="return confirm('Delete this template?');" class="m-0"><?= csrf_field() ?>
                             <input type="hidden" name="delete_id" value="<?= (int)$t['id'] ?>">
                             <button type="submit" class="btn btn-sm btn-light border text-danger" title="Delete"><i class="fa-solid fa-trash"></i></button>
                         </form>

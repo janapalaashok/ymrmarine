@@ -73,7 +73,7 @@ $viewMap = ['about' => '../about-us.php', 'ports' => '../ports.php', 'contact' =
     <?php endif; ?>
   </p>
 
-  <form method="POST" enctype="multipart/form-data">
+  <form method="POST" enctype="multipart/form-data"><?= csrf_field() ?>
     <input type="hidden" name="page_key" value="<?= e($tab) ?>">
     <div class="form-grid">
       <div class="form-group full">

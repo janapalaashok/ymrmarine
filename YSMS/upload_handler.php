@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/upload_validation.php';
 checkAuth();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -31,7 +32,8 @@ try {
     };
 
     // 1. PDF ప్రాసెసింగ్
-    if (isset($_FILES['pdf_report']) && $_FILES['pdf_report']['error'] == 0 && $isAllowedExt($_FILES['pdf_report']['name'], ['pdf'])) {
+    if (isset($_FILES['pdf_report']) && $_FILES['pdf_report']['error'] == 0 && $isAllowedExt($_FILES['pdf_report']['name'], ['pdf'])
+        && upload_validate($_FILES['pdf_report'], UPLOAD_MIMES_PDF) === '') {
         $pdf_orig = basename($_FILES['pdf_report']['name']);
         $pdf_name = time() . "_" . preg_replace('/[^A-Za-z0-9._-]/', '_', $pdf_orig);
         if (move_uploaded_file($_FILES['pdf_report']['tmp_name'], $target_dir . $pdf_name)) {
@@ -47,7 +49,8 @@ try {
     $recovery_val = 0.00;
     $vlsfo_val = 0.00;
     $lsmgo_val = 0.00;
-    if (isset($_FILES['excel_report']) && $_FILES['excel_report']['error'] == 0 && $isAllowedExt($_FILES['excel_report']['name'], ['xlsx', 'xls', 'xlsm'])) {
+    if (isset($_FILES['excel_report']) && $_FILES['excel_report']['error'] == 0 && $isAllowedExt($_FILES['excel_report']['name'], ['xlsx', 'xls', 'xlsm'])
+        && upload_validate($_FILES['excel_report'], UPLOAD_MIMES_XLSX) === '') {
         $excel_orig = basename($_FILES['excel_report']['name']);
         $excel_name = time() . "_" . preg_replace('/[^A-Za-z0-9._-]/', '_', $excel_orig);
         $full_target_path = $target_dir . $excel_name;
@@ -150,7 +153,8 @@ try {
     }
 
     // 3. WORD (.docx) ప్రాసెసింగ్
-    if (isset($_FILES['word_report']) && $_FILES['word_report']['error'] == 0 && $isAllowedExt($_FILES['word_report']['name'], ['doc', 'docx'])) {
+    if (isset($_FILES['word_report']) && $_FILES['word_report']['error'] == 0 && $isAllowedExt($_FILES['word_report']['name'], ['doc', 'docx'])
+        && upload_validate($_FILES['word_report'], UPLOAD_MIMES_DOC) === '') {
         $word_orig = basename($_FILES['word_report']['name']);
         $word_name = time() . "_" . preg_replace('/[^A-Za-z0-9._-]/', '_', $word_orig);
         if (move_uploaded_file($_FILES['word_report']['tmp_name'], $target_dir . $word_name)) {
@@ -164,8 +168,19 @@ try {
 
     // 4. ఎక్స్‌ట్రా ఫైల్స్
     if (isset($_FILES['extra_files'])) {
+        $extraMimes = array_merge(UPLOAD_MIMES_PDF, UPLOAD_MIMES_DOC, UPLOAD_MIMES_XLSX, UPLOAD_MIMES_IMAGE, UPLOAD_MIMES_ZIP);
         foreach ($_FILES['extra_files']['name'] as $key => $name) {
             if ($_FILES['extra_files']['error'][$key] == 0 && $isAllowedExt($name, ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'xlsm', 'jpg', 'jpeg', 'png', 'zip'])) {
+                $extraFile = [
+                    'name' => $name,
+                    'type' => $_FILES['extra_files']['type'][$key] ?? '',
+                    'tmp_name' => $_FILES['extra_files']['tmp_name'][$key],
+                    'error' => $_FILES['extra_files']['error'][$key],
+                    'size' => $_FILES['extra_files']['size'][$key] ?? 0,
+                ];
+                if (upload_validate($extraFile, $extraMimes) !== '') {
+                    continue;
+                }
                 $extra_orig = basename($name);
                 $extra_name = time() . "_" . preg_replace('/[^A-Za-z0-9._-]/', '_', $extra_orig);
                 if (move_uploaded_file($_FILES['extra_files']['tmp_name'][$key], $target_dir . $extra_name)) {

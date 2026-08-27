@@ -314,7 +314,7 @@ include 'includes/header.php';
     <?php if(!empty($error)): ?><div class="alert alert-danger mx-3 mt-3 py-2 text-center" style="font-size:12px; border-radius:8px; background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5;"><i class="fa-solid fa-circle-exclamation me-1"></i> <?= $error ?></div><?php endif; ?>
 
     <!-- ✍️ ఫోటో అప్‌లోడ్ కాంపోనెంట్ (ఫోటో పై క్లిక్ చేస్తే ఆటో సబ్మిట్ అవుతుంది) -->
-    <form action="profile.php" method="POST" enctype="multipart/form-data" id="photoForm" class="profile-photo-block">
+    <form action="profile.php" method="POST" enctype="multipart/form-data" id="photoForm" class="profile-photo-block"><?= csrf_field() ?>
         <input type="hidden" name="update_profile" value="1">
         <input type="hidden" name="full_name" value="<?= sanitize($current_name) ?>">
         <input type="hidden" name="email" value="<?= sanitize($current_email) ?>">
@@ -336,7 +336,7 @@ include 'includes/header.php';
     <!-- 🔓 SECTION A: PERSONAL INFO (మార్చుకోగలిగేవి) -->
     <div class="profile-card shadow-sm mb-1">
         <div class="fw-bold text-dark mb-2" style="font-size: 12.5px;"><i class="fa-solid fa-user-pen text-primary me-1"></i> Personal Information</div>
-        <form action="profile.php" method="POST">
+        <form action="profile.php" method="POST"><?= csrf_field() ?>
             <?php
                 $isSurveyor = (($_SESSION['role'] ?? '') === 'Surveyor');
                 $cur_first = $user['first_name'] ?? '';
@@ -386,7 +386,7 @@ include 'includes/header.php';
     <!-- 🔐 SECTION B: CHANGE PASSWORD (కొత్త ఆప్షన్) -->
     <div class="profile-card shadow-sm mt-2">
         <div class="fw-bold text-dark mb-2" style="font-size: 12.5px;"><i class="fa-solid fa-key text-warning me-1"></i> Change Password</div>
-        <form action="profile.php" method="POST">
+        <form action="profile.php" method="POST"><?= csrf_field() ?>
             <div>
                 <label class="text-secondary mb-1 d-block" style="font-size: 11.5px;">Current Password</label>
                 <input type="password" name="current_password" class="profile-form-control" placeholder="••••••••" required>

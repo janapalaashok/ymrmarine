@@ -57,7 +57,7 @@ include 'includes/header.php';
             Surveyor: <strong><?= sanitize($survey['surveyor_name'] ?? '') ?></strong>
         </div>
 
-        <form action="generate_expense.php" method="POST">
+        <form action="generate_expense.php" method="POST"><?= csrf_field() ?>
             <input type="hidden" name="survey_id" value="<?= (int)$survey['id'] ?>">
             <input type="hidden" name="vessel_name" value="<?= sanitize($survey['vessel_name']) ?>">
             <input type="hidden" name="client_name" value="<?= sanitize($survey['company_name'] ?? '') ?>">

@@ -70,7 +70,7 @@ $cfg = [
   <?php if ($result): ?>
     <div class="alert alert-<?= htmlspecialchars($resultType) ?>"><?= htmlspecialchars($result) ?></div>
   <?php endif; ?>
-  <form method="POST" class="card card-body">
+  <form method="POST" class="card card-body"><?= csrf_field() ?>
     <label class="form-label">Send test email to</label>
     <input type="email" name="to_email" class="form-control mb-2" required value="<?= htmlspecialchars($to) ?>" placeholder="you@example.com">
     <input type="text" name="to_name" class="form-control mb-3" value="Test User" placeholder="Name">

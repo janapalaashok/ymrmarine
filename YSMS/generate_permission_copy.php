@@ -274,7 +274,7 @@ include 'includes/header.php';
                 <?php endif; ?>
             </div>
             <?php if ($upload_error): ?><div class="alert alert-danger py-2" style="font-size:12px;" data-testid="permission-template-upload-error"><?= sanitize($upload_error) ?></div><?php endif; ?>
-            <form method="POST" enctype="multipart/form-data" class="pc-upload-form" data-testid="permission-template-upload-form">
+            <form method="POST" enctype="multipart/form-data" class="pc-upload-form" data-testid="permission-template-upload-form"><?= csrf_field() ?>
                 <input type="file" name="template_file" accept=".docx" required class="form-control" data-testid="permission-template-file-input">
                 <button type="submit" name="upload_template" data-testid="permission-template-upload-submit"><i class="fa-solid fa-upload me-1"></i> Upload / Replace</button>
             </form>
@@ -291,7 +291,7 @@ include 'includes/header.php';
 
         <?php if ($generate_error): ?><div class="alert alert-danger py-2" style="font-size:12px;" data-testid="permission-generate-error"><?= sanitize($generate_error) ?></div><?php endif; ?>
 
-        <form method="POST" class="pc-card" id="permissionCopyForm" data-testid="permission-copy-form">
+        <form method="POST" class="pc-card" id="permissionCopyForm" data-testid="permission-copy-form"><?= csrf_field() ?>
             <div>
                 <label class="pc-label">Date *</label>
                 <input type="date" name="permission_date" class="pc-control" required value="<?= date('Y-m-d') ?>" data-testid="permission-date-input">

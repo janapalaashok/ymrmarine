@@ -1,12 +1,29 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    // Secure session cookie flags. 'secure' is conditional on the request
+    // actually being HTTPS (Cloud Run/the load balancer terminate TLS and
+    // forward this correctly) so this doesn't break a plain-HTTP local dev
+    // setup if anyone ever runs one.
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure' => $isHttps,
+    ]);
+    session_start();
+}
 // Buffer output so that header('Location: ...') redirects still work even after
 // this file has printed HTML further down (PHP can't send headers after real output,
 // but a buffered — not yet flushed — output doesn't block header() calls).
 ob_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/../../includes/csrf.php';
 requireLogin();
+csrf_require();
 
 $current = basename($_SERVER['PHP_SELF'], '.php');
 $adminName = $_SESSION['admin_name'] ?? 'Admin';
@@ -17,10 +34,28 @@ $flash = getFlash();
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
 <title>Admin | YMR Marine</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 <link rel="stylesheet" href="assets/admin.css">
+<script>
+// Auto-attach the CSRF token to same-origin POST requests made via fetch(),
+// so existing AJAX calls don't each need to be edited individually to send it.
+(function () {
+  var token = document.querySelector('meta[name="csrf-token"]').content;
+  var origFetch = window.fetch;
+  window.fetch = function (input, init) {
+    init = init || {};
+    var method = (init.method || (input && input.method) || 'GET').toUpperCase();
+    if (method === 'POST') {
+      init.headers = new Headers(init.headers || {});
+      if (!init.headers.has('X-CSRF-Token')) init.headers.set('X-CSRF-Token', token);
+    }
+    return origFetch(input, init);
+  };
+})();
+</script>
 </head>
 <body>
 <div class="admin-wrap">

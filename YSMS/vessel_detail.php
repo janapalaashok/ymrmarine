@@ -129,6 +129,17 @@ $survey = $stmt->fetch();
 
 if (!$survey) { die("Survey details missing."); }
 
+// 🔒 Authorization check (IDOR fix): a non-admin (Surveyor) may only view
+// surveys assigned to their own account. Previously checkAuth() only verified
+// that *someone* was logged in, so any authenticated user could view any
+// other surveyor's survey — including client and financial details — just by
+// changing the ?id= in the URL. Admins are unrestricted, matching existing
+// admin permissions elsewhere in this file.
+if (!$is_admin && (int)$survey['surveyor_id'] !== (int)$current_user_id) {
+    http_response_code(403);
+    die("You do not have permission to view this record.");
+}
+
 // అడ్మిన్ ఎడిట్ ఫారమ్ కోసం డ్రాప్‌డౌన్ లిస్టులు (clients, ports, survey types, surveyors)
 if ($edit_mode) {
     $clients_list = $db->query("SELECT id, company_name FROM clients ORDER BY company_name")->fetchAll();

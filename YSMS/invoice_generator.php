@@ -148,7 +148,7 @@ include 'includes/header.php';
     include 'includes/top_app_bar.php';
     ?>
 
-    <form method="POST" action="generate_invoice.php" id="invoiceForm">
+    <form method="POST" action="generate_invoice.php" id="invoiceForm"><?= csrf_field() ?>
         <input type="hidden" name="vessel" value="<?= sanitize($vesselName) ?>">
         <input type="hidden" name="client" value="<?= sanitize($clientName) ?>">
         <input type="hidden" name="invoice_no" value="<?= sanitize($reportNumber) ?>">
