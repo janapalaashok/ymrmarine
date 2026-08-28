@@ -6,26 +6,24 @@ steps:
       - '--platform=linux/amd64'
       - '--no-cache'
       - '-t'
-      - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine:$COMMIT_SHA'
+      - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine-staging:$COMMIT_SHA'
       - '.'
 
   # 2. Push Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine:$COMMIT_SHA'
+      - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine-staging:$COMMIT_SHA'
 
-  # 3. Deploy to Cloud Run — full explicit config (env vars, secrets, Cloud SQL, storage volumes)
-  # This is deliberately explicit rather than relying on Cloud Run to carry over the
-  # previous revision's config, so every auto-deploy is reproducible from this file alone.
+  # 3. Deploy to Cloud Run staging service — full explicit config
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - 'run'
       - 'deploy'
-      - 'ymrmarine'
+      - 'ymrmarine-staging'
       - '--image'
-      - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine:$COMMIT_SHA'
+      - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine-staging:$COMMIT_SHA'
       - '--region'
       - 'asia-south1'
       - '--platform'
@@ -47,7 +45,7 @@ steps:
       - '--allow-unauthenticated'
 
 images:
-  - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine:$COMMIT_SHA'
+  - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine-staging:$COMMIT_SHA'
 
 options:
   logging: CLOUD_LOGGING_ONLY
