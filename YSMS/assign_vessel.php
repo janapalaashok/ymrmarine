@@ -577,10 +577,14 @@ include 'includes/top_app_bar.php';
         <?php if (!empty($GLOBALS['ysms_mail_failed'])): ?>
             <div class="alert alert-warning mx-3 py-2" style="font-size:12px;">
                 <strong>Email not delivered.</strong>
-                <?php if (!empty($GLOBALS['ysms_last_mail_error'])): ?>
-                    <div class="mt-1"><?= sanitize($GLOBALS['ysms_last_mail_error']) ?></div>
+                        <?php if (!empty($GLOBALS['ysms_mail_failed'])): ?>
+            <div class="alert alert-warning mx-3 py-2" style="font-size:12px;">
+                <strong>Email notification could not be sent.</strong>
+                <?php if (!$is_client_role): ?>
+                    <div class="mt-1 text-muted">The surveyor can still be reached via WhatsApp below. If this keeps happening, check the mail settings or run <a href="test_email.php">the mail test page</a>.</div>
+                <?php else: ?>
+                    <div class="mt-1 text-muted">The surveyor can still be reached via WhatsApp below, or the office can follow up directly.</div>
                 <?php endif; ?>
-                <div class="mt-1 text-muted">Check: 1) Surveyor Profile has email 2) <code>config/mail_config.php</code> SMTP password 3) Host allows outbound SMTP. Test: <a href="test_email.php">test_email.php</a></div>
             </div>
         <?php endif; ?>
         <?php if (!empty($GLOBALS['ysms_last_wa_link'])): ?>
