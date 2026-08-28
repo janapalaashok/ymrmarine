@@ -576,9 +576,6 @@ include 'includes/top_app_bar.php';
         <div class="alert alert-success mx-3 mt-3 py-2" style="font-size:12px;"><?= sanitize($success) ?></div>
         <?php if (!empty($GLOBALS['ysms_mail_failed'])): ?>
             <div class="alert alert-warning mx-3 py-2" style="font-size:12px;">
-                <strong>Email not delivered.</strong>
-                        <?php if (!empty($GLOBALS['ysms_mail_failed'])): ?>
-            <div class="alert alert-warning mx-3 py-2" style="font-size:12px;">
                 <strong>Email notification could not be sent.</strong>
                 <?php if (!$is_client_role): ?>
                     <div class="mt-1 text-muted">The surveyor can still be reached via WhatsApp below. If this keeps happening, check the mail settings or run <a href="test_email.php">the mail test page</a>.</div>
