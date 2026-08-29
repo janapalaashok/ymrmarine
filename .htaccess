@@ -1,8 +1,17 @@
 Options -Indexes
 
-# PHP Errors దాచడానికి (లైవ్ లో యూజర్లకు ఎర్రర్స్ కనిపించకూడదు)
+# 🌟 Apache-behind-Cloud-Run fix: when a directory URL is requested without a
+# trailing slash (e.g. /admin), Apache's own mod_dir redirect constructs the
+# Location header using the port Apache is actually listening on inside the
+# container (8080) — producing a broken public redirect like
+# "http://ymrmarine.in:8080/admin/". This rule issues our own correct
+# HTTPS redirect (using the real public Host header, no port) before
+# mod_dir's redirect can fire.
+RewriteEngine On
+RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI} -d
+RewriteCond %{REQUEST_URI} !/$
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1/ [R=301,L]
+
 php_flag display_errors Off
-# Errors are still LOGGED server-side (visible via Cloud Run logs) so problems
-# can be diagnosed, but never shown to the visitor (log_errors On, display Off).
 php_flag log_errors On
 php_value error_reporting 32767

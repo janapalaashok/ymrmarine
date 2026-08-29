@@ -537,6 +537,7 @@ text-align:justify;
   background: linear-gradient(135deg, rgba(0,168,216,0.07), transparent 60%);
   opacity: 0;
   transition: opacity 0.35s;
+  pointer-events: none;
 }
 .svc-card:hover {
   border-color: rgba(0,168,216,0.4);

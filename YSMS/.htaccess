@@ -1,8 +1,9 @@
 Options -Indexes
 
-# PHP Errors దాచడానికి (లైవ్ లో యూజర్లకు ఎర్రర్స్ కనిపించకూడదు)
+# Note: the Apache-behind-Cloud-Run trailing-slash/port fix lives in the root
+# .htaccess only — it already covers every top-level directory (including
+# this one). A second copy here caused a conflicting nested mod_rewrite rule.
+
 php_flag display_errors Off
-# Errors are still LOGGED server-side (visible via Cloud Run logs) so problems
-# can be diagnosed, but never shown to the visitor (log_errors On, display Off).
 php_flag log_errors On
 php_value error_reporting 32767

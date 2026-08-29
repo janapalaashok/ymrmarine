@@ -300,6 +300,7 @@ include 'includes/header.php';
     <?php if ($edit_mode): ?>
         <div class="info-table-list shadow-sm p-3">
             <form action="vessel_detail.php?id=<?= $survey['id'] ?>&edit=1" method="POST">
+    <?= csrf_field() ?>
                 <div class="mb-2">
                     <label class="form-label fw-bold text-secondary" style="font-size:11px;">Vessel Name</label>
                     <input type="text" name="vessel_name" class="form-control form-control-sm" value="<?= sanitize($survey['vessel_name']) ?>" required>
@@ -430,6 +431,7 @@ include 'includes/header.php';
     <?php endif; endif; ?>
 
 <form action="ajax/upload_handler.php" method="POST" enctype="multipart/form-data">
+                    <?= csrf_field() ?>
             <input type="hidden" name="survey_id" value="<?= $survey['id'] ?>">
             <input type="hidden" name="current_status" value="<?= $survey['status'] ?>">
             <div class="mb-2">
@@ -467,6 +469,7 @@ include 'includes/header.php';
 
     <div class="status-update-card shadow-sm">
         <form action="vessel_detail.php?id=<?= $survey['id'] ?>" method="POST">
+            <?= csrf_field() ?>
             <div class="mb-3">
                 <label class="text-dark fw-bold mb-2" style="font-size:13px;">
                     <i class="fa-solid fa-pen-fancy text-primary me-1"></i> Latest Update / Live Status
