@@ -1,16 +1,8 @@
 Options -Indexes
 
-# 🌟 Apache-behind-Cloud-Run fix: when a directory URL is requested without a
-# trailing slash (e.g. /admin), Apache's own mod_dir redirect constructs the
-# Location header using the port Apache is actually listening on inside the
-# container (8080) — producing a broken public redirect like
-# "http://ymrmarine.in:8080/admin/". This rule issues our own correct
-# HTTPS redirect (using the real public Host header, no port) before
-# mod_dir's redirect can fire.
-RewriteEngine On
-RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI} -d
-RewriteCond %{REQUEST_URI} !/$
-RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1/ [R=301,L]
+# Note: the Apache-behind-Cloud-Run trailing-slash/port fix lives in the root
+# .htaccess only — it already covers every top-level directory (including
+# this one). A second copy here caused a conflicting nested mod_rewrite rule.
 
 php_flag display_errors Off
 php_flag log_errors On
