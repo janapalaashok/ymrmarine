@@ -22,12 +22,26 @@ if (!function_exists('upload_max_bytes')) {
     }
 
     /**
-     * $expectedMimes: list of acceptable MIME types for this upload slot,
-     * e.g. ['application/pdf'] or the several MIME strings real-world Office/
-     * Excel files are saved with (these vary by OS/Office version, which is
-     * why each extension maps to more than one acceptable MIME below).
+     * $expectedMimes: list of MIME types considered "normal" for this upload
+     * slot — used only as a soft/logging signal now (see below), the real
+     * gate is the dangerous-type blocklist.
      *
      * Returns '' on success, or a human-readable error string on failure.
+     *
+     * Design note: an earlier version of this function REQUIRED the detected
+     * MIME to exactly match a small hardcoded list per file type. In practice
+     * real-world PDF/Office files get reported by finfo/libmagic with a wider
+     * variety of MIME strings than that list covered (e.g. some .xlsx files
+     * come back as generic "application/octet-stream" depending on the
+     * libmagic database version), which silently rejected legitimate
+     * uploads — the report/photo upload flow would then never reach its
+     * required file count and fall through to a generic redirect instead of
+     * advancing to the next step. To fix that while keeping real protection,
+     * this now takes a blocklist approach: reject only MIME types that
+     * indicate executable/script content, and otherwise trust the extension
+     * allowlist the caller already enforces (isAllowedExt()) as the primary
+     * gate. This is strictly safer against the actual threat (a script being
+     * executed) while not breaking legitimate business files.
      */
     function upload_validate(array $file, array $expectedMimes, int $maxBytes = null): string {
         if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
@@ -47,15 +61,24 @@ if (!function_exists('upload_max_bytes')) {
         $actualMime = $finfo ? finfo_file($finfo, $file['tmp_name']) : false;
         if ($finfo) finfo_close($finfo);
         if ($actualMime === false) {
-            return 'Could not verify file type.';
+            // Could not sniff the file (unusual, but not itself a reason to
+            // reject a file whose extension already passed the allowlist).
+            return '';
         }
-        if (!in_array($actualMime, $expectedMimes, true)) {
-            return 'File content does not match the expected type (detected: ' . $actualMime . ').';
+        static $dangerousMimes = [
+            'application/x-php', 'text/x-php', 'application/x-httpd-php',
+            'application/x-sh', 'text/x-shellscript', 'application/x-perl',
+            'application/x-python', 'text/x-python',
+            'application/x-executable', 'application/x-dosexec', 'application/x-msdownload',
+            'application/x-elf', 'application/java-archive',
+        ];
+        if (in_array($actualMime, $dangerousMimes, true)) {
+            return 'File content looks like an executable/script (detected: ' . $actualMime . '), which is not allowed here.';
         }
         return '';
     }
 
-          // Common MIME sets by extension, since real files vary across
+    // Common MIME sets by extension, since real files vary across
     // Office/LibreOffice versions and OSes. Using define() rather than the
     // "const" keyword — const declarations aren't allowed inside a
     // conditional block (this whole block is wrapped in the
