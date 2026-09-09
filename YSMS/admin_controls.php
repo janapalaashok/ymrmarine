@@ -266,6 +266,13 @@ include 'includes/header.php';
 <script>
 const ADMIN_MODULES = <?= json_encode($modules, JSON_HEX_TAG | JSON_HEX_APOS) ?>;
 const SURVEY_MODULES = <?= json_encode($survey_modules, JSON_HEX_TAG | JSON_HEX_APOS) ?>;
+// 🌟 Every Add/Edit/Delete/Cancel action below is a POST to ajax/admin_master.php
+// or ajax/admin_surveys.php, and both endpoints call checkAuth() -> csrf_require(),
+// which rejects any POST that doesn't carry the session's CSRF token (403, plain
+// text body) — that 403 is exactly what jQuery was surfacing as "Network Error".
+// Sent as a header (not a form field) so it applies uniformly to every $.ajax
+// call on this page, GET or POST, without touching each call's data object.
+const CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;
 </script>
 
 <?php include 'includes/nav.php'; ?>
@@ -274,6 +281,13 @@ const SURVEY_MODULES = <?= json_encode($survey_modules, JSON_HEX_TAG | JSON_HEX_
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(document).ready(function() {
+    // Attach the CSRF token to every AJAX request this page makes (list, add,
+    // edit, delete, cancel) so the server-side csrf_require() check in
+    // checkAuth() passes instead of 403-ing the request.
+    $.ajaxSetup({
+        headers: { 'X-CSRF-Token': CSRF_TOKEN }
+    });
+
     let adminFormModal = new bootstrap.Modal(document.getElementById('adminFormModal'));
     let currentModule = '<?= sanitize($default_module) ?>';
     let currentEditId = null;
