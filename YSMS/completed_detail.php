@@ -194,16 +194,18 @@ include 'includes/header.php';
         </div><!-- /.detail-files-grid -->
     </div>
 
-    <!-- Generate Invoice (Surveyor only — everyone else sees Coming Soon) + Generate Expenses (Admin + Surveyor) -->
+       <!-- Generate Invoice: Admin + Super Admin only. Generate Expenses: Surveyor only (Coming Soon for now). -->
     <div class="action-btn-container mb-4 px-3" style="display:flex;flex-direction:column;gap:10px;">
-          <?php if (($_SESSION['role'] ?? '') === 'Surveyor'): ?>
+        <?php if (in_array($_SESSION['role'] ?? '', ['Admin', 'Super Admin'], true)): ?>
         <a href="invoice_generator.php?id=<?= (int)$survey['id'] ?>" class="blue-action-btn text-decoration-none d-inline-flex align-items-center justify-content-center" data-testid="generate-invoice-button">
             <i class="fa-solid fa-file-invoice-dollar me-1"></i> Generate Invoice
         </a>
         <?php endif; ?>
-        <a href="expense_generator.php?id=<?= (int)$survey['id'] ?>" class="blue-action-btn text-decoration-none d-inline-flex align-items-center justify-content-center" style="background:#0f766e;" data-testid="generate-expenses-button">
+        <?php if (($_SESSION['role'] ?? '') === 'Surveyor'): ?>
+        <a href="coming_soon.php?feature=Generate+Expenses" class="blue-action-btn text-decoration-none d-inline-flex align-items-center justify-content-center" style="background:#0f766e;" data-testid="generate-expenses-button">
             <i class="fa-solid fa-receipt me-1"></i> Generate Expenses
         </a>
+        <?php endif; ?>
     </div>
 </div>
 

@@ -1,7 +1,7 @@
 <?php
 require_once 'config/config.php';
 checkAuth();
-if (($_SESSION['role'] ?? '') !== 'Surveyor') {
+if (!in_array($_SESSION['role'] ?? '', ['Admin', 'Super Admin'], true)) {
     header('Location: index.php');
     exit;
 }

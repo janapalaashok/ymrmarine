@@ -7,6 +7,11 @@ $db = getDB();
 $role = $_SESSION['role'] ?? '';
 $user_id = (int)($_SESSION['user_id'] ?? 0);
 
+if ($role !== 'Surveyor') {
+    header('Location: index.php');
+    exit;
+}
+
 $stmt = $db->prepare("
     SELECT s.*, c.company_name, p.port_name, t.type_name, u.full_name AS surveyor_name
     FROM surveys s
