@@ -6,6 +6,28 @@ if (($_SESSION['role'] ?? '') !== 'Admin') {
     exit;
 }
 
+// 🌟 Danger Zone: permanently delete ALL Completed vessel/survey records.
+// Requires the admin to type DELETE to confirm. `uploads` and
+// `survey_survey_types` rows cascade automatically (ON DELETE CASCADE),
+// matching the existing single-record delete behavior in ajax/admin_surveys.php.
+$danger_zone_message = '';
+$danger_zone_error = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_all_completed'])) {
+    if (trim($_POST['confirm_text'] ?? '') !== 'DELETE') {
+        $danger_zone_error = 'Please type DELETE exactly to confirm.';
+    } else {
+        try {
+            $db = getDB();
+            $count = (int)$db->query("SELECT COUNT(*) FROM surveys WHERE status = 'Completed'")->fetchColumn();
+            $db->exec("DELETE FROM surveys WHERE status = 'Completed'");
+            $danger_zone_message = $count . ' completed vessel record(s) permanently deleted.';
+        } catch (Throwable $e) {
+            error_log('delete all completed: ' . $e->getMessage());
+            $danger_zone_error = 'Could not delete completed vessels. Please try again.';
+        }
+    }
+}
+
 // Module registry - add a new module here to have it automatically show up
 // in Admin Controls with full Add / Edit / Delete / Search support.
 $modules = require __DIR__ . '/config/admin_modules.php';
@@ -110,6 +132,21 @@ include 'includes/header.php';
     @media (max-width: 480px) {
         .admin-item-title { font-size: 13px; }
     }
+    .admin-danger-zone {
+        margin: 10px 16px 24px;
+        padding: 16px;
+        border: 1px solid rgba(239,68,68,.3);
+        background: rgba(239,68,68,.05);
+        border-radius: 14px;
+    }
+    .admin-danger-zone-title { color: #dc2626; font-weight: 700; font-size: 13px; margin-bottom: 10px; }
+    .admin-danger-zone-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+    .admin-danger-zone-label { font-weight: 650; font-size: 13.5px; color: var(--text-dark); }
+    .admin-danger-zone-copy { font-size: 12px; color: var(--text-muted); margin-top: 2px; max-width: 480px; }
+    .admin-danger-zone-btn {
+        flex: 0 0 auto; background: #dc2626; color: #fff; border: none; border-radius: 10px;
+        padding: 10px 16px; font-weight: 650; font-size: 13px; white-space: nowrap;
+    }
 </style>
 
 <div class="scroll-content">
@@ -163,6 +200,48 @@ include 'includes/header.php';
             </div>
         </div>
     <?php endforeach; ?>
+
+    <div class="admin-danger-zone" data-testid="admin-danger-zone">
+        <div class="admin-danger-zone-title"><i class="fa-solid fa-triangle-exclamation"></i> Danger Zone</div>
+        <?php if ($danger_zone_message): ?>
+            <div class="alert alert-success py-2 mb-2"><?= sanitize($danger_zone_message) ?></div>
+        <?php endif; ?>
+        <?php if ($danger_zone_error): ?>
+            <div class="alert alert-danger py-2 mb-2"><?= sanitize($danger_zone_error) ?></div>
+        <?php endif; ?>
+        <div class="admin-danger-zone-row">
+            <div>
+                <div class="admin-danger-zone-label">Delete all Completed vessels data</div>
+                <div class="admin-danger-zone-copy">Permanently deletes every record currently in the Completed tab, along with its uploaded survey files and reports. This cannot be undone.</div>
+            </div>
+            <button type="button" class="admin-danger-zone-btn" data-bs-toggle="modal" data-bs-target="#deleteCompletedModal" data-testid="admin-delete-all-completed-btn">
+                <i class="fa-solid fa-trash"></i> Delete All
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete-all-completed confirmation modal -->
+<div class="modal fade" id="deleteCompletedModal" tabindex="-1" data-testid="delete-completed-modal">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 16px; border: none;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title fw-bold text-danger" style="font-size: 15px;"><i class="fa-solid fa-triangle-exclamation me-1"></i> Delete all Completed vessels?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                <div class="modal-body">
+                    <p class="text-muted" style="font-size:13px;">This permanently deletes every Completed vessel record and its uploaded files. This action cannot be undone.</p>
+                    <label class="form-label" style="font-size:12px;font-weight:650;">Type <b>DELETE</b> to confirm</label>
+                    <input type="text" name="confirm_text" class="form-control" placeholder="DELETE" required autocomplete="off">
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" name="delete_all_completed" value="1" class="btn btn-danger"><i class="fa-solid fa-trash me-1"></i> Delete All</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <!-- Add / Edit Modal (shared, rebuilt per module) -->
@@ -383,9 +462,6 @@ $(document).ready(function() {
         $('#adminFormModalTitle').text((row ? 'Edit ' : 'Add ') + mod.singular);
         let fieldsHtml = '';
         mod.fields.forEach(function(f) {
-            // Password may only be set at creation time — an existing surveyor's
-            // password should never be changeable from this admin edit form.
-            if (f.type === 'password' && row) return;
             const val = row && row[f.name] != null ? row[f.name] : '';
             fieldsHtml += '<div class="admin-field-group">';
             fieldsHtml += '<label>' + escapeHtml(f.label) + (f.required ? ' *' : '') + '</label>';

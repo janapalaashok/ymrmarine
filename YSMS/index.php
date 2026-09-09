@@ -5,10 +5,19 @@ checkAuth();
 $db = getDB();
 $role = $_SESSION['role'];
 $user_id = $_SESSION['user_id'];
-$client_id = ($role === 'Client') ? getClientIdForUser($db, $user_id) : 0;
+
+// 🌟 Client's own client_id (needed to scope their dashboard/vessel data)
+$client_row_id = 0;
+if ($role === 'Client') {
+    try {
+        $ccheck = $db->prepare("SELECT id FROM clients WHERE user_id = ? LIMIT 1");
+        $ccheck->execute([$user_id]);
+        $client_row_id = (int)($ccheck->fetchColumn() ?: 0);
+    } catch (Throwable $e) { error_log('index.php client lookup: ' . $e->getMessage()); }
+}
 
 // ⚙️ రోల్ బేస్డ్ మెట్రిక్స్ కాలిక్యులేషన్స్ (Admin vs Surveyor vs Client)
-if ($role === 'Admin') {
+if (in_array($role, ['Admin', 'Super Admin'], true)) {
     $pending_vessels = $db->query("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Vessel'")->fetchColumn();
     $pending_reports = $db->query("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Report'")->fetchColumn();
     $completed_vessels = $db->query("SELECT COUNT(*) FROM surveys WHERE status = 'Completed'")->fetchColumn();
@@ -25,34 +34,23 @@ if ($role === 'Admin') {
     // అడ్మిన్ కి O20 (LSMGO) రికవరీ సమ్
     $total_lsmgo = $db->query("SELECT SUM(lsmgo_recovery) FROM surveys WHERE lsmgo_recovery IS NOT NULL")->fetchColumn();
 } elseif ($role === 'Client') {
-    // క్లైంట్ కి తన కంపెనీ వెసెల్స్ మాత్రమే
+    // క్లయింట్ కి కేవలం తన కంపెనీ వెసెల్స్ మాత్రమే
     $stmt_v = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Vessel' AND client_id = ?");
-    $stmt_v->execute([$client_id]);
+    $stmt_v->execute([$client_row_id]);
     $pending_vessels = $stmt_v->fetchColumn();
 
     $stmt_r = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Report' AND client_id = ?");
-    $stmt_r->execute([$client_id]);
+    $stmt_r->execute([$client_row_id]);
     $pending_reports = $stmt_r->fetchColumn();
 
     $stmt_c = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Completed' AND client_id = ?");
-    $stmt_c->execute([$client_id]);
+    $stmt_c->execute([$client_row_id]);
     $completed_vessels = $stmt_c->fetchColumn();
 
-    $stmt_t_rec = $db->prepare("SELECT SUM(recovery_amount) FROM surveys WHERE recovery_amount IS NOT NULL AND client_id = ?");
-    $stmt_t_rec->execute([$client_id]);
-    $total_recovery = $stmt_t_rec->fetchColumn();
-
-    $stmt_m_rec = $db->prepare("SELECT SUM(recovery_amount) FROM surveys WHERE recovery_amount IS NOT NULL AND client_id = ? AND MONTH(COALESCE(survey_completed_date, report_uploaded_date)) = MONTH(CURDATE()) AND YEAR(COALESCE(survey_completed_date, report_uploaded_date)) = YEAR(CURDATE())");
-    $stmt_m_rec->execute([$client_id]);
-    $month_recovery = $stmt_m_rec->fetchColumn();
-
-    $stmt_vlsfo = $db->prepare("SELECT SUM(vlsfo_recovery) FROM surveys WHERE vlsfo_recovery IS NOT NULL AND client_id = ?");
-    $stmt_vlsfo->execute([$client_id]);
-    $total_vlsfo = $stmt_vlsfo->fetchColumn();
-
-    $stmt_lsmgo = $db->prepare("SELECT SUM(lsmgo_recovery) FROM surveys WHERE lsmgo_recovery IS NOT NULL AND client_id = ?");
-    $stmt_lsmgo->execute([$client_id]);
-    $total_lsmgo = $stmt_lsmgo->fetchColumn();
+    $total_recovery = 0;
+    $month_recovery = 0;
+    $total_vlsfo = 0;
+    $total_lsmgo = 0;
 } else {
     // సర్వేయర్ కి కేవలం తనకు assign చేసినవి మాత్రమే
     $stmt_v = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Vessel' AND surveyor_id = ?");
@@ -90,7 +88,7 @@ if ($role === 'Admin') {
 
 
 // 🌟 Recent Survey Recovery (latest vessel with recovery)
-if ($role === 'Admin') {
+if (in_array($role, ['Admin', 'Super Admin'], true)) {
     $recent_row = $db->query("SELECT vessel_name, vlsfo_recovery, lsmgo_recovery, recovery_amount FROM surveys WHERE recovery_amount IS NOT NULL ORDER BY COALESCE(survey_completed_date, report_uploaded_date) DESC, id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
     $avg_ships = $db->query("SELECT COUNT(*) FROM surveys WHERE status = 'Completed'")->fetchColumn();
     $months_span = $db->query("SELECT GREATEST(1, TIMESTAMPDIFF(MONTH, MIN(COALESCE(survey_completed_date, report_uploaded_date, assign_date)), CURDATE()) + 1) FROM surveys WHERE status IN ('Completed','Pending Report')")->fetchColumn();
@@ -99,15 +97,11 @@ if ($role === 'Admin') {
     $avg_recovery_per_surveyor = $db->query("SELECT AVG(t.s) FROM (SELECT SUM(recovery_amount) AS s FROM surveys WHERE recovery_amount IS NOT NULL GROUP BY surveyor_id) t")->fetchColumn();
 } elseif ($role === 'Client') {
     $stmt_recent = $db->prepare("SELECT vessel_name, vlsfo_recovery, lsmgo_recovery, recovery_amount FROM surveys WHERE recovery_amount IS NOT NULL AND client_id = ? ORDER BY COALESCE(survey_completed_date, report_uploaded_date) DESC, id DESC LIMIT 1");
-    $stmt_recent->execute([$client_id]);
+    $stmt_recent->execute([$client_row_id]);
     $recent_row = $stmt_recent->fetch(PDO::FETCH_ASSOC);
-    $stmt_avg = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Completed' AND client_id = ?");
-    $stmt_avg->execute([$client_id]);
-    $avg_ships = $stmt_avg->fetchColumn();
-    $stmt_ms = $db->prepare("SELECT GREATEST(1, TIMESTAMPDIFF(MONTH, MIN(COALESCE(survey_completed_date, report_uploaded_date, assign_date)), CURDATE()) + 1) FROM surveys WHERE client_id = ? AND status IN ('Completed','Pending Report')");
-    $stmt_ms->execute([$client_id]);
-    $months_span = $stmt_ms->fetchColumn();
-    $avg_ships_per_month = $months_span > 0 ? round(((float)$avg_ships) / (float)$months_span, 1) : 0;
+    $avg_ships = 0;
+    $months_span = 1;
+    $avg_ships_per_month = 0;
     $avg_recovery_per_ship = null;
     $avg_recovery_per_surveyor = null;
 } else {
@@ -131,34 +125,6 @@ $avg_ships_per_month_disp = number_format((float)$avg_ships_per_month, 1);
 $avg_recovery_per_ship_disp = !empty($avg_recovery_per_ship) ? number_format((float)$avg_recovery_per_ship, 3) . ' MT' : '0.000 MT';
 $avg_recovery_per_surveyor_disp = !empty($avg_recovery_per_surveyor) ? number_format((float)$avg_recovery_per_surveyor, 3) . ' MT' : '0.000 MT';
 
-// 🌟 Super Admin only: ships-by-country and recovery-by-country/port breakdown.
-// (survey fee/monetary revenue tracking isn't in the database yet — this
-// section uses recovery quantities, the only revenue-adjacent figures
-// currently tracked, as a stand-in until fee tracking is added.)
-$ships_by_country = [];
-$recovery_by_country = [];
-$recovery_by_port = [];
-if (!empty($_SESSION['is_super_admin'])) {
-    ensurePortsCountryColumn($db);
-    $ships_by_country = $db->query("
-        SELECT COALESCE(NULLIF(p.country, ''), 'Unspecified') AS country, COUNT(*) AS ship_count
-        FROM surveys s JOIN ports p ON s.port_id = p.id
-        GROUP BY country ORDER BY ship_count DESC
-    ")->fetchAll(PDO::FETCH_ASSOC);
-    $recovery_by_country = $db->query("
-        SELECT COALESCE(NULLIF(p.country, ''), 'Unspecified') AS country, SUM(s.recovery_amount) AS total_recovery
-        FROM surveys s JOIN ports p ON s.port_id = p.id
-        WHERE s.recovery_amount IS NOT NULL
-        GROUP BY country ORDER BY total_recovery DESC
-    ")->fetchAll(PDO::FETCH_ASSOC);
-    $recovery_by_port = $db->query("
-        SELECT p.port_name, SUM(s.recovery_amount) AS total_recovery
-        FROM surveys s JOIN ports p ON s.port_id = p.id
-        WHERE s.recovery_amount IS NOT NULL
-        GROUP BY p.port_name ORDER BY total_recovery DESC LIMIT 8
-    ")->fetchAll(PDO::FETCH_ASSOC);
-}
-
 // 🌟 డెసిమల్స్ 3 స్థానాలకు మార్చి (0.000) వెనుక 'MT' యాడ్ చేయడం
 $total_recovery = !empty($total_recovery) ? number_format((float)$total_recovery, 3) . ' MT' : '0.000 MT';
 $month_recovery = !empty($month_recovery) ? number_format((float)$month_recovery, 3) . ' MT' : '0.000 MT';
@@ -166,7 +132,43 @@ $total_vlsfo = !empty($total_vlsfo) ? number_format((float)$total_vlsfo, 3) . ' 
 $total_lsmgo = !empty($total_lsmgo) ? number_format((float)$total_lsmgo, 3) . ' MT' : '0.000 MT';
 
 include 'includes/header.php';
+
+// 🌟 New-format popup flag (set at login.php if a format was uploaded/replaced within 7 days)
+$show_format_popup = !empty($_SESSION['show_format_popup']);
+unset($_SESSION['show_format_popup']);
 ?>
+
+<?php if ($show_format_popup): ?>
+<div class="format-popup-overlay" id="formatPopupOverlay">
+    <div class="format-popup-card" role="dialog" aria-modal="true" aria-labelledby="formatPopupTitle">
+        <button type="button" class="format-popup-close" id="formatPopupClose" aria-label="Close">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="format-popup-icon"><i class="fa-solid fa-file-excel"></i></div>
+        <h5 id="formatPopupTitle" class="format-popup-title">New formats updated</h5>
+        <p class="format-popup-msg">Admin has updated the survey formats recently. Please use these latest formats.</p>
+        <a href="formats_download.php" class="format-popup-btn">
+            <i class="fa-solid fa-download"></i> Open Formats
+        </a>
+    </div>
+</div>
+<style>
+.format-popup-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;animation:fpFade .18s ease;}
+.format-popup-card{position:relative;background:#fff;border-radius:20px;max-width:340px;width:100%;padding:28px 22px 24px;text-align:center;box-shadow:0 25px 60px rgba(0,0,0,.35);animation:fpUp .25s cubic-bezier(.2,.8,.2,1);}
+.format-popup-close{position:absolute;top:12px;right:12px;background:#f1f5f9;border:none;width:30px;height:30px;border-radius:50%;color:#475569;font-size:14px;display:flex;align-items:center;justify-content:center;}
+.format-popup-icon{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#16a34a,#0ea5e9);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;}
+.format-popup-title{font-weight:700;font-size:17px;color:#0f172a;margin:0 0 8px;}
+.format-popup-msg{font-size:13.5px;color:#64748b;margin:0 0 18px;line-height:1.5;}
+.format-popup-btn{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#4338ca,#0ea5e9);color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:11px 20px;border-radius:12px;}
+@keyframes fpFade{from{opacity:0}to{opacity:1}}
+@keyframes fpUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+</style>
+<script>
+document.getElementById('formatPopupClose').addEventListener('click', function(){
+    document.getElementById('formatPopupOverlay').remove();
+});
+</script>
+<?php endif; ?>
 
 <div class="scroll-content">
     <div class="dash-header">
@@ -250,7 +252,7 @@ include 'includes/header.php';
             <span class="stat-title">Average Ships Per Month</span>
             <div class="stat-val"><?= $avg_ships_per_month_disp ?></div>
         </div>
-        <?php if ($role === 'Admin'): ?>
+        <?php if (in_array($role, ['Admin', 'Super Admin'], true)): ?>
         <div class="stat-card" data-testid="avg-recovery-per-ship-card">
             <span class="stat-title">Average Recovery Per Ship</span>
             <div class="stat-val"><?= $avg_recovery_per_ship_disp ?></div>
@@ -262,59 +264,37 @@ include 'includes/header.php';
         <?php endif; ?>
     </div>
 
-    <?php if (!empty($_SESSION['is_super_admin'])): ?>
-    <!-- 🌟 Super Admin only: revenue/coverage breakdown by country & port -->
-    <div class="overview-section mt-4 px-3">
-        <div class="fw-bold text-dark mb-2" style="font-size:15px;"><i class="fa-solid fa-globe text-primary me-1"></i> Global Coverage & Recovery</div>
-        <div class="super-admin-breakdown-grid">
-            <div class="breakdown-card">
-                <div class="breakdown-card-title"><i class="fa-solid fa-ship"></i> Ships by Country</div>
-                <?php if (empty($ships_by_country)): ?>
-                    <div class="breakdown-empty">No survey data yet.</div>
-                <?php else: foreach ($ships_by_country as $row): ?>
-                    <div class="breakdown-row">
-                        <span><?= sanitize($row['country']) ?></span>
-                        <span class="breakdown-val"><?= (int)$row['ship_count'] ?></span>
-                    </div>
-                <?php endforeach; endif; ?>
-            </div>
-            <div class="breakdown-card">
-                <div class="breakdown-card-title"><i class="fa-solid fa-chart-line"></i> Recovery by Country</div>
-                <?php if (empty($recovery_by_country)): ?>
-                    <div class="breakdown-empty">No recovery data yet.</div>
-                <?php else: foreach ($recovery_by_country as $row): ?>
-                    <div class="breakdown-row">
-                        <span><?= sanitize($row['country']) ?></span>
-                        <span class="breakdown-val"><?= number_format((float)$row['total_recovery'], 2) ?> MT</span>
-                    </div>
-                <?php endforeach; endif; ?>
-            </div>
-            <div class="breakdown-card">
-                <div class="breakdown-card-title"><i class="fa-solid fa-anchor"></i> Top Ports by Recovery</div>
-                <?php if (empty($recovery_by_port)): ?>
-                    <div class="breakdown-empty">No recovery data yet.</div>
-                <?php else: foreach ($recovery_by_port as $row): ?>
-                    <div class="breakdown-row">
-                        <span><?= sanitize($row['port_name']) ?></span>
-                        <span class="breakdown-val"><?= number_format((float)$row['total_recovery'], 2) ?> MT</span>
-                    </div>
-                <?php endforeach; endif; ?>
-            </div>
+    <?php if ($role === 'Super Admin'):
+        $recovery_by_surveyor = $db->query("
+            SELECT u.full_name, SUM(s.recovery_amount) AS total
+            FROM surveys s
+            JOIN users u ON s.surveyor_id = u.id
+            WHERE s.recovery_amount IS NOT NULL
+            GROUP BY s.surveyor_id, u.full_name
+            ORDER BY total DESC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+    ?>
+    <div class="overview-section mt-4">
+        <div class="section-title-row">
+            <span class="section-title">Recovery by Surveyor</span>
         </div>
-        <div class="text-muted mt-2" style="font-size:11px;">Showing bunker recovery quantities by location. Survey fee / monetary revenue tracking isn't set up yet.</div>
+        <div class="bg-white rounded-4 shadow-sm border p-3" data-testid="recovery-by-surveyor-card">
+            <?php if (!empty($recovery_by_surveyor)): ?>
+                <?php foreach ($recovery_by_surveyor as $row): ?>
+                    <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--border-color);">
+                        <span class="fw-semibold" style="font-size:13.5px;"><?= sanitize($row['full_name']) ?></span>
+                        <span class="fw-bold text-primary" style="font-size:13.5px;"><?= number_format((float)$row['total'], 3) ?> MT</span>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="text-muted text-center py-2" style="font-size:12.5px;">No recovery data yet.</div>
+            <?php endif; ?>
+        </div>
     </div>
-    <style>
-        .super-admin-breakdown-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-        .breakdown-card { background: #fff; border: 1px solid var(--border-color); border-radius: 14px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(15,23,42,.04); }
-        .breakdown-card-title { font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-        .breakdown-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
-        .breakdown-row:last-child { border-bottom: none; }
-        .breakdown-val { font-weight: 700; color: var(--text-dark); }
-        .breakdown-empty { font-size: 12px; color: var(--text-muted); }
-    </style>
     <?php endif; ?>
 
     <!-- Quick links: stacked on mobile, one neat row on desktop -->
+    <?php if (!in_array($role, ['Client', 'Super Admin'], true)): ?>
     <div class="dashboard-action-links">
         <div class="overview-section dashboard-action-item mt-4">
             <a href="formats_download.php" class="bg-white p-3 rounded-4 d-flex justify-content-between align-items-center shadow-sm text-decoration-none h-100" style="border: 1px solid var(--border-color);" data-testid="formats-download-link">
@@ -361,6 +341,7 @@ include 'includes/header.php';
             </a>
         </div>
     </div>
+    <?php endif; ?>
 </div>
 
 <?php include 'includes/recovery_detail.php'; ?>

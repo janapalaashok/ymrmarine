@@ -93,8 +93,74 @@ try {
 // Report number only after client is selected
 $preview_report_number = '';
 
-// 1. పోర్ట్స్ లిస్ట్ తెచ్చుకోవడం
-$ports = $db->query("SELECT * FROM ports")->fetchAll();
+// 1. పోర్ట్స్ లిస్ట్ తెచ్చుకోవడం (country-wise, for the Country → Port cascading dropdown)
+try {
+    $col_exists = $db->query("SHOW COLUMNS FROM ports LIKE 'country'")->fetchAll();
+    if (empty($col_exists)) {
+        $db->exec("ALTER TABLE ports ADD COLUMN country VARCHAR(100) DEFAULT 'India' AFTER port_name");
+    }
+    $db->exec("UPDATE ports SET country = 'India' WHERE country IS NULL OR country = ''");
+
+    // 🌟 One-time world-ports seed (see database/migration_world_ports.sql) so the
+    // Country → Port dropdown has real options even if the SQL file was never run manually.
+    $port_count = (int)$db->query("SELECT COUNT(*) FROM ports")->fetchColumn();
+    if ($port_count < 15) {
+        try { $db->exec("ALTER TABLE ports ADD UNIQUE KEY uniq_port_name (port_name)"); } catch (Throwable $ke) {}
+        $world_ports = [
+            ['Chennai Port','India'],['Mumbai (Nhava Sheva/JNPT)','India'],['Kolkata Port','India'],['Kandla Port','India'],['Cochin Port','India'],
+            ['Paradip Port','India'],['Mundra Port','India'],['Tuticorin Port','India'],['Ennore Port','India'],['New Mangalore Port','India'],
+            ['Shanghai Port','China'],['Shenzhen Port','China'],['Ningbo-Zhoushan Port','China'],['Qingdao Port','China'],['Guangzhou Port','China'],['Tianjin Port','China'],['Hong Kong Port','China'],
+            ['Port of Singapore','Singapore'],
+            ['Jebel Ali Port','United Arab Emirates'],['Port of Fujairah','United Arab Emirates'],['Khalifa Port','United Arab Emirates'],
+            ['Jeddah Islamic Port','Saudi Arabia'],['King Abdulaziz Port (Dammam)','Saudi Arabia'],['Jubail Commercial Port','Saudi Arabia'],
+            ['Port Klang','Malaysia'],['Tanjung Pelepas Port','Malaysia'],['Penang Port','Malaysia'],
+            ['Tanjung Priok Port (Jakarta)','Indonesia'],['Tanjung Perak Port (Surabaya)','Indonesia'],['Belawan Port','Indonesia'],
+            ['Busan Port','South Korea'],['Incheon Port','South Korea'],
+            ['Port of Tokyo','Japan'],['Port of Yokohama','Japan'],['Port of Nagoya','Japan'],['Port of Kobe','Japan'],
+            ['Colombo Port','Sri Lanka'],['Hambantota Port','Sri Lanka'],
+            ['Chattogram Port','Bangladesh'],['Mongla Port','Bangladesh'],
+            ['Karachi Port','Pakistan'],['Port Qasim','Pakistan'],['Gwadar Port','Pakistan'],
+            ['Laem Chabang Port','Thailand'],['Bangkok Port','Thailand'],
+            ['Cai Mep Port','Vietnam'],['Ho Chi Minh City Port','Vietnam'],['Hai Phong Port','Vietnam'],
+            ['Manila Port','Philippines'],['Cebu Port','Philippines'],
+            ['Port of Salalah','Oman'],['Port Sultan Qaboos','Oman'],
+            ['Hamad Port','Qatar'],
+            ['Shuwaikh Port','Kuwait'],['Shuaiba Port','Kuwait'],
+            ['Khalifa Bin Salman Port','Bahrain'],
+            ['Bandar Abbas Port','Iran'],['Bandar Imam Khomeini Port','Iran'],
+            ['Port Said','Egypt'],['Alexandria Port','Egypt'],['Damietta Port','Egypt'],
+            ['Port of Durban','South Africa'],['Port of Cape Town','South Africa'],['Port of Ngqura','South Africa'],
+            ['Lagos Port (Apapa)','Nigeria'],['Tin Can Island Port','Nigeria'],
+            ['Mombasa Port','Kenya'],
+            ['Port of Rotterdam','Netherlands'],['Port of Amsterdam','Netherlands'],
+            ['Port of Antwerp','Belgium'],['Port of Zeebrugge','Belgium'],
+            ['Port of Hamburg','Germany'],['Port of Bremerhaven','Germany'],
+            ['Port of Felixstowe','United Kingdom'],['Port of London','United Kingdom'],['Port of Southampton','United Kingdom'],
+            ['Port of Marseille','France'],['Port of Le Havre','France'],
+            ['Port of Valencia','Spain'],['Port of Algeciras','Spain'],['Port of Barcelona','Spain'],
+            ['Port of Genoa','Italy'],['Port of Gioia Tauro','Italy'],['Port of Trieste','Italy'],
+            ['Port of Piraeus','Greece'],
+            ['Port of Ambarli','Turkey'],['Port of Mersin','Turkey'],
+            ['Port of St. Petersburg','Russia'],['Port of Novorossiysk','Russia'],['Port of Vladivostok','Russia'],
+            ['Port of Los Angeles','United States'],['Port of Long Beach','United States'],['Port of New York and New Jersey','United States'],['Port of Savannah','United States'],['Port of Houston','United States'],['Port of Charleston','United States'],
+            ['Port of Vancouver','Canada'],['Port of Montreal','Canada'],
+            ['Port of Manzanillo','Mexico'],['Port of Veracruz','Mexico'],
+            ['Port of Santos','Brazil'],['Port of Rio de Janeiro','Brazil'],['Port of Paranagua','Brazil'],
+            ['Port of Balboa','Panama'],['Port of Colon','Panama'],
+            ['Port of Valparaiso','Chile'],['Port of San Antonio','Chile'],
+            ['Port of Buenos Aires','Argentina'],
+            ['Port of Melbourne','Australia'],['Port of Sydney','Australia'],['Port of Brisbane','Australia'],['Port of Fremantle','Australia'],
+            ['Port of Auckland','New Zealand'],['Port of Tauranga','New Zealand'],
+        ];
+        $insP = $db->prepare("INSERT IGNORE INTO ports (port_name, country) VALUES (?, ?)");
+        foreach ($world_ports as $wp) { $insP->execute($wp); }
+    }
+} catch (Exception $e) {
+    error_log('assign_vessel.php ports.country column check/add error: ' . $e->getMessage());
+}
+$ports = $db->query("SELECT * FROM ports ORDER BY country ASC, port_name ASC")->fetchAll();
+$port_countries = array_values(array_unique(array_map(function ($p) { return $p['country'] ?: 'India'; }, $ports)));
+sort($port_countries);
 
 // 2. క్లయింట్స్ లిస్ట్ తెచ్చుకోవడం
 try {
@@ -103,23 +169,32 @@ try {
     // short_code column may not exist yet on first load
     $clients = $db->query("SELECT id, company_name FROM clients ORDER BY company_name ASC")->fetchAll();
 }
-$my_client_id = 0;
-if ($is_client_role) {
-    $my_client_id = getClientIdForUser($db, (int)$_SESSION['user_id']);
-    // A client-role user may only ever assign vessels under their own company.
-    $clients = array_values(array_filter($clients, fn($c) => (int)$c['id'] === $my_client_id));
-}
 
 // 3. సర్వేయర్స్ లిస్ట్ తెచ్చుకోవడం (role_id = 2)
 $surveyors = $db->query("SELECT id, full_name FROM users WHERE role_id = 2 AND status = 'Active'")->fetchAll();
+
+// 🌟 SAFETY NET: survey_surveyors junction table (multi-surveyor assignment)
+try {
+    $db->exec("CREATE TABLE IF NOT EXISTS `survey_surveyors` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `survey_id` int(11) NOT NULL,
+        `surveyor_id` int(11) NOT NULL,
+        `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uniq_survey_surveyor` (`survey_id`, `surveyor_id`),
+        KEY `idx_survey_surveyors_surveyor` (`surveyor_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+} catch (Exception $e) {
+    error_log('assign_vessel.php survey_surveyors table check/create error: ' . $e->getMessage());
+}
 
 // 4. సర్వే టైప్స్ తెచ్చుకోవడం
 $survey_types = $db->query("SELECT * FROM survey_types")->fetchAll();
 
 // ఫార్మ్ సబ్మిషన్ ప్రాసెస్
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $vessel_name = normalizeVesselName(trim($_POST['vessel_name']));
-    $client_id = $is_client_role ? $my_client_id : (int)$_POST['client_id'];
+    $vessel_name = trim($_POST['vessel_name']);
+    $client_id = (int)$_POST['client_id'];
     $agent_name = trim($_POST['agent_name']);
     $port_id = (int)$_POST['port_id'];
 
@@ -131,17 +206,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // JOIN survey_types లాజిక్ ఏమాత్రం మార్చకుండా అలాగే పని చేయడానికి
     $survey_type_id = !empty($survey_type_ids_arr) ? $survey_type_ids_arr[0] : 0;
 
-    $surveyor_id = $_POST['surveyor_id']; // 'outsourcing' లేదా ID కావచ్చు
+    $surveyor_id = $_POST['surveyor_id'] ?? ''; // 'outsourcing' లేదా ID కావచ్చు (legacy single field, kept for back-compat)
     $remarks = trim($_POST['remarks']);
+
+    // 🌟 బహుళ Surveyors (checkbox multi-select) — CSV గా వస్తుంది, ఉదా. "3,5,7" లేదా "outsourcing"
+    $surveyor_ids_csv = trim($_POST['surveyor_ids'] ?? '');
+    $surveyor_ids_raw = array_values(array_filter(array_map('trim', explode(',', $surveyor_ids_csv)), function ($v) { return $v !== ''; }));
+    $is_outsourcing = in_array('outsourcing', $surveyor_ids_raw, true);
+    // Real (non-outsourcing) surveyor ids selected, in the order chosen
+    $all_surveyor_ids = $is_outsourcing ? [] : array_values(array_unique(array_filter(array_map('intval', $surveyor_ids_raw))));
+    if (!empty($all_surveyor_ids)) {
+        $surveyor_id = (string)$all_surveyor_ids[0]; // primary = first selected, for backward compatibility
+    } elseif ($is_outsourcing) {
+        $surveyor_id = 'outsourcing';
+    } elseif ($is_client_role) {
+        // 🌟 Clients don't pick a surveyor — leave unassigned; Admin assigns one later via Edit.
+        $surveyor_id = 'unassigned';
+        $remarks = $remarks !== '' ? $remarks : 'Submitted by client — awaiting surveyor assignment.';
+    }
+
+    // Client-submitted vessels are always tied to the client's own company
+    if ($is_client_role) {
+        try {
+            $ccheck = $db->prepare("SELECT id FROM clients WHERE user_id = ? LIMIT 1");
+            $ccheck->execute([$_SESSION['user_id']]);
+            $own_client_id = (int)($ccheck->fetchColumn() ?: 0);
+            if ($own_client_id > 0) { $client_id = $own_client_id; }
+        } catch (Throwable $e) { error_log('assign_vessel client_id lock: ' . $e->getMessage()); }
+    }
 
     // సర్వేయర్ ఐడి హ్యాండ్లింగ్ (Outsourcing అయితే యూజర్ టేబుల్‌లో లేని ఐడి లేదా అడ్మిన్ ఐడి సెట్ చేయవచ్చు)
     // ఇక్కడ ఔట్‌సోర్సింగ్ కోసం ఒక డమ్మీ వాల్యూ (उदा. 1 లేదా అడ్మిన్ ఐడి) లేదా ప్రత్యేక లాజిక్ ఇవ్వచ్చు.
-    $final_surveyor_id = ($surveyor_id === 'outsourcing') ? 1 : (int)$surveyor_id; 
+    $final_surveyor_id = ($surveyor_id === 'outsourcing' || $surveyor_id === 'unassigned') ? 1 : (int)$surveyor_id; 
     if($surveyor_id === 'outsourcing' && $remarks == '') {
         $remarks = "Outsourced Survey.";
     }
 
-    if (!empty($vessel_name) && $client_id > 0 && !empty($agent_name) && $port_id > 0 && !empty($survey_type_ids_arr) && !empty($surveyor_id)) {
+    if (!empty($vessel_name) && $client_id > 0 && !empty($agent_name) && $port_id > 0 && !empty($survey_type_ids_arr) && ($is_client_role || !empty($surveyor_id))) {
         // 🌟 DB ఇన్సర్ట్‌ను try/catch లో ఉంచడం — ఏదైనా DB ఎర్రర్ వస్తే (ఉదా. FK మిస్‌మ్యాచ్,
         // మిస్సింగ్ కాలమ్ మొదలైనవి) తెల్లతెరతో సైట్ క్రాష్ అవ్వకుండా, ఫారమ్ మీదే స్పష్టమైన
         // ఎర్రర్ మెసేజ్ చూపించడానికి (ఇతర పేజీల్లో — వెసెల్ డీటెయిల్ లాంటివి — ఇదే పద్ధతి వాడారు)
@@ -192,8 +293,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Refresh preview for next assign on same page
                     $preview_report_number = ''; // next number only after client select
 
-                    // 📧📱 Auto-notify assigned surveyor (email + optional WhatsApp)
-                    if ($surveyor_id !== 'outsourcing' && $final_surveyor_id > 0) {
+                    // 🌟 Record every selected surveyor (multi-assign) in the junction table
+                    if ($new_survey_id > 0 && !empty($all_surveyor_ids)) {
+                        try {
+                            $ssStmt = $db->prepare("INSERT IGNORE INTO survey_surveyors (survey_id, surveyor_id) VALUES (?, ?)");
+                            foreach ($all_surveyor_ids as $sid_each) {
+                                if ($sid_each > 0) $ssStmt->execute([$new_survey_id, $sid_each]);
+                            }
+                        } catch (Throwable $sse) {
+                            error_log('survey_surveyors insert: ' . $sse->getMessage());
+                        }
+                    }
+
+                    // 🌟 Client submitted a vessel with no surveyor yet — alert admins to assign one
+                    if ($is_client_role && $new_survey_id > 0) {
+                        try {
+                            notifyAllAdmins($db, 'New vessel from client — needs a surveyor',
+                                $vessel_name . ' (' . $report_number . ') was submitted by a client and is waiting for a surveyor to be assigned.',
+                                'assign', 'vessel_detail.php?id=' . (int)$new_survey_id, (int)($_SESSION['user_id'] ?? 0));
+                        } catch (Throwable $cne) { error_log('client assign notif: ' . $cne->getMessage()); }
+                    }
+
+                    // 📧📱 Auto-notify assigned surveyor(s) (email + optional WhatsApp)
+                    $notify_surveyor_ids = !empty($all_surveyor_ids) ? $all_surveyor_ids : ($final_surveyor_id > 0 && !$is_outsourcing && $surveyor_id !== 'unassigned' ? [$final_surveyor_id] : []);
+                    foreach ($notify_surveyor_ids as $notify_sid) {
+                        if ($notify_sid <= 0) continue;
                         try {
                             $client_name = '';
                             $port_name = '';
@@ -246,7 +370,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'assigned_by_name'   => $admin_name,
                                 'assigned_by_email'  => $admin_email,
                             ];
-                            $notify_msg = notifySurveyorOfAssignment($db, $final_surveyor_id, $job);
+                            $notify_msg = notifySurveyorOfAssignment($db, $notify_sid, $job);
                             if ($notify_msg !== '') {
                                 $success .= ' · ' . $notify_msg;
                             }
@@ -255,7 +379,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $actor = (string)($_SESSION['full_name'] ?? 'Admin');
                                 createNotification(
                                     $db,
-                                    (int)$final_surveyor_id,
+                                    (int)$notify_sid,
                                     'New vessel assigned',
                                     $actor . ' assigned ' . $vessel_name . ' (' . $report_number . ') to you.',
                                     'assign',
@@ -405,6 +529,22 @@ include 'includes/header.php';
         position: relative;
         padding: 8px 10px;
         border-bottom: 1px solid var(--border-color);
+    }
+    .ss-country-wrap select.ss-country-filter {
+        width: 100%;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 8px 10px 8px 32px;
+        font-size: 12.5px;
+        background: #f8fafc;
+        color: var(--text-dark);
+        appearance: auto;
+    }
+    .ss-option-country {
+        float: right;
+        font-size: 10.5px;
+        color: #94a3b8;
+        font-weight: 600;
     }
     .searchable-select .ss-search-wrap i {
         position: absolute;
@@ -576,12 +716,11 @@ include 'includes/top_app_bar.php';
         <div class="alert alert-success mx-3 mt-3 py-2" style="font-size:12px;"><?= sanitize($success) ?></div>
         <?php if (!empty($GLOBALS['ysms_mail_failed'])): ?>
             <div class="alert alert-warning mx-3 py-2" style="font-size:12px;">
-                <strong>Email notification could not be sent.</strong>
-                <?php if (!$is_client_role): ?>
-                    <div class="mt-1 text-muted">The surveyor can still be reached via WhatsApp below. If this keeps happening, check the mail settings or run <a href="test_email.php">the mail test page</a>.</div>
-                <?php else: ?>
-                    <div class="mt-1 text-muted">The surveyor can still be reached via WhatsApp below, or the office can follow up directly.</div>
+                <strong>Email not delivered.</strong>
+                <?php if (!empty($GLOBALS['ysms_last_mail_error'])): ?>
+                    <div class="mt-1"><?= sanitize($GLOBALS['ysms_last_mail_error']) ?></div>
                 <?php endif; ?>
+                <div class="mt-1 text-muted">Check: 1) Surveyor Profile has email 2) <code>config/mail_config.php</code> SMTP password 3) Host allows outbound SMTP. Test: <a href="test_email.php">test_email.php</a></div>
             </div>
         <?php endif; ?>
         <?php if (!empty($GLOBALS['ysms_last_wa_link'])): ?>
@@ -596,7 +735,7 @@ include 'includes/top_app_bar.php';
     <?php if($error): ?><div class="alert alert-danger mx-3 mt-3 py-2" style="font-size:12px;"><?= $error ?></div><?php endif; ?>
 
     <!-- Assignment Form -->
-    <form action="assign_vessel.php" method="POST" id="assignVesselForm" enctype="multipart/form-data"><?= csrf_field() ?>
+    <form action="assign_vessel.php" method="POST" id="assignVesselForm" enctype="multipart/form-data">
         <div class="form-box-custom shadow-sm" style="padding-top:20px;">
             
             <div class="form-group-custom" id="vesselNameField">
@@ -621,9 +760,7 @@ include 'includes/top_app_bar.php';
                             <?php foreach($clients as $client): ?>
                                 <li class="ss-option" data-value="<?= $client['id'] ?>" data-name="<?= strtolower(sanitize($client['company_name'])) ?>" data-short="<?= sanitize(strtoupper(trim($client['short_code'] ?? ''))) ?>"><?= sanitize($client['company_name']) ?><?php if (!empty($client['short_code'])): ?> <span style="color:#64748b;font-weight:600;">(<?= sanitize(strtoupper($client['short_code'])) ?>)</span><?php endif; ?></li>
                             <?php endforeach; ?>
-                            <?php if (!$is_client_role): ?>
                             <li class="ss-option ss-option-other" data-value="other_client" data-name="other">+ Other (Add New Client)</li>
-                            <?php endif; ?>
                         </ul>
                     </div>
                 </div>
@@ -632,13 +769,11 @@ include 'includes/top_app_bar.php';
                     <?php foreach($clients as $client): ?>
                         <option value="<?= $client['id'] ?>"><?= sanitize($client['company_name']) ?></option>
                     <?php endforeach; ?>
-                    <?php if (!$is_client_role): ?>
                     <option value="other_client">Other</option>
-                    <?php endif; ?>
                 </select>
             </div>
             <!-- Client "Other" టెక్స్ట్ ఫీల్డ్ (డైనమిక్, AJAX సేవ్) -->
-            <div id="otherClientContainer" <?= $is_client_role ? 'style="display:none;"' : '' ?>>
+            <div id="otherClientContainer">
                 <div class="form-group-custom m-0">
                     <label class="text-primary"><i class="fa-solid fa-pen"></i> Enter Client Name *</label>
                     <div class="d-flex gap-2">
@@ -675,15 +810,24 @@ include 'includes/top_app_bar.php';
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
                     <div class="ss-panel">
+                        <div class="ss-search-wrap ss-country-wrap">
+                            <i class="fa-solid fa-globe"></i>
+                            <select class="ss-country-filter" id="portCountryFilter" data-testid="port-country-filter">
+                                <option value="">All Countries</option>
+                                <?php foreach ($port_countries as $pc): ?>
+                                    <option value="<?= strtolower(sanitize($pc)) ?>"><?= sanitize($pc) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                         <div class="ss-search-wrap">
                             <i class="fa-solid fa-magnifying-glass"></i>
                             <input type="text" class="ss-search-input" placeholder="Search port..." autocomplete="off" data-testid="port-search-input">
                         </div>
                         <ul class="ss-options" data-testid="port-options-list">
                             <?php foreach($ports as $port): ?>
-                                <li class="ss-option" data-value="<?= $port['id'] ?>" data-name="<?= strtolower(sanitize($port['port_name'])) ?>"><?= sanitize($port['port_name']) ?></li>
+                                <li class="ss-option" data-value="<?= $port['id'] ?>" data-name="<?= strtolower(sanitize($port['port_name'])) ?>" data-country="<?= strtolower(sanitize($port['country'] ?? 'India')) ?>"><?= sanitize($port['port_name']) ?> <span class="ss-option-country"><?= sanitize($port['country'] ?? 'India') ?></span></li>
                             <?php endforeach; ?>
-                            <li class="ss-option ss-option-other" data-value="other_port" data-name="other">+ Other (Add New Port)</li>
+                            <li class="ss-option ss-option-other" data-value="other_port" data-name="other" data-country="">+ Other (Add New Port)</li>
                         </ul>
                     </div>
                 </div>
@@ -701,6 +845,7 @@ include 'includes/top_app_bar.php';
                     <label class="text-primary"><i class="fa-solid fa-pen"></i> Enter Port Name *</label>
                     <div class="d-flex gap-2">
                         <input type="text" id="newPortNameInput" placeholder="Enter new port name" style="flex: 1;" data-testid="new-port-name-input">
+                        <input type="text" id="newPortCountryInput" placeholder="Country" style="width:140px;" data-testid="new-port-country-input">
                         <button type="button" id="saveNewPortBtn" class="btn btn-sm" style="background:#3b32b3; color:#fff; font-weight:600;" data-testid="save-new-port-button">Save</button>
                     </div>
                     <div id="newPortStatus" class="small mt-1"></div>
@@ -745,11 +890,12 @@ include 'includes/top_app_bar.php';
                 </div>
             </div>
 
+            <?php if (!$is_client_role): ?>
             <div class="form-group-custom">
-                <label>Assign Surveyor *</label>
-                <div class="searchable-select" data-ss-root="surveyor">
+                <label>Assign Surveyor(s) * <span class="text-muted fw-normal" style="font-size:10.5px;">(select one or more)</span></label>
+                <div class="searchable-select ss-multi" data-ss-root="surveyor" data-hidden-input="surveyorIdsInput">
                     <button type="button" class="ss-trigger" data-testid="surveyor-select-trigger">
-                        <span class="ss-trigger-text placeholder" data-placeholder="Select Surveyor" style="color:#64748b !important;font-weight:500;font-size:14px;">Select Surveyor</span>
+                        <span class="ss-trigger-text placeholder" data-placeholder="Select Surveyor(s)" style="color:#64748b !important;font-weight:500;font-size:14px;">Select Surveyor(s)</span>
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
                     <div class="ss-panel">
@@ -759,24 +905,23 @@ include 'includes/top_app_bar.php';
                         </div>
                         <ul class="ss-options" data-testid="surveyor-options-list">
                             <?php foreach($surveyors as $surveyor): ?>
-                                <li class="ss-option" data-value="<?= (int)$surveyor['id'] ?>" data-name="<?= strtolower(sanitize($surveyor['full_name'])) ?>"><?= sanitize($surveyor['full_name']) ?></li>
+                                <li class="ss-option" data-value="<?= (int)$surveyor['id'] ?>" data-name="<?= strtolower(sanitize($surveyor['full_name'])) ?>">
+                                    <input type="checkbox" class="ss-option-checkbox" tabindex="-1">
+                                    <span class="ss-option-label"><?= sanitize($surveyor['full_name']) ?></span>
+                                </li>
                             <?php endforeach; ?>
                             <?php if (($_SESSION['role'] ?? '') === 'Admin'): ?>
-                                <li class="ss-option ss-option-other" data-value="outsourcing" data-name="outsourcing" style="color:#dc2626;font-weight:700;">Outsourcing</li>
+                                <li class="ss-option" data-value="outsourcing" data-name="outsourcing" style="color:#dc2626;font-weight:700;">
+                                    <input type="checkbox" class="ss-option-checkbox" tabindex="-1">
+                                    <span class="ss-option-label">Outsourcing</span>
+                                </li>
                             <?php endif; ?>
                         </ul>
                     </div>
                 </div>
-                <select name="surveyor_id" id="surveyorSelect" class="ss-hidden-select" tabindex="-1" aria-hidden="true" required>
-                    <option value="">Select Surveyor</option>
-                    <?php foreach($surveyors as $surveyor): ?>
-                        <option value="<?= (int)$surveyor['id'] ?>"><?= sanitize($surveyor['full_name']) ?></option>
-                    <?php endforeach; ?>
-                    <?php if (($_SESSION['role'] ?? '') === 'Admin'): ?>
-                        <option value="outsourcing">Outsourcing</option>
-                    <?php endif; ?>
-                </select>
+                <input type="hidden" name="surveyor_ids" id="surveyorIdsInput" value="">
             </div>
+            <?php endif; ?>
 
             <div class="form-group-custom">
                 <label>Remarks (Optional)</label>
@@ -845,14 +990,20 @@ include 'includes/top_app_bar.php';
                 }
             });
 
-            $search.on('input', function() {
-                const term = String($(this).val() || '').toLowerCase().trim();
+            const $countryFilter = $root.find('.ss-country-filter');
+
+            function applyFilter() {
+                const term = String($search.val() || '').toLowerCase().trim();
+                const countryVal = String($countryFilter.val() || '').toLowerCase().trim();
                 let anyVisible = false;
                 $optionsList.find('.ss-option').each(function() {
                     const $opt = $(this);
                     if ($opt.hasClass('ss-option-other')) { $opt.show(); return; }
                     const name = String($opt.data('name') || '').toLowerCase();
-                    const match = !term || name.indexOf(term) !== -1;
+                    const country = String($opt.data('country') || '').toLowerCase();
+                    const matchTerm = !term || name.indexOf(term) !== -1;
+                    const matchCountry = !countryVal || country === countryVal;
+                    const match = matchTerm && matchCountry;
                     $opt.toggle(match);
                     if (match) anyVisible = true;
                 });
@@ -860,7 +1011,13 @@ include 'includes/top_app_bar.php';
                 if (!anyVisible) {
                     $optionsList.prepend('<li class="ss-option-empty">No matches found</li>');
                 }
-            });
+            }
+
+            $search.on('input', applyFilter);
+            $countryFilter.on('change', function(e) {
+                e.stopPropagation();
+                applyFilter();
+            }).on('click', function(e) { e.stopPropagation(); });
 
             function selectOption($opt) {
                 const value = $opt.data('value');
@@ -914,7 +1071,7 @@ include 'includes/top_app_bar.php';
             }
         }
 
-        // ---- Multi searchable select (Survey Type) ----
+        // ---- Multi searchable select (Survey Type / Surveyor) ----
         function initSearchableMultiSelect(rootEl) {
             const $root = $(rootEl);
             const $trigger = $root.find('.ss-trigger');
@@ -922,7 +1079,10 @@ include 'includes/top_app_bar.php';
             const $panel = $root.find('.ss-panel');
             const $search = $root.find('.ss-search-input');
             const $optionsList = $root.find('.ss-options');
-            const $hiddenInput = $('#surveyTypeIdsInput');
+            const hiddenInputId = $root.data('hidden-input') || 'surveyTypeIdsInput';
+            const $hiddenInput = $('#' + hiddenInputId);
+            const otherContainerId = $root.data('other-container') || 'otherSurveyTypeContainer';
+            const otherInputId = $root.data('other-input') || 'newSurveyTypeInput';
 
             function closePanel() {
                 $root.removeClass('open');
@@ -1006,8 +1166,8 @@ include 'includes/top_app_bar.php';
                 if ($opt.hasClass('ss-option-empty')) return;
                 if ($opt.hasClass('ss-option-other')) {
                     closePanel();
-                    $('#otherSurveyTypeContainer').show();
-                    try { $('#newSurveyTypeInput')[0].focus(); } catch (err) {}
+                    $('#' + otherContainerId).show();
+                    try { $('#' + otherInputId)[0].focus(); } catch (err) {}
                     return;
                 }
                 toggleOption($opt);
@@ -1049,7 +1209,8 @@ include 'includes/top_app_bar.php';
             var ph = $txt.attr('data-placeholder') || $txt.data('placeholder') || 'Select';
             var empty = true;
             if ($root.hasClass('ss-multi')) {
-                empty = !$.trim($('#surveyTypeIdsInput').val() || '');
+                var hidId = $root.data('hidden-input') || 'surveyTypeIdsInput';
+                empty = !$.trim($('#' + hidId).val() || '');
             } else if ($hid.length) {
                 empty = !$hid.val();
             }
@@ -1173,7 +1334,7 @@ include 'includes/top_app_bar.php';
             statusSel: '#newPortStatus',
             otherValue: 'other_port',
             ajaxUrl: 'ajax/add_port.php',
-            postData: function(name) { return { port_name: name }; }
+            postData: function(name) { return { port_name: name, country: String($('#newPortCountryInput').val() || '').trim() || 'India' }; }
         });
 
         wireOtherOption({
@@ -1195,7 +1356,8 @@ include 'includes/top_app_bar.php';
             const typeIdsVal = String($('#surveyTypeIdsInput').val() || '').trim();
             const vesselVal = String($('input[name="vessel_name"]').val() || '').trim();
             const agentVal = String($('input[name="agent_name"]').val() || '').trim();
-            const surveyorVal = String($('select[name="surveyor_id"]').val() || '');
+            const surveyorVal = String($('#surveyorIdsInput').val() || '').trim();
+            const surveyorFieldExists = $('#surveyorIdsInput').length > 0;
 
             const messages = [];
 
@@ -1222,7 +1384,7 @@ include 'includes/top_app_bar.php';
                 messages.push('Please select at least one Survey Type.');
             }
 
-            if (!surveyorVal) {
+            if (surveyorFieldExists && !surveyorVal) {
                 messages.push('Please select a Surveyor.');
             }
 

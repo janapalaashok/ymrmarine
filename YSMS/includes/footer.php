@@ -17,7 +17,7 @@
             <span>Add Surveyor</span>
         </a>
         
-        <!-- 3. Add Client -->
+        <!-- 3. Add Client — temporarily linked to Coming Soon page -->
         <a href="add_client.php" class="fab-option-item" data-testid="fab-add-client-link">
             <i class="fa-solid fa-user-plus text-success" style="width: 24px; text-align: center;"></i> 
             <span>Add Client</span>
@@ -28,12 +28,6 @@
             <i class="fa-solid fa-user-shield text-primary" style="width: 24px; text-align: center;"></i> 
             <span>Admin Controls</span>
         </a>
-        <?php if (!empty($_SESSION['is_super_admin'])): ?>
-        <a href="add_admin.php" class="fab-option-item" data-testid="fab-add-admin-link">
-            <i class="fa-solid fa-user-tie text-warning" style="width: 24px; text-align: center;"></i> 
-            <span>Add Admin</span>
-        </a>
-        <?php endif; ?>
         
         <button class="btn btn-light w-100 mt-3 rounded-3 fw-bold text-danger" id="closeFabBtn" style="font-size: 14px; padding: 12px;" data-testid="fab-close-button">Close</button>
     </div>
@@ -174,32 +168,6 @@
 
     // Poll unread count every 45s
     setInterval(refreshCount, 45000);
-})();
-</script>
-
-<script>
-// Auto-attach the CSRF token to same-origin POST requests made via fetch(),
-// so existing AJAX calls across YSMS don't each need to be edited individually.
-(function () {
-  var token = <?= json_encode(csrf_token()) ?>;
-  var origFetch = window.fetch;
-  window.fetch = function (input, init) {
-    init = init || {};
-    var method = (init.method || (input && input.method) || 'GET').toUpperCase();
-    if (method === 'POST') {
-      init.headers = new Headers(init.headers || {});
-      if (!init.headers.has('X-CSRF-Token')) init.headers.set('X-CSRF-Token', token);
-    }
-    return origFetch(input, init);
-  };
-  // Also cover jQuery-based AJAX calls used on a few YSMS pages.
-  if (window.jQuery) {
-    jQuery(document).ajaxSend(function (event, jqxhr, settings) {
-      if ((settings.type || 'GET').toUpperCase() === 'POST') {
-        jqxhr.setRequestHeader('X-CSRF-Token', token);
-      }
-    });
-  }
 })();
 </script>
 

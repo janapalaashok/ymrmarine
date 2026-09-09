@@ -150,7 +150,7 @@ try {
             if ($sid > 0) {
                 createNotification($db, $sid, 'Vessel cancelled',
                     ($_SESSION['full_name'] ?? 'Admin') . ' cancelled ' . $vname . '.',
-                    'cancel', 'cancelled.php', (int)($_SESSION['user_id'] ?? 0));
+                    'cancel', 'vessel_detail.php?id=' . (int)$id, (int)($_SESSION['user_id'] ?? 0));
             }
         } catch (Throwable $ne) { error_log('cancel notif: '.$ne->getMessage()); }
 

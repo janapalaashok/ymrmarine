@@ -1,6 +1,10 @@
 <?php
 require_once 'config/config.php';
 checkAuth();
+if (($_SESSION['role'] ?? '') !== 'Surveyor') {
+    header('Location: index.php');
+    exit;
+}
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $db = getDB();
@@ -148,7 +152,7 @@ include 'includes/header.php';
     include 'includes/top_app_bar.php';
     ?>
 
-    <form method="POST" action="generate_invoice.php" id="invoiceForm"><?= csrf_field() ?>
+    <form method="POST" action="generate_invoice.php" id="invoiceForm">
         <input type="hidden" name="vessel" value="<?= sanitize($vesselName) ?>">
         <input type="hidden" name="client" value="<?= sanitize($clientName) ?>">
         <input type="hidden" name="invoice_no" value="<?= sanitize($reportNumber) ?>">

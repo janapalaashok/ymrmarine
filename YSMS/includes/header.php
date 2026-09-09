@@ -842,10 +842,26 @@ require_once __DIR__ . '/../config/config.php';
         gap: 12px;
     }
     .vessel-card:has(.vessel-live-status-bar),
-    .vessel-card:has(.vessel-card-top-content) {
+    .vessel-card:has(.vessel-card-top-content),
+    .vessel-card.vessel-card--stacked {
         flex-direction: column !important;
         align-items: stretch !important;
         justify-content: flex-start !important;
+    }
+    /* Fallback for browsers without :has() support (e.g. older Firefox) so the
+       "Latest Update / updated by / date" block on vessels.php desktop is never
+       squeezed out of view next to the top content row. */
+    .vessel-card--stacked .vessel-card-top-content {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: flex-start !important;
+        width: 100%;
+    }
+    .vessel-card--stacked .vessel-live-status-bar {
+        display: block !important;
+        width: 100%;
+        text-align: left;
     }
     .vessel-card-top-content {
         display: flex !important;

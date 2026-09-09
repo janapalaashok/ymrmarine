@@ -1,45 +1,52 @@
 <?php
 require_once 'config/config.php';
-require_once __DIR__ . '/../includes/rate_limit.php';
+
+// 🌟 Safety-net: ensure the Super Admin role exists (see database/migration_super_admin_role.sql)
+try {
+    $db_boot = getDB();
+    $chk = $db_boot->query("SELECT id FROM roles WHERE name = 'Super Admin'")->fetchColumn();
+    if (!$chk) {
+        $db_boot->exec("INSERT INTO roles (name) VALUES ('Super Admin')");
+    }
+} catch (Throwable $e) { error_log('login.php super admin role ensure: ' . $e->getMessage()); }
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username']);
     $password = trim($_POST['password']);
-    $rateKey = ($_SERVER['REMOTE_ADDR'] ?? 'unknown') . '|' . strtolower($username);
-    $wait = rate_limit_check($rateKey);
+    
+    $db = getDB();
+    $stmt = $db->prepare("SELECT u.*, r.name as role_name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.username = ? AND u.status = 'Active'");
+    $stmt->execute([$username]);
+    $user = $stmt->fetch();
+    
+    // ప్లెయిన్ టెక్స్ట్ లేదా హ్యాష్... ఏది మ్యాచ్ అయినా లాగిన్ అనుమతిస్తుంది
+    if ($user && ($password === $user['password'] || password_verify($password, $user['password']) || hash_equals($user['password'], crypt($password, $user['password'])))) {
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['username'] = $user['username'];
+        $_SESSION['role'] = $user['role_name'];
+        $_SESSION['full_name'] = $user['full_name'];
+        $_SESSION['avatar'] = !empty($user['avatar']) ? $user['avatar'] : (!empty($user['profile_pic']) ? $user['profile_pic'] : null);
 
-    if (!csrf_valid()) {
-        $error = "Invalid credential parameters. Please check username/password.";
-    } elseif ($wait > 0) {
-        $error = "Too many attempts. Please wait " . $wait . " seconds and try again.";
-    } else {
-        $db = getDB();
-        $stmt = $db->prepare("SELECT u.*, r.name as role_name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.username = ? AND u.status = 'Active'");
-        $stmt->execute([$username]);
-        $user = $stmt->fetch();
-
-        // ప్లెయిన్ టెక్స్ట్ లేదా హ్యాష్... ఏది మ్యాచ్ అయినా లాగిన్ అనుమతిస్తుంది
-        if ($user && ($password === $user['password'] || password_verify($password, $user['password']) || hash_equals($user['password'], crypt($password, $user['password'])))) {
-            rate_limit_clear($rateKey);
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            // Super Admin has every permission Admin has, plus one extra
-            // capability (creating other Admin logins). Rather than teaching
-            // every existing "role === 'Admin'" check in the codebase about a
-            // second role name, a Super Admin's session role is stored as
-            // 'Admin' so all existing admin-gated pages work unchanged — the
-            // one extra capability is gated separately via is_super_admin.
-            $_SESSION['role'] = ($user['role_name'] === 'Super Admin') ? 'Admin' : $user['role_name'];
-            $_SESSION['is_super_admin'] = ($user['role_name'] === 'Super Admin');
-            $_SESSION['full_name'] = $user['full_name'];
-            $_SESSION['avatar'] = !empty($user['avatar']) ? $user['avatar'] : (!empty($user['profile_pic']) ? $user['profile_pic'] : null);
-            header("Location: index.php");
-            exit;
-        } else {
-            rate_limit_record_failure($rateKey);
-            $error = "Invalid credential parameters. Please check username/password.";
+        // 🌟 New-format popup: if Admin uploaded/replaced a format in the last 7 days,
+        // show a one-time "please use these formats" popup to the surveyor on this login.
+        if ($user['role_name'] === 'Surveyor') {
+            $formats_dir = __DIR__ . '/formats';
+            $latest_format_ts = 0;
+            if (is_dir($formats_dir)) {
+                foreach (glob($formats_dir . '/*') as $ff) {
+                    if (is_file($ff)) $latest_format_ts = max($latest_format_ts, filemtime($ff));
+                }
+            }
+            if ($latest_format_ts > 0 && (time() - $latest_format_ts) <= 7 * 86400) {
+                $_SESSION['show_format_popup'] = true;
+            }
         }
+
+        header("Location: index.php");
+        exit;
+    } else {
+        $error = "Invalid credential parameters. Please check username/password.";
     }
 }
 ?>
@@ -203,7 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="auth-alert"><i class="fa-solid fa-circle-exclamation"></i><span><?= sanitize($error) ?></span></div>
             <?php endif; ?>
 
-            <form action="login.php" method="POST" novalidate><?= csrf_field() ?>
+            <form action="login.php" method="POST" novalidate>
                 <div class="field-group">
                     <label class="field-label" for="username">Username</label>
                     <div class="field-wrap">
