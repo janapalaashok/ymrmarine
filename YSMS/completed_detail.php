@@ -19,8 +19,47 @@ $stmt = $db->prepare("
 $stmt->execute([$id]);
 $survey = $stmt->fetch();
 
-if (!$survey) { 
-    die("Completed survey asset parameters not found or mission is uncompleted."); 
+if (!$survey) {
+    die("Completed survey asset parameters not found or mission is uncompleted.");
+}
+
+// 🔒 Authorization check (same IDOR-prevention pattern as vessel_detail.php /
+// report_detail.php): a Surveyor may only view their own assigned surveys, and
+// a Client only their own company's — otherwise any authenticated user could
+// view another company's completed vessel by changing ?id= in the URL.
+$current_user_id = (int)($_SESSION['user_id'] ?? 0);
+$role = $_SESSION['role'] ?? '';
+$has_full_access = in_array($role, ['Admin', 'Super Admin'], true);
+if (!$has_full_access && (int)$survey['surveyor_id'] !== $current_user_id) {
+    $isOwnClient = ($role === 'Client') && (int)$survey['client_id'] === getClientIdForUser($db, $current_user_id);
+    if (!$isOwnClient) {
+        http_response_code(403);
+        include 'includes/header.php';
+        ?>
+        <style>
+            .no-access-wrap { min-height: calc(100vh - 160px); padding: 30px 20px; display: flex; align-items: center; justify-content: center; }
+            .no-access-card { max-width: 520px; width: 100%; padding: 38px 24px; border-radius: 20px; background: #fff; border: 1px solid var(--border-color); box-shadow: 0 12px 28px rgba(15,23,42,.07); text-align: center; }
+            .no-access-icon { width: 68px; height: 68px; margin: 0 auto 18px; border-radius: 18px; display: flex; align-items: center; justify-content: center; background: #fef2f2; color: #b91c1c; font-size: 28px; }
+            .no-access-card .blue-action-btn { margin-left: auto; margin-right: auto; }
+        </style>
+        <div class="scroll-content">
+            <?php $page_title = 'Access Denied'; $back_url = 'index.php'; $page_testid = 'no-access'; include 'includes/top_app_bar.php'; ?>
+            <main class="no-access-wrap" data-testid="no-access-page">
+                <section class="no-access-card">
+                    <div class="no-access-icon"><i class="fa-solid fa-lock"></i></div>
+                    <h2 class="fw-bold text-dark" style="font-size:22px;" data-testid="no-access-heading">Access Denied</h2>
+                    <p class="text-muted mb-4" style="font-size:13px;" data-testid="no-access-message">
+                        You don't have permission to view this vessel. It isn't assigned to your account.
+                    </p>
+                    <a href="index.php" class="blue-action-btn text-decoration-none" data-testid="no-access-home-link"><i class="fa-solid fa-house"></i> Return Home</a>
+                </section>
+            </main>
+        </div>
+        <?php
+        include 'includes/nav.php';
+        include 'includes/footer.php';
+        exit;
+    }
 }
 
 // 2. ఈ వెసెల్ కి సంబంధించి అప్‌లోడ్ చేసిన అన్ని రకాల ఫైల్స్ (PDF, Excel, Word, Extra) ఒకేసారి లోడ్ చేయడం
@@ -194,9 +233,11 @@ include 'includes/header.php';
         </div><!-- /.detail-files-grid -->
     </div>
 
-       <!-- Generate Invoice: Admin + Super Admin only. Generate Expenses: Surveyor only (Coming Soon for now). -->
+       <!-- Generate Invoice: Admin only. Generate Expenses: Surveyor only (Coming Soon for now).
+            Client and Super Admin see neither, and are blocked server-side too
+            (invoice_generator.php / generate_invoice.php are Admin-only). -->
     <div class="action-btn-container mb-4 px-3" style="display:flex;flex-direction:column;gap:10px;">
-        <?php if (in_array($_SESSION['role'] ?? '', ['Admin', 'Super Admin'], true)): ?>
+        <?php if (($_SESSION['role'] ?? '') === 'Admin'): ?>
         <a href="invoice_generator.php?id=<?= (int)$survey['id'] ?>" class="blue-action-btn text-decoration-none d-inline-flex align-items-center justify-content-center" data-testid="generate-invoice-button">
             <i class="fa-solid fa-file-invoice-dollar me-1"></i> Generate Invoice
         </a>

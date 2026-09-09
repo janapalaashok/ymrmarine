@@ -2,6 +2,14 @@
 require_once __DIR__ . '/../config/config.php';
 checkAuth();
 
+// Only Admin and Surveyor may upload survey/report files (matches the UI, which
+// hides this form from Client and Super Admin). Enforced here too so a direct
+// POST can't bypass the UI restriction.
+if (!in_array($_SESSION['role'] ?? '', ['Admin', 'Surveyor'], true)) {
+    header('Location: ../index.php');
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $survey_id = (int)$_POST['survey_id'];
     $current_status = $_POST['current_status'];

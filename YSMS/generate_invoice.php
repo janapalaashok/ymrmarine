@@ -5,6 +5,12 @@
 require_once 'config/config.php';
 checkAuth();
 
+// Generate Invoice is an Admin-only workflow — matches invoice_generator.php.
+if (($_SESSION['role'] ?? '') !== 'Admin') {
+    http_response_code(403);
+    die('Admin only.');
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     die('Method not allowed');

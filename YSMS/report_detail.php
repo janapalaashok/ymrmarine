@@ -20,8 +20,13 @@ $survey = $stmt->fetch();
 if (!$survey) { die("Report asset not found."); }
 
 $current_user_id = $_SESSION['user_id'];
-$is_admin = ($_SESSION['role'] === 'Admin');
-if (!$is_admin && (int)$survey['surveyor_id'] !== (int)$current_user_id) {
+$role = $_SESSION['role'];
+$is_admin = ($role === 'Admin');
+$is_super_admin = ($role === 'Super Admin');
+// Super Admin can view every report like Admin (read-only — no Upload Final
+// Documentation), so it must not be scoped down like a Surveyor/Client.
+$has_full_access = ($is_admin || $is_super_admin);
+if (!$has_full_access && (int)$survey['surveyor_id'] !== (int)$current_user_id) {
     $isOwnClient = (($_SESSION['role'] ?? '') === 'Client') && (int)$survey['client_id'] === getClientIdForUser($db, $current_user_id);
     if (!$isOwnClient) {
     http_response_code(403);
@@ -190,8 +195,8 @@ include 'includes/header.php';
     </div>
 
     <div class="detail-bottom-row">
-    <?php if (($_SESSION['role'] ?? '') !== 'Client'): ?>
-    <!-- 🌟 DOWNLOAD SECTION -->
+    <!-- 🌟 DOWNLOAD SECTION — visible to every role that can reach this page,
+         including Client (their own company's reports only, enforced above). -->
     <div class="detail-files-panel px-3 my-3">
         <div class="fw-bold text-dark mb-2" style="font-size: 13px;"><i class="fa-solid fa-folder-open text-warning me-1"></i> Download Pre-Uploaded Survey Files</div>
         <?php if(count($uploaded_files) > 0): ?>
@@ -218,6 +223,7 @@ include 'includes/header.php';
         <?php endif; ?>
     </div>
 
+    <?php if (!$is_super_admin && $role !== 'Client'): ?>
     <!-- ✍️ UPLOAD FORM SECTION: కనీసం ఒక WORD FORMAT (.docx) అప్‌లోడ్ చేయాలి -->
     <div class="form-box mx-3 p-3 bg-white rounded-3 border shadow-sm">
         <div class="fw-bold text-dark mb-3" style="font-size: 14px;"><i class="fa-solid fa-cloud-arrow-up text-primary"></i> Upload Final Documentation</div>

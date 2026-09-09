@@ -2,6 +2,7 @@
 require_once 'config/config.php';
 require_once 'includes/notifications.php';
 require_once 'includes/agents_mail.php';
+require_once 'includes/mailer.php';
 checkAuth();
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -12,6 +13,10 @@ $success = '';
 $current_user_id = $_SESSION['user_id'];
 $role = $_SESSION['role'];
 $is_admin = ($role === 'Admin');
+$is_super_admin = ($role === 'Super Admin');
+// Super Admin can view every survey like Admin (read-only — no Edit, no Upload,
+// no Send-Email-to-Agent), so it must not be scoped down like a Surveyor/Client.
+$has_full_access = ($is_admin || $is_super_admin);
 $edit_mode = $is_admin && isset($_GET['edit']);
 
 // Safety net: ensure live-status columns exist (see database/migration_custom_live_status.sql)
@@ -43,6 +48,19 @@ if ($is_admin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_s
     $u_assign_date = trim($_POST['assign_date']);
     $u_remarks = trim($_POST['remarks']);
 
+    // Capture the surveyor/report-number BEFORE the update, so we can tell whether
+    // this save is an actual (new) surveyor assignment — e.g. a client-submitted
+    // vessel that had no surveyor yet — vs. re-saving the form unchanged.
+    $old_surveyor_id = 0;
+    $existing_report_number = '';
+    try {
+        $osStmt = $db->prepare('SELECT surveyor_id, report_number FROM surveys WHERE id = ?');
+        $osStmt->execute([$id]);
+        $orow = $osStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $old_surveyor_id = (int)($orow['surveyor_id'] ?? 0);
+        $existing_report_number = (string)($orow['report_number'] ?? '');
+    } catch (Throwable $oe) { error_log('vessel_detail old surveyor lookup: ' . $oe->getMessage()); }
+
     try {
         $update_details = $db->prepare("
             UPDATE surveys
@@ -60,6 +78,64 @@ if ($is_admin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_s
                         'edit', 'vessel_detail.php?id=' . (int)$id, (int)$current_user_id);
                 }
             } catch (Throwable $ne) { error_log('edit notif: '.$ne->getMessage()); }
+
+            // 🌟 Surveyor actually (re)assigned via this edit — e.g. Admin picking a
+            // surveyor for a vessel the Client submitted unassigned. Reuse the exact
+            // same email + WhatsApp workflow as a normal direct Admin assignment
+            // (assign_vessel.php → notifySurveyorOfAssignment). Only fires when the
+            // surveyor value actually changed, so re-saving the same surveyor never
+            // sends a duplicate notification.
+            $sid = (int)$u_surveyor_id;
+            if ($sid > 0 && $sid !== $old_surveyor_id) {
+                try {
+                    $cName = '';
+                    $pName = '';
+                    try {
+                        $cst = $db->prepare('SELECT company_name FROM clients WHERE id = ?');
+                        $cst->execute([$u_client_id]);
+                        $cName = (string)($cst->fetchColumn() ?: '');
+                        $pst = $db->prepare('SELECT port_name FROM ports WHERE id = ?');
+                        $pst->execute([$u_port_id]);
+                        $pName = (string)($pst->fetchColumn() ?: '');
+                    } catch (Throwable $le) { error_log('vessel_detail reassign lookup: ' . $le->getMessage()); }
+                    $tNames = getCombinedSurveyTypeNames($db, (string)$u_survey_type_id, '');
+
+                    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                    $base = rtrim(str_replace('\\', '/', dirname($_SERVER['PHP_SELF'] ?? '')), '/');
+                    $app_url = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $base . '/vessel_detail.php?id=' . (int)$id;
+
+                    $admin_name = (string)($_SESSION['full_name'] ?? $_SESSION['username'] ?? 'Admin');
+                    $admin_email = '';
+                    try {
+                        $uidA = (int)($_SESSION['user_id'] ?? 0);
+                        if ($uidA > 0) {
+                            $ast = $db->prepare('SELECT email FROM users WHERE id = ? LIMIT 1');
+                            $ast->execute([$uidA]);
+                            $admin_email = trim((string)($ast->fetchColumn() ?: ''));
+                        }
+                    } catch (Throwable $ae) {}
+
+                    $job = [
+                        'vessel_name'        => $u_vessel_name,
+                        'report_number'      => $existing_report_number,
+                        'client_name'        => $cName,
+                        'port_name'          => $pName,
+                        'survey_types'       => $tNames,
+                        'agent_name'         => $u_agent_name,
+                        'assign_date'        => $u_assign_date !== '' ? date('d-m-Y', strtotime($u_assign_date)) : date('d-m-Y'),
+                        'remarks'            => $u_remarks,
+                        'app_url'            => $app_url,
+                        'assigned_by_name'   => $admin_name,
+                        'assigned_by_email'  => $admin_email,
+                    ];
+                    $notify_msg = notifySurveyorOfAssignment($db, $sid, $job);
+                    if ($notify_msg !== '') {
+                        $success .= ' · ' . $notify_msg;
+                    }
+                } catch (Throwable $ne3) {
+                    error_log('vessel_detail surveyor reassign notify: ' . $ne3->getMessage());
+                }
+            }
         } else {
             $error = "Failed to update vessel details.";
         }
@@ -135,7 +211,7 @@ if (!$survey) { die("Survey details missing."); }
 // other surveyor's survey — including client and financial details — just by
 // changing the ?id= in the URL. Admins are unrestricted, matching existing
 // admin permissions elsewhere in this file.
-if (!$is_admin && (int)$survey['surveyor_id'] !== (int)$current_user_id) {
+if (!$has_full_access && (int)$survey['surveyor_id'] !== (int)$current_user_id) {
     $isOwnClient = ($role === 'Client') && (int)$survey['client_id'] === getClientIdForUser($db, $current_user_id);
     if (!$isOwnClient) {
     http_response_code(403);
@@ -405,7 +481,7 @@ include 'includes/header.php';
                 ?>
             </span></div>
         </div>
-    <?php if (!$is_client_viewer): ?>
+    <?php if (!$is_client_viewer && !$is_super_admin): ?>
     <div class="form-box mx-3 p-3 bg-white rounded-3 border shadow-sm mt-2">
         <div class="fw-bold text-dark mb-3" style="font-size: 14px;"><i class="fa-solid fa-cloud-arrow-up text-primary"></i> Upload Required Reports</div>
         

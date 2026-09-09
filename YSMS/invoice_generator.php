@@ -1,7 +1,9 @@
 <?php
 require_once 'config/config.php';
 checkAuth();
-if (!in_array($_SESSION['role'] ?? '', ['Admin', 'Super Admin'], true)) {
+// Generate Invoice is an Admin-only workflow — Super Admin, Surveyor and Client
+// must all be blocked, including direct URL access.
+if (($_SESSION['role'] ?? '') !== 'Admin') {
     header('Location: index.php');
     exit;
 }

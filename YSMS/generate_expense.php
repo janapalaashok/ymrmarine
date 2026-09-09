@@ -3,6 +3,12 @@ require 'vendor/autoload.php';
 require_once 'config/config.php';
 checkAuth();
 
+// Generate Expenses is a Surveyor-only workflow (matches expense_generator.php).
+if (($_SESSION['role'] ?? '') !== 'Surveyor') {
+    http_response_code(403);
+    die('Surveyor only.');
+}
+
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;

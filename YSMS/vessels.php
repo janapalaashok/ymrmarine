@@ -11,6 +11,15 @@ checkAuth();
 $db = getDB();
 $role = $_SESSION['role'];
 $user_id = $_SESSION['user_id'];
+// Admin and Super Admin both see every pending vessel (Super Admin is read-only —
+// no Edit button — but must not be scoped down to "their own" surveys like a Surveyor).
+$is_full_access = in_array($role, ['Admin', 'Super Admin'], true);
+$can_edit = ($role === 'Admin');
+$is_client_role = ($role === 'Client');
+$client_row_id = 0;
+if ($is_client_role) {
+    $client_row_id = getClientIdForUser($db, (int)$user_id);
+}
 
 // Safety net: ensure live-status columns exist (export + filters use s.custom_live_status)
 try {
@@ -31,7 +40,7 @@ try {
 }
 
 /* ── Mobile data: full list (client-side filter in app.js) ── */
-if ($role === 'Admin') {
+if ($is_full_access) {
     $stmt = $db->prepare("
         SELECT s.*, c.company_name, u.full_name as surveyor_name, uu.full_name as modifier_name, st.type_name, p.port_name 
         FROM surveys s 
@@ -44,16 +53,29 @@ if ($role === 'Admin') {
         ORDER BY s.id DESC
     ");
     $stmt->execute();
-} else {
+} elseif ($is_client_role) {
     $stmt = $db->prepare("
-        SELECT s.*, c.company_name, u.full_name as surveyor_name, uu.full_name as modifier_name, st.type_name, p.port_name 
-        FROM surveys s 
-        JOIN clients c ON s.client_id = c.id 
+        SELECT s.*, c.company_name, u.full_name as surveyor_name, uu.full_name as modifier_name, st.type_name, p.port_name
+        FROM surveys s
+        JOIN clients c ON s.client_id = c.id
         JOIN users u ON s.surveyor_id = u.id
         LEFT JOIN users uu ON s.status_updated_by = uu.id
         LEFT JOIN survey_types st ON s.survey_type_id = st.id
         LEFT JOIN ports p ON s.port_id = p.id
-        WHERE s.status = 'Pending Vessel' AND s.surveyor_id = ? 
+        WHERE s.status = 'Pending Vessel' AND s.client_id = ?
+        ORDER BY s.id DESC
+    ");
+    $stmt->execute([$client_row_id]);
+} else {
+    $stmt = $db->prepare("
+        SELECT s.*, c.company_name, u.full_name as surveyor_name, uu.full_name as modifier_name, st.type_name, p.port_name
+        FROM surveys s
+        JOIN clients c ON s.client_id = c.id
+        JOIN users u ON s.surveyor_id = u.id
+        LEFT JOIN users uu ON s.status_updated_by = uu.id
+        LEFT JOIN survey_types st ON s.survey_type_id = st.id
+        LEFT JOIN ports p ON s.port_id = p.id
+        WHERE s.status = 'Pending Vessel' AND s.surveyor_id = ?
         ORDER BY s.id DESC
     ");
     $stmt->execute([$user_id]);
@@ -86,7 +108,10 @@ $sort = trim((string)($_GET['sort'] ?? 'newest'));
 
 $where = ["s.status = 'Pending Vessel'"];
 $params = [];
-if ($role !== 'Admin') {
+if ($is_client_role) {
+    $where[] = 's.client_id = ?';
+    $params[] = $client_row_id;
+} elseif (!$is_full_access) {
     $where[] = 's.surveyor_id = ?';
     $params[] = $user_id;
 }
@@ -103,7 +128,7 @@ if ($filter_status === 'updated') {
 } elseif ($filter_status === 'pending') {
     $where[] = "(s.custom_live_status IS NULL OR s.custom_live_status = '')";
 }
-if ($role === 'Admin' && $filter_surveyor !== '') {
+if ($is_full_access && $filter_surveyor !== '') {
     $where[] = 'u.full_name = ?';
     $params[] = $filter_surveyor;
 }
@@ -348,7 +373,7 @@ include 'includes/header.php';
             <select data-filter-place data-testid="pending-vessels-place-filter"><option value="">All survey places</option><?php foreach ($survey_places_filter as $value): ?><option value="<?= sanitize($value) ?>"><?= sanitize($value) ?></option><?php endforeach; ?></select>
             <select data-filter-client data-testid="pending-vessels-client-filter"><option value="">All clients</option><?php foreach ($survey_clients_filter as $value): ?><option value="<?= sanitize($value) ?>"><?= sanitize($value) ?></option><?php endforeach; ?></select>
             <select data-filter-status data-testid="pending-vessels-status-filter"><option value="">All statuses</option><option value="updated">Update Received</option><option value="pending">No Update Yet</option></select>
-            <?php if ($role === 'Admin'): ?>
+            <?php if ($is_full_access): ?>
             <select data-filter-surveyor data-testid="pending-vessels-surveyor-filter"><option value="">All surveyors</option><?php foreach ($survey_surveyors_filter as $value): ?><option value="<?= sanitize($value) ?>"><?= sanitize($value) ?></option><?php endforeach; ?></select>
             <?php endif; ?>
             <button type="button" class="clear-filters-btn" data-clear-filters data-testid="pending-vessels-clear-filters"><i class="fa-solid fa-rotate-left"></i> Clear Filters</button>
@@ -373,7 +398,7 @@ include 'includes/header.php';
                                     <h4 class="vessel-name-title"><?= sanitize($vessel_name) ?></h4>
                                     <p class="vessel-client-sub">Client: <?= sanitize($survey['company_name']) ?></p>
                                     <p class="vessel-client-sub">Agent: <?= sanitize($survey['agent_name']) ?></p>
-                                    <?php if ($role === 'Admin'): ?>
+                                    <?php if ($is_full_access): ?>
                                         <p class="vessel-client-sub">Surveyor: <?= sanitize($survey['surveyor_name'] ?? 'N/A') ?></p>
                                     <?php endif; ?>
                                 </div>
@@ -381,7 +406,7 @@ include 'includes/header.php';
                             <div class="vessel-badge-date text-end">
                                 <span class="badge-assigned"><?= sanitize(getCombinedSurveyTypeNames($db, $survey['survey_type_ids'] ?? '', !empty($survey['type_name']) ? $survey['type_name'] : 'N/A')) ?></span>
                                 <div><span class="badge-place" data-testid="pending-vessel-place-<?= (int)$survey['id'] ?>"><i class="fa-solid fa-location-dot"></i><?= sanitize($survey['port_name'] ?? 'N/A') ?></span></div>
-                                <?php if ($role === 'Admin'): ?>
+                                <?php if ($can_edit): ?>
                                     <a href="vessel_detail.php?id=<?= (int)$survey['id'] ?>&edit=1" class="vessel-edit-btn" onclick="event.stopPropagation();" data-testid="pending-vessel-edit-<?= (int)$survey['id'] ?>">
                                         <i class="fa-solid fa-pen"></i> Edit
                                     </a>
@@ -441,7 +466,7 @@ include 'includes/header.php';
                             <option value="<?= sanitize(strtolower($v)) ?>"><?= sanitize($v) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <?php if ($role === 'Admin'): ?>
+                    <?php if ($is_full_access): ?>
                     <select data-desk-surveyor>
                         <option value="">All surveyors</option>
                         <?php foreach ($survey_surveyors_filter as $v): ?>
@@ -470,7 +495,7 @@ include 'includes/header.php';
                                 <th>Client / Agent</th>
                                 <th>Survey type</th>
                                 <th>Port</th>
-                                <?php if ($role === 'Admin'): ?><th>Surveyor</th><?php endif; ?>
+                                <?php if ($is_full_access): ?><th>Surveyor</th><?php endif; ?>
                                 <th>Date</th>
                                 <th>Actions</th>
                             </tr>
@@ -503,16 +528,30 @@ include 'includes/header.php';
                                     <div><?= sanitize($survey['company_name'] ?? '') ?></div>
                                     <div class="vd-sub">Agent: <?= sanitize($survey['agent_name'] ?? '—') ?></div>
                                 </td>
-                                <td><span class="vd-badge"><?= sanitize($typeLabel) ?></span></td>
+                                <td>
+                                    <span class="vd-badge"><?= sanitize($typeLabel) ?></span>
+                                    <?php if (!empty($survey['custom_live_status'])): ?>
+                                        <div class="vd-sub" style="max-width:220px;white-space:normal;">
+                                            <i class="fa-solid fa-comment-dots" style="opacity:.6;"></i>
+                                            Latest Update: <?= sanitize($survey['custom_live_status']) ?>
+                                            <?php if (!empty($survey['status_updated_at'])): ?>
+                                                — <?= date('d M Y', strtotime($survey['status_updated_at'])) ?>
+                                            <?php endif; ?>
+                                            <?php if (!empty($survey['modifier_name'])): ?>
+                                                by <?= sanitize($survey['modifier_name']) ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
                                 <td><i class="fa-solid fa-location-dot" style="opacity:.5;"></i> <?= sanitize($survey['port_name'] ?? 'N/A') ?></td>
-                                <?php if ($role === 'Admin'): ?>
+                                <?php if ($is_full_access): ?>
                                 <td><?= sanitize($survey['surveyor_name'] ?? 'N/A') ?></td>
                                 <?php endif; ?>
                                 <td style="white-space:nowrap;"><?= sanitize($date_disp) ?></td>
                                 <td>
                                     <div class="vd-actions">
                                         <a href="vessel_detail.php?id=<?= (int)$survey['id'] ?>"><i class="fa-solid fa-eye"></i> View</a>
-                                        <?php if ($role === 'Admin' && 'vessels' === 'vessels'): ?>
+                                        <?php if ($can_edit): ?>
                                         <a class="edit" href="vessel_detail.php?id=<?= (int)$survey['id'] ?>&edit=1"><i class="fa-solid fa-pen"></i> Edit</a>
                                         <?php endif; ?>
                                     </div>

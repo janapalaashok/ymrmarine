@@ -294,7 +294,9 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     <?php endif; ?>
 
     <!-- Quick links: stacked on mobile, one neat row on desktop -->
-    <?php if (!in_array($role, ['Client', 'Super Admin'], true)): ?>
+    <!-- Formats Download / Generate Permission Copy / Vessel Lineups: Surveyor only.
+         Admin, Client and Super Admin no longer see these on the dashboard. -->
+    <?php if ($role === 'Surveyor'): ?>
     <div class="dashboard-action-links">
         <div class="overview-section dashboard-action-item mt-4">
             <a href="formats_download.php" class="bg-white p-3 rounded-4 d-flex justify-content-between align-items-center shadow-sm text-decoration-none h-100" style="border: 1px solid var(--border-color);" data-testid="formats-download-link">

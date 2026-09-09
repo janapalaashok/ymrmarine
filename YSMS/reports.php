@@ -6,9 +6,13 @@ $db = getDB();
 $role = $_SESSION['role'];
 $user_id = $_SESSION['user_id'];
 $client_id = ($role === 'Client') ? getClientIdForUser($db, $user_id) : 0;
+// Admin and Super Admin both see every pending report (read-only for Super Admin —
+// this page has no edit action either way — but must not be scoped down to "their
+// own" surveys like a Surveyor).
+$is_full_access = in_array($role, ['Admin', 'Super Admin'], true);
 
 /* Mobile: full list */
-if ($role === 'Admin') {
+if ($is_full_access) {
     $stmt = $db->prepare("
         SELECT s.*, c.company_name, u.full_name as surveyor_name, st.type_name, p.port_name
         FROM surveys s
@@ -72,7 +76,7 @@ $sort = trim((string)($_GET['sort'] ?? 'newest'));
 
 $where = ["s.status = 'Pending Report'"];
 $params = [];
-if ($role === 'Client') { $where[] = 's.client_id = ?'; $params[] = $client_id; } elseif ($role !== 'Admin') { $where[] = 's.surveyor_id = ?'; $params[] = $user_id; }
+if ($role === 'Client') { $where[] = 's.client_id = ?'; $params[] = $client_id; } elseif (!$is_full_access) { $where[] = 's.surveyor_id = ?'; $params[] = $user_id; }
 if ($q !== '') {
     $where[] = '(s.vessel_name LIKE ? OR c.company_name LIKE ? OR s.agent_name LIKE ? OR st.type_name LIKE ? OR p.port_name LIKE ? OR u.full_name LIKE ?)';
     $like = '%' . $q . '%';
@@ -81,7 +85,7 @@ if ($q !== '') {
 if ($filter_type !== '') { $where[] = 'st.type_name = ?'; $params[] = $filter_type; }
 if ($filter_place !== '') { $where[] = 'p.port_name = ?'; $params[] = $filter_place; }
 if ($filter_client !== '') { $where[] = 'c.company_name = ?'; $params[] = $filter_client; }
-if ($role === 'Admin' && $filter_surveyor !== '') { $where[] = 'u.full_name = ?'; $params[] = $filter_surveyor; }
+if ($is_full_access && $filter_surveyor !== '') { $where[] = 'u.full_name = ?'; $params[] = $filter_surveyor; }
 $whereSql = implode(' AND ', $where);
 $orderSql = 's.id DESC';
 if ($sort === 'oldest') $orderSql = 's.id ASC';
@@ -406,7 +410,7 @@ include 'includes/header.php';
         <select data-filter-type><option value="">All survey types</option><?php foreach ($survey_types_filter as $value): ?><option value="<?= sanitize($value) ?>"><?= sanitize($value) ?></option><?php endforeach; ?></select>
         <select data-filter-place><option value="">All survey places</option><?php foreach ($survey_places_filter as $value): ?><option value="<?= sanitize($value) ?>"><?= sanitize($value) ?></option><?php endforeach; ?></select>
         <select data-filter-client><option value="">All clients</option><?php foreach ($survey_clients_filter as $value): ?><option value="<?= sanitize($value) ?>"><?= sanitize($value) ?></option><?php endforeach; ?></select>
-        <?php if ($role === 'Admin'): ?>
+        <?php if ($is_full_access): ?>
         <select data-filter-surveyor><option value="">All surveyors</option><?php foreach ($survey_surveyors_filter as $value): ?><option value="<?= sanitize($value) ?>"><?= sanitize($value) ?></option><?php endforeach; ?></select>
         <?php endif; ?>
         <button type="button" class="clear-filters-btn" data-clear-filters><i class="fa-solid fa-rotate-left"></i> Clear Filters</button>
@@ -435,7 +439,7 @@ include 'includes/header.php';
                     <h4 class="vessel-name-title"><?= sanitize($vessel_name) ?></h4>
                     <p class="vessel-client-sub">Client: <?= sanitize($survey['company_name'] ?? '') ?></p>
                     <p class="vessel-client-sub">Agent: <?= sanitize($survey['agent_name'] ?? '') ?></p>
-                    <?php if ($role === 'Admin'): ?><p class="vessel-client-sub">Surveyor: <?= sanitize($survey['surveyor_name'] ?? 'N/A') ?></p><?php endif; ?>
+                    <?php if ($is_full_access): ?><p class="vessel-client-sub">Surveyor: <?= sanitize($survey['surveyor_name'] ?? 'N/A') ?></p><?php endif; ?>
                 </div></div>
                 <div class="vessel-badge-date text-end">
                     <span class="badge-assigned"><?= sanitize($typeLabel) ?></span>
@@ -481,7 +485,7 @@ include 'includes/header.php';
                             <option value="<?= sanitize(strtolower($v)) ?>"><?= sanitize($v) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <?php if ($role === 'Admin'): ?>
+                    <?php if ($is_full_access): ?>
                     <select data-desk-surveyor>
                         <option value="">All surveyors</option>
                         <?php foreach ($survey_surveyors_filter as $v): ?>
@@ -510,7 +514,7 @@ include 'includes/header.php';
                                 <th>Client / Agent</th>
                                 <th>Survey type</th>
                                 <th>Port</th>
-                                <?php if ($role === 'Admin'): ?><th>Surveyor</th><?php endif; ?>
+                                <?php if ($is_full_access): ?><th>Surveyor</th><?php endif; ?>
                                 <th>Date</th>
                                 <th>Actions</th>
                             </tr>
@@ -545,7 +549,7 @@ include 'includes/header.php';
                                 </td>
                                 <td><span class="vd-badge"><?= sanitize($typeLabel) ?></span></td>
                                 <td><i class="fa-solid fa-location-dot" style="opacity:.5;"></i> <?= sanitize($survey['port_name'] ?? 'N/A') ?></td>
-                                <?php if ($role === 'Admin'): ?>
+                                <?php if ($is_full_access): ?>
                                 <td><?= sanitize($survey['surveyor_name'] ?? 'N/A') ?></td>
                                 <?php endif; ?>
                                 <td style="white-space:nowrap;"><?= sanitize($date_disp) ?></td>

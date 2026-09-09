@@ -170,6 +170,23 @@ try {
     $clients = $db->query("SELECT id, company_name FROM clients ORDER BY company_name ASC")->fetchAll();
 }
 
+// 🌟 Client role: the form must show (and lock) only their own company — never
+// the full client list, which they should not even see. Looked up here (not
+// just inside the POST handler below) so the GET-rendered form can pre-select it.
+$own_client_id = 0;
+$own_client_name = '';
+if ($is_client_role) {
+    try {
+        $ownStmt = $db->prepare("SELECT id, company_name FROM clients WHERE user_id = ? LIMIT 1");
+        $ownStmt->execute([$_SESSION['user_id']]);
+        $ownRow = $ownStmt->fetch(PDO::FETCH_ASSOC);
+        if ($ownRow) {
+            $own_client_id = (int)$ownRow['id'];
+            $own_client_name = (string)$ownRow['company_name'];
+        }
+    } catch (Throwable $e) { error_log('assign_vessel own client lookup: ' . $e->getMessage()); }
+}
+
 // 3. సర్వేయర్స్ లిస్ట్ తెచ్చుకోవడం (role_id = 2)
 $surveyors = $db->query("SELECT id, full_name FROM users WHERE role_id = 2 AND status = 'Active'")->fetchAll();
 
@@ -743,7 +760,18 @@ include 'includes/top_app_bar.php';
                 <input type="text" name="vessel_name" id="vessel_name" placeholder="e.g. MV Pacific Dawn" required autocomplete="off" inputmode="text" style="font-size:16px;min-height:48px;">
             </div>
 
-                        <!-- 🌟 Client Name: searchable dropdown with search box inside + Other -->
+                        <?php if ($is_client_role): ?>
+            <!-- 🌟 Client role: company is fixed to their own — no dropdown, no visibility
+                 into other clients' names. Server-side (POST handler above) also locks
+                 client_id to this value regardless of what's submitted. -->
+            <div class="form-group-custom">
+                <label>Client Name *</label>
+                <input type="text" value="<?= sanitize($own_client_name ?: 'Your Company') ?>" disabled
+                       style="background:#f1f5f9;color:#0b1e46;font-weight:700;" data-testid="client-name-locked">
+                <input type="hidden" name="client_id" id="clientSelect" value="<?= (int)$own_client_id ?>">
+            </div>
+            <?php else: ?>
+            <!-- 🌟 Client Name: searchable dropdown with search box inside + Other -->
             <div class="form-group-custom">
                 <label>Client Name *</label>
                 <div class="searchable-select" data-ss-root="client">
@@ -783,6 +811,7 @@ include 'includes/top_app_bar.php';
                     <div id="newClientStatus" class="small mt-1"></div>
                 </div>
             </div>
+            <?php endif; ?>
 
             <!-- Report Number: shown only after client selected — YMR/{SHORT}/{YYYY}/{MM}/{NNNN} -->
             <div class="form-group-custom" id="reportNumberGroup" style="display:none;">
@@ -1248,6 +1277,11 @@ include 'includes/top_app_bar.php';
         $('#clientSelect').on('change', function() {
             refreshReportNumber($(this).val());
         });
+        // Client role: client_id is a fixed hidden input (not a <select>), so no
+        // "change" event ever fires — trigger the report-number preview once on load.
+        if ($('#clientSelect').is('input[type=hidden]')) {
+            refreshReportNumber($('#clientSelect').val());
+        }
 
         // Outside click closes open panels
         $(document).on('click', function(e) {
