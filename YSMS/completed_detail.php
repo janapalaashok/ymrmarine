@@ -196,12 +196,8 @@ include 'includes/header.php';
 
     <!-- Generate Invoice (Surveyor only — everyone else sees Coming Soon) + Generate Expenses (Admin + Surveyor) -->
     <div class="action-btn-container mb-4 px-3" style="display:flex;flex-direction:column;gap:10px;">
-        <?php if (($_SESSION['role'] ?? '') === 'Surveyor'): ?>
+          <?php if (($_SESSION['role'] ?? '') === 'Surveyor'): ?>
         <a href="invoice_generator.php?id=<?= (int)$survey['id'] ?>" class="blue-action-btn text-decoration-none d-inline-flex align-items-center justify-content-center" data-testid="generate-invoice-button">
-            <i class="fa-solid fa-file-invoice-dollar me-1"></i> Generate Invoice
-        </a>
-        <?php else: ?>
-        <a href="coming_soon.php?feature=Generate+Invoice" class="blue-action-btn text-decoration-none d-inline-flex align-items-center justify-content-center" data-testid="generate-invoice-button">
             <i class="fa-solid fa-file-invoice-dollar me-1"></i> Generate Invoice
         </a>
         <?php endif; ?>

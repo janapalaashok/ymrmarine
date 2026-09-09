@@ -229,7 +229,7 @@ include 'includes/header.php';
                 <h5 class="modal-title fw-bold text-danger" style="font-size: 15px;"><i class="fa-solid fa-triangle-exclamation me-1"></i> Delete all Completed vessels?</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST">
+            <form method="POST"><?= csrf_field() ?>
                 <div class="modal-body">
                     <p class="text-muted" style="font-size:13px;">This permanently deletes every Completed vessel record and its uploaded files. This action cannot be undone.</p>
                     <label class="form-label" style="font-size:12px;font-weight:650;">Type <b>DELETE</b> to confirm</label>
