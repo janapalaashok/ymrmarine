@@ -2,7 +2,9 @@
 require_once 'config/config.php';
 require_once 'includes/notifications.php';
 checkAuth();
-if (($_SESSION['role'] ?? '') !== 'Admin') {
+// Add Client is available to Admin and Super Admin only — Surveyor and Client
+// are blocked here (and can't reach this page through the UI either).
+if (!in_array($_SESSION['role'] ?? '', ['Admin', 'Super Admin'], true)) {
     header('Location: index.php');
     exit;
 }

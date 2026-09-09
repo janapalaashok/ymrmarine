@@ -2,7 +2,11 @@
 require_once 'config/config.php';
 require_once 'includes/notifications.php';
 checkAuth();
-if (empty($_SESSION['is_super_admin'])) {
+// Add Admin is Super Admin-only. (Note: this used to check the session key
+// 'is_super_admin', which nothing in the login flow ever sets — that left this
+// page unreachable even for real Super Admins. The role is always available as
+// $_SESSION['role'], the same value used everywhere else in this codebase.)
+if (($_SESSION['role'] ?? '') !== 'Super Admin') {
     header('Location: index.php');
     exit;
 }

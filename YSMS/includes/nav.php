@@ -107,7 +107,7 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
             <i class="fa-solid fa-user-gear"></i>
             <span>Add Surveyor</span>
         </a>
-        <a href="coming_soon.php?feature=Add+Client" class="nav-item-btn desktop-only-nav" data-testid="sidebar-add-client-link">
+        <a href="add_client.php" class="nav-item-btn desktop-only-nav <?= ($current_page == 'add_client.php') ? 'active' : '' ?>" data-testid="sidebar-add-client-link">
             <i class="fa-solid fa-user-plus"></i>
             <span>Add Client</span>
         </a>
@@ -115,7 +115,7 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
             <i class="fa-solid fa-user-shield"></i>
             <span>Admin Controls</span>
         </a>
-        
+
         <!-- Inside the navbar.php file, inside the <ul> tag, add this li: -->
 
     <a href="manage_templates.php" class="nav-item-btn desktop-only-nav <?= ($current_page == 'manage_templates.php') ? 'active' : '' ?>" data-testid="sidebar-manage-templates-link">
@@ -123,6 +123,19 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
         <span>Manage Templates</span>
     </a>
 
+        <?php elseif ($user_role === 'Super Admin'): ?>
+        <!-- Desktop only: Super Admin Quick Actions — Add Client + Add Admin only
+             (Assign Vessel / Admin Controls / Manage Templates / Add Surveyor stay
+             Admin-only, both here and server-side on those pages). -->
+        <div class="desktop-sidebar-section-label desktop-only-nav">Quick Actions</div>
+        <a href="add_client.php" class="nav-item-btn desktop-only-nav <?= ($current_page == 'add_client.php') ? 'active' : '' ?>" data-testid="sidebar-add-client-link">
+            <i class="fa-solid fa-user-plus"></i>
+            <span>Add Client</span>
+        </a>
+        <a href="add_admin.php" class="nav-item-btn desktop-only-nav <?= ($current_page == 'add_admin.php') ? 'active' : '' ?>" data-testid="sidebar-add-admin-link">
+            <i class="fa-solid fa-user-shield"></i>
+            <span>Add Admin</span>
+        </a>
         <?php endif; ?>
 
         <div class="desktop-sidebar-section-label desktop-only-nav">Account</div>

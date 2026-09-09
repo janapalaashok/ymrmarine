@@ -293,6 +293,184 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     </div>
     <?php endif; ?>
 
+    <?php if ($role === 'Super Admin'):
+        // 🌟 Super Admin analytics — Recovery by Port/Country/Client, Top 5
+        // completed ships by country/port, and average ships per year/month/day.
+        // All computed live from the same `surveys`/`ports`/`clients` tables used
+        // everywhere else on this dashboard — no hardcoded values.
+        ensurePortsCountryColumn($db);
+
+        $recovery_by_port = $db->query("
+            SELECT p.port_name, SUM(s.recovery_amount) AS total
+            FROM surveys s
+            JOIN ports p ON s.port_id = p.id
+            WHERE s.recovery_amount IS NOT NULL
+            GROUP BY s.port_id, p.port_name
+            ORDER BY total DESC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $recovery_by_country = $db->query("
+            SELECT COALESCE(NULLIF(p.country, ''), 'India') AS country, SUM(s.recovery_amount) AS total
+            FROM surveys s
+            JOIN ports p ON s.port_id = p.id
+            WHERE s.recovery_amount IS NOT NULL
+            GROUP BY COALESCE(NULLIF(p.country, ''), 'India')
+            ORDER BY total DESC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $recovery_by_client = $db->query("
+            SELECT c.company_name, SUM(s.recovery_amount) AS total
+            FROM surveys s
+            JOIN clients c ON s.client_id = c.id
+            WHERE s.recovery_amount IS NOT NULL
+            GROUP BY s.client_id, c.company_name
+            ORDER BY total DESC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $ships_by_country_top5 = $db->query("
+            SELECT COALESCE(NULLIF(p.country, ''), 'India') AS country, COUNT(*) AS cnt
+            FROM surveys s
+            JOIN ports p ON s.port_id = p.id
+            WHERE s.status = 'Completed'
+            GROUP BY COALESCE(NULLIF(p.country, ''), 'India')
+            ORDER BY cnt DESC
+            LIMIT 5
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $ships_by_port_top5 = $db->query("
+            SELECT p.port_name, COUNT(*) AS cnt
+            FROM surveys s
+            JOIN ports p ON s.port_id = p.id
+            WHERE s.status = 'Completed'
+            GROUP BY s.port_id, p.port_name
+            ORDER BY cnt DESC
+            LIMIT 5
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        // Average ships per year/month/day, based on the actual date span of
+        // completed surveys (first completed → most recently completed).
+        $span_row = $db->query("
+            SELECT COUNT(*) AS cnt,
+                   MIN(COALESCE(survey_completed_date, report_uploaded_date)) AS min_d,
+                   MAX(COALESCE(survey_completed_date, report_uploaded_date)) AS max_d
+            FROM surveys WHERE status = 'Completed'
+        ")->fetch(PDO::FETCH_ASSOC);
+
+        $sa_completed_count = (int)($span_row['cnt'] ?? 0);
+        $sa_avg_per_year = 0.0; $sa_avg_per_month = 0.0; $sa_avg_per_day = 0.0;
+        if ($sa_completed_count > 0 && !empty($span_row['min_d']) && !empty($span_row['max_d'])) {
+            $minTs = strtotime($span_row['min_d']);
+            $maxTs = strtotime($span_row['max_d']);
+            $daySpan = max(1, (int)round(($maxTs - $minTs) / 86400) + 1);
+            $monthSpan = max(1, ((int)date('Y', $maxTs) - (int)date('Y', $minTs)) * 12 + ((int)date('n', $maxTs) - (int)date('n', $minTs)) + 1);
+            $yearSpan = max(1, (int)date('Y', $maxTs) - (int)date('Y', $minTs) + 1);
+            $sa_avg_per_day = $sa_completed_count / $daySpan;
+            $sa_avg_per_month = $sa_completed_count / $monthSpan;
+            $sa_avg_per_year = $sa_completed_count / $yearSpan;
+        }
+    ?>
+    <div class="overview-section mt-4">
+        <div class="section-title-row">
+            <span class="section-title">Super Admin Analytics</span>
+        </div>
+    </div>
+
+    <div class="stat-grid" data-testid="super-admin-average-ships-grid">
+        <div class="stat-card" data-testid="avg-ships-per-year-card">
+            <span class="stat-title">Average Ships Per Year</span>
+            <div class="stat-val"><?= number_format($sa_avg_per_year, 1) ?></div>
+        </div>
+        <div class="stat-card" data-testid="avg-ships-per-month-super-card">
+            <span class="stat-title">Average Ships Per Month</span>
+            <div class="stat-val"><?= number_format($sa_avg_per_month, 1) ?></div>
+        </div>
+        <div class="stat-card" data-testid="avg-ships-per-day-card">
+            <span class="stat-title">Average Ships Per Day</span>
+            <div class="stat-val"><?= number_format($sa_avg_per_day, 2) ?></div>
+        </div>
+    </div>
+
+    <div class="overview-section mt-4">
+        <div class="section-title-row"><span class="section-title">Recovery by Port</span></div>
+        <div class="bg-white rounded-4 shadow-sm border p-3" data-testid="recovery-by-port-card">
+            <?php if (!empty($recovery_by_port)): ?>
+                <?php foreach ($recovery_by_port as $row): ?>
+                    <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--border-color);">
+                        <span class="fw-semibold" style="font-size:13.5px;"><?= sanitize($row['port_name']) ?></span>
+                        <span class="fw-bold text-primary" style="font-size:13.5px;"><?= number_format((float)$row['total'], 3) ?> MT</span>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="text-muted text-center py-2" style="font-size:12.5px;">No recovery data yet.</div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="overview-section mt-4">
+        <div class="section-title-row"><span class="section-title">Recovery by Country</span></div>
+        <div class="bg-white rounded-4 shadow-sm border p-3" data-testid="recovery-by-country-card">
+            <?php if (!empty($recovery_by_country)): ?>
+                <?php foreach ($recovery_by_country as $row): ?>
+                    <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--border-color);">
+                        <span class="fw-semibold" style="font-size:13.5px;"><?= sanitize($row['country']) ?></span>
+                        <span class="fw-bold text-primary" style="font-size:13.5px;"><?= number_format((float)$row['total'], 3) ?> MT</span>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="text-muted text-center py-2" style="font-size:12.5px;">No recovery data yet.</div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="overview-section mt-4">
+        <div class="section-title-row"><span class="section-title">Recovery by Client</span></div>
+        <div class="bg-white rounded-4 shadow-sm border p-3" data-testid="recovery-by-client-card">
+            <?php if (!empty($recovery_by_client)): ?>
+                <?php foreach ($recovery_by_client as $row): ?>
+                    <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--border-color);">
+                        <span class="fw-semibold" style="font-size:13.5px;"><?= sanitize($row['company_name']) ?></span>
+                        <span class="fw-bold text-primary" style="font-size:13.5px;"><?= number_format((float)$row['total'], 3) ?> MT</span>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="text-muted text-center py-2" style="font-size:12.5px;">No recovery data yet.</div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="overview-section mt-4">
+        <div class="section-title-row"><span class="section-title">Ships Completed by Country — Top 5</span></div>
+        <div class="bg-white rounded-4 shadow-sm border p-3" data-testid="ships-by-country-top5-card">
+            <?php if (!empty($ships_by_country_top5)): ?>
+                <?php foreach ($ships_by_country_top5 as $row): ?>
+                    <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--border-color);">
+                        <span class="fw-semibold" style="font-size:13.5px;"><?= sanitize($row['country']) ?></span>
+                        <span class="fw-bold text-primary" style="font-size:13.5px;"><?= (int)$row['cnt'] ?> ships</span>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="text-muted text-center py-2" style="font-size:12.5px;">No completed vessels yet.</div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="overview-section mt-4">
+        <div class="section-title-row"><span class="section-title">Ships Completed by Port — Top 5</span></div>
+        <div class="bg-white rounded-4 shadow-sm border p-3" data-testid="ships-by-port-top5-card">
+            <?php if (!empty($ships_by_port_top5)): ?>
+                <?php foreach ($ships_by_port_top5 as $row): ?>
+                    <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--border-color);">
+                        <span class="fw-semibold" style="font-size:13.5px;"><?= sanitize($row['port_name']) ?></span>
+                        <span class="fw-bold text-primary" style="font-size:13.5px;"><?= (int)$row['cnt'] ?> ships</span>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="text-muted text-center py-2" style="font-size:12.5px;">No completed vessels yet.</div>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Quick links: stacked on mobile, one neat row on desktop -->
     <!-- Formats Download / Generate Permission Copy / Vessel Lineups: Surveyor only.
          Admin, Client and Super Admin no longer see these on the dashboard. -->
