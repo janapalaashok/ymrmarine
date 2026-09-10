@@ -7,6 +7,19 @@ header('Content-Type: application/json; charset=utf-8');
 $db = getDB();
 $role = $_SESSION['role'];
 $user_id = $_SESSION['user_id'];
+// Admin and Super Admin see every vessel's recovery; Client sees only their
+// own company's; Surveyor sees only their own (previously: everyone who
+// isn't Admin got filtered by surveyor_id, silently emptying this modal for
+// both Super Admin and Client — Client wasn't scoped by client_id at all).
+$is_full_access = in_array($role, ['Admin', 'Super Admin'], true);
+$client_row_id = 0;
+if ($role === 'Client') {
+    try {
+        $ccheck = $db->prepare("SELECT id FROM clients WHERE user_id = ? LIMIT 1");
+        $ccheck->execute([$user_id]);
+        $client_row_id = (int)($ccheck->fetchColumn() ?: 0);
+    } catch (Throwable $e) { error_log('recovery_details.php client lookup: ' . $e->getMessage()); }
+}
 
 // period=total  -> అన్ని అప్‌లోడ్ అయిన రికార్డులు (Total Recovery కార్డ్)
 // period=month  -> ఈ నెల అప్‌లోడ్ అయిన రికార్డులు మాత్రమే (This Month Recovery కార్డ్)
@@ -26,7 +39,10 @@ if ($period === 'month') {
     $sql .= " AND MONTH(s.report_uploaded_date) = MONTH(CURDATE()) AND YEAR(s.report_uploaded_date) = YEAR(CURDATE())";
 }
 
-if ($role !== 'Admin') {
+if ($role === 'Client') {
+    $sql .= " AND s.client_id = ?";
+    $params[] = $client_row_id;
+} elseif (!$is_full_access) {
     $sql .= " AND s.surveyor_id = ?";
     $params[] = $user_id;
 }

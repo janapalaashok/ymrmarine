@@ -27,6 +27,19 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 $db = getDB();
 $role = $_SESSION['role'] ?? '';
 $user_id = (int)($_SESSION['user_id'] ?? 0);
+// Admin and Super Admin see every vessel's recovery; Client sees only their
+// own company's; Surveyor sees only their own (previously: everyone who
+// isn't Admin got filtered by surveyor_id, silently emptying the export for
+// both Super Admin and Client — Client wasn't scoped by client_id at all).
+$is_full_access = in_array($role, ['Admin', 'Super Admin'], true);
+$client_row_id = 0;
+if ($role === 'Client') {
+    try {
+        $ccheck = $db->prepare("SELECT id FROM clients WHERE user_id = ? LIMIT 1");
+        $ccheck->execute([$user_id]);
+        $client_row_id = (int)($ccheck->fetchColumn() ?: 0);
+    } catch (Throwable $e) { error_log('export_recovery.php client lookup: ' . $e->getMessage()); }
+}
 
 $period = isset($_GET['period']) && $_GET['period'] === 'month' ? 'month' : 'total';
 
@@ -47,7 +60,10 @@ try {
         $sql .= " AND MONTH(s.report_uploaded_date) = MONTH(CURDATE()) AND YEAR(s.report_uploaded_date) = YEAR(CURDATE())";
     }
 
-    if ($role !== 'Admin') {
+    if ($role === 'Client') {
+        $sql .= " AND s.client_id = ?";
+        $params[] = $client_row_id;
+    } elseif (!$is_full_access) {
         $sql .= " AND s.surveyor_id = ?";
         $params[] = $user_id;
     }

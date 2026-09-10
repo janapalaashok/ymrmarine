@@ -61,8 +61,11 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
         </a>
 
         <?php
-        // Mobile only FAB — desktop uses expanded sidebar links below
-        if ($user_role === 'Admin'):
+        // Mobile only FAB — desktop uses expanded sidebar links below.
+        // Admin and Super Admin both get the FAB (its content in
+        // includes/footer.php is role-aware — Super Admin only sees
+        // Add Client + Add Admin there, not the full Admin menu).
+        if (in_array($user_role, ['Admin', 'Super Admin'], true)):
         ?>
             <button class="center-fab-btn" id="globalFabTrigger" data-testid="global-add-menu-button">
                 <i class="fa-solid fa-plus"></i>
@@ -87,9 +90,11 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
             <span>Completed</span>
         </a>
         <?php
-        // Admin: hide Cancelled on mobile bottom bar only; keep in sidebar (drawer + desktop).
-        // Surveyor: always show (same as before).
-        $cancelled_bn_class = ($user_role === 'Admin') ? ' hide-cancelled-on-mobile-bn' : '';
+        // Admin and Super Admin: hide Cancelled on mobile bottom bar only — the
+        // bar there is Home / Pending Vessels / FAB / Reports / Completed — while
+        // keeping it reachable via the sidebar (drawer + desktop). Surveyor and
+        // Client: always show (same as before).
+        $cancelled_bn_class = in_array($user_role, ['Admin', 'Super Admin'], true) ? ' hide-cancelled-on-mobile-bn' : '';
         ?>
         <a href="cancelled.php" class="nav-item-btn<?= $cancelled_bn_class ?> <?= ($current_page == 'cancelled.php') ? 'active' : '' ?>" data-testid="navigation-cancelled-link">
             <i class="fa-solid fa-ban"></i>

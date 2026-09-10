@@ -31,23 +31,34 @@ try {
     $db = getDB();
     $role = $_SESSION['role'] ?? '';
     $user_id = (int)($_SESSION['user_id'] ?? 0);
+    // Admin and Super Admin see every report; Client sees only their own
+    // company's; Surveyor sees only their own (previously: everyone who
+    // isn't Admin got filtered by surveyor_id, silently emptying the export
+    // for both Super Admin and Client).
+    $is_full_access = in_array($role, ['Admin', 'Super Admin'], true);
+    $client_row_id = 0;
+    if ($role === 'Client') {
+        try {
+            $ccheck = $db->prepare("SELECT id FROM clients WHERE user_id = ? LIMIT 1");
+            $ccheck->execute([$user_id]);
+            $client_row_id = (int)($ccheck->fetchColumn() ?: 0);
+        } catch (Throwable $e) { error_log('export_reports.php client lookup: ' . $e->getMessage()); }
+    }
 
-    if ($role === 'Admin') {
-        $stmt = $db->query("SELECT s.vessel_name, s.agent_name, c.company_name, st.type_name, u.full_name as surveyor_name, s.survey_completed_date 
-                            FROM surveys s 
-                            LEFT JOIN clients c ON s.client_id = c.id 
-                            LEFT JOIN survey_types st ON s.survey_type_id = st.id
-                            LEFT JOIN users u ON s.surveyor_id = u.id
-                            WHERE s.status = 'Pending Report'
-                            ORDER BY s.id DESC");
+    $baseSql = "SELECT s.vessel_name, s.agent_name, c.company_name, st.type_name, u.full_name as surveyor_name, s.survey_completed_date
+                        FROM surveys s
+                        LEFT JOIN clients c ON s.client_id = c.id
+                        LEFT JOIN survey_types st ON s.survey_type_id = st.id
+                        LEFT JOIN users u ON s.surveyor_id = u.id
+                        WHERE s.status = 'Pending Report'";
+    if ($is_full_access) {
+        $stmt = $db->prepare($baseSql . " ORDER BY s.id DESC");
+        $stmt->execute();
+    } elseif ($role === 'Client') {
+        $stmt = $db->prepare($baseSql . " AND s.client_id = ? ORDER BY s.id DESC");
+        $stmt->execute([$client_row_id]);
     } else {
-        $stmt = $db->prepare("SELECT s.vessel_name, s.agent_name, c.company_name, st.type_name, u.full_name as surveyor_name, s.survey_completed_date 
-                            FROM surveys s 
-                            LEFT JOIN clients c ON s.client_id = c.id 
-                            LEFT JOIN survey_types st ON s.survey_type_id = st.id
-                            LEFT JOIN users u ON s.surveyor_id = u.id
-                            WHERE s.status = 'Pending Report' AND s.surveyor_id = ?
-                            ORDER BY s.id DESC");
+        $stmt = $db->prepare($baseSql . " AND s.surveyor_id = ? ORDER BY s.id DESC");
         $stmt->execute([$user_id]);
     }
     $surveys = $stmt->fetchAll(PDO::FETCH_ASSOC);

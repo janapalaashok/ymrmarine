@@ -27,32 +27,40 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 $db = getDB();
 $role = $_SESSION['role'] ?? '';
 $user_id = (int)($_SESSION['user_id'] ?? 0);
+// Admin and Super Admin see every cancelled vessel; Client sees only their own
+// company's; Surveyor sees only their own (previously: everyone who isn't
+// Admin got filtered by surveyor_id, silently emptying the export for both
+// Super Admin and Client).
+$is_full_access = in_array($role, ['Admin', 'Super Admin'], true);
+$client_row_id = 0;
+if ($role === 'Client') {
+    try {
+        $ccheck = $db->prepare("SELECT id FROM clients WHERE user_id = ? LIMIT 1");
+        $ccheck->execute([$user_id]);
+        $client_row_id = (int)($ccheck->fetchColumn() ?: 0);
+    } catch (Throwable $e) { error_log('export_cancelled.php client lookup: ' . $e->getMessage()); }
+}
 
 try {
     @set_time_limit(120);
     @ini_set('memory_limit', '256M');
 
-    if ($role === 'Admin') {
-        $stmt = $db->prepare("
-            SELECT s.vessel_name, s.agent_name, c.company_name, t.type_name, u.full_name as surveyor_name, s.assign_date, s.report_number
-            FROM surveys s
-            LEFT JOIN clients c ON s.client_id = c.id
-            LEFT JOIN survey_types t ON s.survey_type_id = t.id
-            LEFT JOIN users u ON s.surveyor_id = u.id
-            WHERE s.status = 'Cancelled'
-            ORDER BY s.id DESC
-        ");
+    $baseSql = "
+        SELECT s.vessel_name, s.agent_name, c.company_name, t.type_name, u.full_name as surveyor_name, s.assign_date, s.report_number
+        FROM surveys s
+        LEFT JOIN clients c ON s.client_id = c.id
+        LEFT JOIN survey_types t ON s.survey_type_id = t.id
+        LEFT JOIN users u ON s.surveyor_id = u.id
+        WHERE s.status = 'Cancelled'
+    ";
+    if ($is_full_access) {
+        $stmt = $db->prepare($baseSql . " ORDER BY s.id DESC");
         $stmt->execute();
+    } elseif ($role === 'Client') {
+        $stmt = $db->prepare($baseSql . " AND s.client_id = ? ORDER BY s.id DESC");
+        $stmt->execute([$client_row_id]);
     } else {
-        $stmt = $db->prepare("
-            SELECT s.vessel_name, s.agent_name, c.company_name, t.type_name, u.full_name as surveyor_name, s.assign_date, s.report_number
-            FROM surveys s
-            LEFT JOIN clients c ON s.client_id = c.id
-            LEFT JOIN survey_types t ON s.survey_type_id = t.id
-            LEFT JOIN users u ON s.surveyor_id = u.id
-            WHERE s.status = 'Cancelled' AND s.surveyor_id = ?
-            ORDER BY s.id DESC
-        ");
+        $stmt = $db->prepare($baseSql . " AND s.surveyor_id = ? ORDER BY s.id DESC");
         $stmt->execute([$user_id]);
     }
     $surveys = $stmt->fetchAll(PDO::FETCH_ASSOC);

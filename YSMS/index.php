@@ -47,10 +47,23 @@ if (in_array($role, ['Admin', 'Super Admin'], true)) {
     $stmt_c->execute([$client_row_id]);
     $completed_vessels = $stmt_c->fetchColumn();
 
-    $total_recovery = 0;
-    $month_recovery = 0;
-    $total_vlsfo = 0;
-    $total_lsmgo = 0;
+    // క్లయింట్ కి తన కంపెనీ వెసెల్స్ లోని రికవరీ సమ్ మాత్రమే
+    // (గతంలో ఇక్కడ 0 హార్డ్‌కోడ్ చేయబడింది — ఎప్పుడూ డేటాబేస్ నుండి తీసుకోబడలేదు — బగ్ ఫిక్స్)
+    $stmt_t_rec = $db->prepare("SELECT SUM(recovery_amount) FROM surveys WHERE recovery_amount IS NOT NULL AND client_id = ?");
+    $stmt_t_rec->execute([$client_row_id]);
+    $total_recovery = $stmt_t_rec->fetchColumn();
+
+    $stmt_m_rec = $db->prepare("SELECT SUM(recovery_amount) FROM surveys WHERE recovery_amount IS NOT NULL AND client_id = ? AND MONTH(COALESCE(survey_completed_date, report_uploaded_date)) = MONTH(CURDATE()) AND YEAR(COALESCE(survey_completed_date, report_uploaded_date)) = YEAR(CURDATE())");
+    $stmt_m_rec->execute([$client_row_id]);
+    $month_recovery = $stmt_m_rec->fetchColumn();
+
+    $stmt_vlsfo = $db->prepare("SELECT SUM(vlsfo_recovery) FROM surveys WHERE vlsfo_recovery IS NOT NULL AND client_id = ?");
+    $stmt_vlsfo->execute([$client_row_id]);
+    $total_vlsfo = $stmt_vlsfo->fetchColumn();
+
+    $stmt_lsmgo = $db->prepare("SELECT SUM(lsmgo_recovery) FROM surveys WHERE lsmgo_recovery IS NOT NULL AND client_id = ?");
+    $stmt_lsmgo->execute([$client_row_id]);
+    $total_lsmgo = $stmt_lsmgo->fetchColumn();
 } else {
     // సర్వేయర్ కి కేవలం తనకు assign చేసినవి మాత్రమే
     $stmt_v = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Vessel' AND surveyor_id = ?");
@@ -99,9 +112,14 @@ if (in_array($role, ['Admin', 'Super Admin'], true)) {
     $stmt_recent = $db->prepare("SELECT vessel_name, vlsfo_recovery, lsmgo_recovery, recovery_amount FROM surveys WHERE recovery_amount IS NOT NULL AND client_id = ? ORDER BY COALESCE(survey_completed_date, report_uploaded_date) DESC, id DESC LIMIT 1");
     $stmt_recent->execute([$client_row_id]);
     $recent_row = $stmt_recent->fetch(PDO::FETCH_ASSOC);
-    $avg_ships = 0;
-    $months_span = 1;
-    $avg_ships_per_month = 0;
+    // (గతంలో ఇక్కడ avg_ships_per_month 0 హార్డ్‌కోడ్ చేయబడింది — బగ్ ఫిక్స్)
+    $stmt_avg = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Completed' AND client_id = ?");
+    $stmt_avg->execute([$client_row_id]);
+    $avg_ships = $stmt_avg->fetchColumn();
+    $stmt_ms = $db->prepare("SELECT GREATEST(1, TIMESTAMPDIFF(MONTH, MIN(COALESCE(survey_completed_date, report_uploaded_date, assign_date)), CURDATE()) + 1) FROM surveys WHERE client_id = ? AND status IN ('Completed','Pending Report')");
+    $stmt_ms->execute([$client_row_id]);
+    $months_span = $stmt_ms->fetchColumn();
+    $avg_ships_per_month = $months_span > 0 ? round(((float)$avg_ships) / (float)$months_span, 1) : 0;
     $avg_recovery_per_ship = null;
     $avg_recovery_per_surveyor = null;
 } else {
