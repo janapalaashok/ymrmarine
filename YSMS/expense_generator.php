@@ -27,7 +27,7 @@ $survey = $stmt->fetch();
 if (!$survey) {
     die('Completed survey not found.');
 }
-if ($role !== 'Admin' && (int)$survey['surveyor_id'] !== $user_id) {
+if ($role !== 'Admin' && !isSurveyorAssignedToSurvey($db, $survey['id'], $user_id)) {
     die('Access denied.');
 }
 

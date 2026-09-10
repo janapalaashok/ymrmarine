@@ -158,6 +158,7 @@ try {
 } catch (Exception $e) {
     error_log('assign_vessel.php ports.country column check/add error: ' . $e->getMessage());
 }
+ensurePortAnchorages($db);
 $ports = $db->query("SELECT * FROM ports ORDER BY country ASC, port_name ASC")->fetchAll();
 $port_countries = array_values(array_unique(array_map(function ($p) { return $p['country'] ?: 'India'; }, $ports)));
 sort($port_countries);

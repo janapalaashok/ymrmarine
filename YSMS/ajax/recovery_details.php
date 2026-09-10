@@ -43,7 +43,10 @@ if ($role === 'Client') {
     $sql .= " AND s.client_id = ?";
     $params[] = $client_row_id;
 } elseif (!$is_full_access) {
-    $sql .= " AND s.surveyor_id = ?";
+    // Include surveys assigned via survey_surveyors (multi-surveyor), not
+    // just the primary surveys.surveyor_id.
+    $sql .= " AND (s.surveyor_id = ? OR s.id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?))";
+    $params[] = $user_id;
     $params[] = $user_id;
 }
 

@@ -67,6 +67,10 @@ if ($is_full_access) {
     ");
     $stmt->execute([$client_row_id]);
 } else {
+    // 🌟 A vessel assigned to more than one surveyor (survey_surveyors junction
+    // table) must show up for every one of them, not only the primary
+    // surveys.surveyor_id — otherwise a secondary assigned surveyor can never
+    // see their own assignment in this list.
     $stmt = $db->prepare("
         SELECT s.*, c.company_name, u.full_name as surveyor_name, uu.full_name as modifier_name, st.type_name, p.port_name
         FROM surveys s
@@ -75,10 +79,10 @@ if ($is_full_access) {
         LEFT JOIN users uu ON s.status_updated_by = uu.id
         LEFT JOIN survey_types st ON s.survey_type_id = st.id
         LEFT JOIN ports p ON s.port_id = p.id
-        WHERE s.status = 'Pending Vessel' AND s.surveyor_id = ?
+        WHERE s.status = 'Pending Vessel' AND (s.surveyor_id = ? OR s.id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?))
         ORDER BY s.id DESC
     ");
-    $stmt->execute([$user_id]);
+    $stmt->execute([$user_id, $user_id]);
 }
 $surveys = $stmt->fetchAll();
 
@@ -92,7 +96,8 @@ foreach ($db->query("SELECT type_name FROM survey_types ORDER BY type_name ASC")
 foreach ($surveys as $row) {
     if (!empty($row['port_name'])) $survey_places_filter[$row['port_name']] = $row['port_name'];
     if (!empty($row['company_name'])) $survey_clients_filter[$row['company_name']] = $row['company_name'];
-    if (!empty($row['surveyor_name'])) $survey_surveyors_filter[$row['surveyor_name']] = $row['surveyor_name'];
+    $rowSurveyorNames = getCombinedSurveyorNames($db, $row['id'], $row['surveyor_name'] ?? '');
+    if (!empty($rowSurveyorNames)) $survey_surveyors_filter[$rowSurveyorNames] = $rowSurveyorNames;
 }
 
 /* ── Desktop data: server-side filter + pagination (10/page) ── */
@@ -112,7 +117,10 @@ if ($is_client_role) {
     $where[] = 's.client_id = ?';
     $params[] = $client_row_id;
 } elseif (!$is_full_access) {
-    $where[] = 's.surveyor_id = ?';
+    // 🌟 Include vessels assigned via survey_surveyors (multi-surveyor), not
+    // just the primary surveys.surveyor_id — see mobile query above.
+    $where[] = '(s.surveyor_id = ? OR s.id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?))';
+    $params[] = $user_id;
     $params[] = $user_id;
 }
 if ($q !== '') {
@@ -129,7 +137,10 @@ if ($filter_status === 'updated') {
     $where[] = "(s.custom_live_status IS NULL OR s.custom_live_status = '')";
 }
 if ($is_full_access && $filter_surveyor !== '') {
-    $where[] = 'u.full_name = ?';
+    // Match against the same "Name1 + Name2" combined string the filter
+    // dropdown and the list rows show (getCombinedSurveyorNames()), not just
+    // the primary surveyor, so filtering by a multi-surveyor vessel works.
+    $where[] = "COALESCE((SELECT GROUP_CONCAT(u2.full_name ORDER BY ss2.id SEPARATOR ' + ') FROM survey_surveyors ss2 JOIN users u2 ON ss2.surveyor_id = u2.id WHERE ss2.survey_id = s.id), u.full_name) = ?";
     $params[] = $filter_surveyor;
 }
 $whereSql = implode(' AND ', $where);
@@ -387,11 +398,12 @@ include 'includes/header.php';
         <div class="vessel-list-container" id="vesselListContainer" data-list-container data-testid="pending-vessels-list">
             <?php if (!empty($surveys) && count($surveys) > 0): ?>
                 <?php foreach ($surveys as $survey): ?>
-                    <?php 
+                    <?php
                         $vessel_name = !empty($survey['vessel_name']) ? $survey['vessel_name'] : 'Vessel';
                         $vessel_status_flag = !empty($survey['custom_live_status']) ? 'updated' : 'pending';
+                        $surveyorNames = getCombinedSurveyorNames($db, $survey['id'], $survey['surveyor_name'] ?? 'N/A');
                     ?>
-                    <div class="vessel-card vessel-card--stacked" onclick="location.href='vessel_detail.php?id=<?= $survey['id'] ?>'" data-survey-card data-name="<?= sanitize(strtolower($vessel_name)) ?>" data-type="<?= sanitize($survey['type_name'] ?? '') ?>" data-place="<?= sanitize($survey['port_name'] ?? '') ?>" data-client="<?= sanitize($survey['company_name'] ?? '') ?>" data-surveyor="<?= sanitize($survey['surveyor_name'] ?? '') ?>" data-status="<?= $vessel_status_flag ?>" data-date="<?= strtotime($survey['assign_date'] ?? '1970-01-01') ?>" data-search="<?= sanitize(strtolower(implode(' ', [$vessel_name, $survey['company_name'] ?? '', $survey['agent_name'] ?? '', $survey['type_name'] ?? '', $survey['port_name'] ?? '']))) ?>" data-testid="pending-vessel-card-<?= (int)$survey['id'] ?>">
+                    <div class="vessel-card vessel-card--stacked" onclick="location.href='vessel_detail.php?id=<?= $survey['id'] ?>'" data-survey-card data-name="<?= sanitize(strtolower($vessel_name)) ?>" data-type="<?= sanitize($survey['type_name'] ?? '') ?>" data-place="<?= sanitize($survey['port_name'] ?? '') ?>" data-client="<?= sanitize($survey['company_name'] ?? '') ?>" data-surveyor="<?= sanitize($surveyorNames) ?>" data-status="<?= $vessel_status_flag ?>" data-date="<?= strtotime($survey['assign_date'] ?? '1970-01-01') ?>" data-search="<?= sanitize(strtolower(implode(' ', [$vessel_name, $survey['company_name'] ?? '', $survey['agent_name'] ?? '', $survey['type_name'] ?? '', $survey['port_name'] ?? '']))) ?>" data-testid="pending-vessel-card-<?= (int)$survey['id'] ?>">
                         <div class="vessel-card-top-content">
                             <div class="vessel-avatar-info">
                                 <div>
@@ -399,7 +411,7 @@ include 'includes/header.php';
                                     <p class="vessel-client-sub">Client: <?= sanitize($survey['company_name']) ?></p>
                                     <p class="vessel-client-sub">Agent: <?= sanitize($survey['agent_name']) ?></p>
                                     <?php if ($is_full_access): ?>
-                                        <p class="vessel-client-sub">Surveyor: <?= sanitize($survey['surveyor_name'] ?? 'N/A') ?></p>
+                                        <p class="vessel-client-sub">Surveyor: <?= sanitize($surveyorNames) ?></p>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -504,18 +516,19 @@ include 'includes/header.php';
                             <?php if (!empty($surveys)): foreach ($surveys as $i => $survey):
                                 $vessel_name = $survey['vessel_name'] ?: 'Vessel';
                                 $typeLabel = getCombinedSurveyTypeNames($db, $survey['survey_type_ids'] ?? '', $survey['type_name'] ?? 'N/A');
+                                $surveyorNames = getCombinedSurveyorNames($db, $survey['id'], $survey['surveyor_name'] ?? 'N/A');
                                 $date_src = $survey['report_uploaded_date'] ?? $survey['survey_completed_date'] ?? $survey['assign_date'] ?? '';
                                 $date_disp = (!empty($date_src) && $date_src !== '0000-00-00' && $date_src !== '0000-00-00 00:00:00')
                                     ? date('d M Y H:i', strtotime($date_src)) : '—';
                                 $ts = strtotime($date_src ?: '1970-01-01') ?: 0;
                             ?>
                             <tr class="vd-row"
-                                data-search="<?= sanitize(strtolower(implode(' ', [$vessel_name, $survey['company_name'] ?? '', $survey['agent_name'] ?? '', $typeLabel, $survey['port_name'] ?? '', $survey['surveyor_name'] ?? '', $survey['report_number'] ?? '']))) ?>"
+                                data-search="<?= sanitize(strtolower(implode(' ', [$vessel_name, $survey['company_name'] ?? '', $survey['agent_name'] ?? '', $typeLabel, $survey['port_name'] ?? '', $surveyorNames, $survey['report_number'] ?? '']))) ?>"
                                 data-name="<?= sanitize(strtolower($vessel_name)) ?>"
                                 data-type="<?= sanitize(strtolower($survey['type_name'] ?? '')) ?>"
                                 data-place="<?= sanitize(strtolower($survey['port_name'] ?? '')) ?>"
                                 data-client="<?= sanitize(strtolower($survey['company_name'] ?? '')) ?>"
-                                data-surveyor="<?= sanitize(strtolower($survey['surveyor_name'] ?? '')) ?>"
+                                data-surveyor="<?= sanitize(strtolower($surveyorNames)) ?>"
                                 data-date="<?= (int)$ts ?>">
                                 <td style="color:#94a3b8;font-weight:600;" data-row-num><?= $i + 1 ?></td>
                                 <td>
@@ -545,7 +558,7 @@ include 'includes/header.php';
                                 </td>
                                 <td><i class="fa-solid fa-location-dot" style="opacity:.5;"></i> <?= sanitize($survey['port_name'] ?? 'N/A') ?></td>
                                 <?php if ($is_full_access): ?>
-                                <td><?= sanitize($survey['surveyor_name'] ?? 'N/A') ?></td>
+                                <td><?= sanitize($surveyorNames) ?></td>
                                 <?php endif; ?>
                                 <td style="white-space:nowrap;"><?= sanitize($date_disp) ?></td>
                                 <td>

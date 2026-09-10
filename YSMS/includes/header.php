@@ -109,177 +109,47 @@ require_once __DIR__ . '/../config/config.php';
         .top-app-bar-title { margin: 0; color: var(--text-dark); font-size: 18px; font-weight: 700; text-align: center; white-space: nowrap; }
         .top-app-bar > .profile-menu-wrap { justify-self: end; }
 
-        /* ── In-app Notifications (modern bell panel) ── */
         .top-app-bar-right {
             justify-self: end;
             display: flex;
             align-items: center;
             gap: 8px;
         }
-        .notif-bell-wrap { position: relative; }
-        .notif-bell-btn {
-            width: 42px; height: 42px;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            background: #fff;
-            color: var(--text-dark);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            cursor: pointer;
-            position: relative;
-            transition: background .18s ease, transform .15s ease;
-        }
-        .notif-bell-btn:hover { background: #f8fafc; }
-        .notif-bell-btn:active { transform: scale(.96); }
-        .notif-badge {
+
+        /* ── Dismissible top alert banner (replaces the old bell/panel) ──
+           One banner at a time: "New vessel assigned" for a Surveyor, or
+           "Report uploaded by X" for an Admin. Clicking the link or the X
+           marks the underlying notification read, so it never reappears. */
+        .top-alert-banner {
             position: absolute;
-            top: 4px; right: 4px;
-            min-width: 16px; height: 16px;
-            padding: 0 4px;
-            border-radius: 999px;
-            background: #ef4444;
-            color: #fff;
-            font-size: 9px;
-            font-weight: 800;
-            line-height: 16px;
-            text-align: center;
-            display: none;
-            box-shadow: 0 0 0 2px #fff;
-        }
-        .notif-badge.show { display: inline-block; }
-        .notif-panel {
-            position: absolute;
-            top: calc(100% + 10px);
-            right: 0;
-            width: min(360px, calc(100vw - 24px));
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            box-shadow: 0 20px 40px rgba(15,23,42,.16);
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-8px) scale(.98);
-            transform-origin: top right;
-            transition: opacity .2s ease, transform .2s ease, visibility .2s ease;
-            z-index: 1300;
-            overflow: hidden;
-        }
-        .notif-panel.open {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0) scale(1);
-        }
-        .notif-panel-head {
+            top: 14px; left: 14px; right: 14px;
+            z-index: 9998;
             display: flex;
             align-items: center;
-            justify-content: space-between;
             gap: 10px;
-            padding: 14px 16px;
-            border-bottom: 1px solid #f1f5f9;
-            background: linear-gradient(180deg, #fafbff, #fff);
-        }
-        .notif-panel-title {
-            font-size: 14px;
-            font-weight: 750;
-            color: #0f172a;
-        }
-        .notif-mark-all {
-            border: 0;
-            background: transparent;
-            color: #3b32b3;
-            font-size: 11.5px;
-            font-weight: 650;
-            cursor: pointer;
-            padding: 4px 6px;
-            border-radius: 6px;
-        }
-        .notif-mark-all:hover { background: #eef2ff; }
-        .notif-panel-body {
-            max-height: min(420px, 60vh);
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        .notif-loading, .notif-empty {
-            padding: 28px 16px;
-            text-align: center;
-            color: #94a3b8;
-            font-size: 13px;
-        }
-        .notif-item {
-            display: flex;
-            gap: 12px;
+            background: #1d3a8a;
+            color: #fff;
             padding: 12px 14px;
-            border-bottom: 1px solid #f8fafc;
-            text-decoration: none;
-            color: inherit;
-            cursor: pointer;
-            transition: background .15s ease;
+            border-radius: 14px;
+            box-shadow: 0 10px 25px -5px rgba(15,23,42,.35);
+            animation: slideDownToast .3s ease-out;
         }
-        .notif-item:hover { background: #f8fafc; }
-        .notif-item.unread { background: #f5f3ff; }
-        .notif-item.unread:hover { background: #ede9fe; }
-        .notif-icon {
-            width: 38px; height: 38px;
-            border-radius: 12px;
-            background: #eef2ff;
-            color: #3b32b3;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            flex-shrink: 0;
+        .top-alert-banner-icon { font-size: 16px; flex-shrink: 0; opacity: .9; }
+        .top-alert-banner-link { flex: 1; min-width: 0; color: #fff; text-decoration: none; font-size: 12.5px; font-weight: 600; line-height: 1.35; }
+        .top-alert-banner-link:hover { text-decoration: underline; }
+        .top-alert-banner-close {
+            border: 0; background: rgba(255,255,255,.15); color: #fff;
+            width: 26px; height: 26px; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 13px; cursor: pointer; flex-shrink: 0;
         }
-        .notif-icon.type-assign { background: #eff6ff; color: #1d4ed8; }
-        .notif-icon.type-cancel, .notif-icon.type-delete { background: #fef2f2; color: #dc2626; }
-        .notif-icon.type-status { background: #ecfdf5; color: #059669; }
-        .notif-icon.type-upload, .notif-icon.type-report { background: #fff7ed; color: #c2410c; }
-        .notif-icon.type-format { background: #ecfdf5; color: #15803d; }
-        .notif-icon.type-card { background: #f0f9ff; color: #0369a1; }
-        .notif-icon.type-expense { background: #fefce8; color: #a16207; }
-        .notif-content { min-width: 0; flex: 1; }
-        .notif-title {
-            font-size: 13px;
-            font-weight: 700;
-            color: #0f172a;
-            line-height: 1.3;
-            margin-bottom: 2px;
+        .top-alert-banner-close:hover { background: rgba(255,255,255,.28); }
+        @media (min-width: 992px) {
+            .top-alert-banner { left: 268px; }
         }
-        .notif-msg {
-            font-size: 12px;
-            color: #64748b;
-            line-height: 1.35;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-        .notif-time {
-            font-size: 10.5px;
-            color: #94a3b8;
-            font-weight: 600;
-            margin-top: 4px;
-        }
-        .notif-dot {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            background: #3b32b3;
-            flex-shrink: 0;
-            margin-top: 6px;
-            opacity: 0;
-        }
-        .notif-item.unread .notif-dot { opacity: 1; }
-        .notif-panel-foot {
-            padding: 10px 14px;
-            border-top: 1px solid #f1f5f9;
-            text-align: center;
-            background: #fafafa;
-        }
-        .notif-foot-hint { font-size: 10.5px; color: #94a3b8; font-weight: 550; }
-        @media (max-width: 480px) {
-            .notif-bell-btn { width: 40px; height: 40px; }
-            .notif-panel { width: min(100vw - 16px, 360px); right: -8px; }
+        @keyframes slideDownToast {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
 
 
@@ -573,9 +443,17 @@ require_once __DIR__ . '/../config/config.php';
             box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.2);
         }
 
-        /* Popups / Drawers */
-        .fab-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(11, 30, 70, 0.6); z-index: 999; display: none; justify-content: center; align-items: flex-end; }
-        .fab-popup-sheet { background: white; width: 100%; border-top-left-radius: 30px; border-top-right-radius: 30px; padding: 25px; box-shadow: 0 -10px 25px rgba(0,0,0,0.1); transform: translateY(100%); transition: transform 0.3s ease-out; }
+        /* Popups / Drawers
+           🌟 position: fixed (not absolute) — the overlay markup in footer.php
+           sits as a sibling of .mobile-container, not a descendant, so with
+           `absolute` it had no positioned ancestor and was being sized to the
+           full scrollable document instead of the viewport: scrolling the
+           page while the sheet was open dragged the whole sheet up with it.
+           `fixed` pins it to the viewport regardless of page scroll. The
+           sheet itself also gets its own max-height + scroll so a long
+           option list scrolls internally instead of growing off-screen. */
+        .fab-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(11, 30, 70, 0.6); z-index: 999; display: none; justify-content: center; align-items: flex-end; }
+        .fab-popup-sheet { background: white; width: 100%; border-top-left-radius: 30px; border-top-right-radius: 30px; padding: 25px; box-shadow: 0 -10px 25px rgba(0,0,0,0.1); transform: translateY(100%); transition: transform 0.3s ease-out; max-height: 80vh; overflow-y: auto; }
         .fab-option-item { display: flex; align-items: center; gap: 15px; padding: 15px 10px; border-bottom: 1px solid var(--border-color); color: var(--text-dark); text-decoration: none; font-weight: 600; }
 
 /* Desktop-only helpers (hidden on mobile by default) */
@@ -1050,3 +928,74 @@ input, select, textarea, .form-control { font-size: 16px; } /* prevents iOS auto
         </script>
         <?php unset($_SESSION['flash_msg']); // చూపించిన తర్వాత క్లియర్ చేయడం ?>
     <?php endif; ?>
+
+    <?php
+    // 🌟 Dismissible top alert banner — replaces the old bell/notification
+    // panel entirely. Only two alerts ever show here: "New vessel assigned"
+    // to a Surveyor, and "Report uploaded by X" to an Admin. Opening the
+    // link or tapping X marks the notification read, so it never shows
+    // again (a fresh assignment/upload creates a new one).
+    if (!empty($_SESSION['user_id'])) {
+        $__bannerNotif = null;
+        try {
+            if (!function_exists('getTopBannerNotification')) {
+                require_once __DIR__ . '/notifications.php';
+            }
+            $__bannerRole = $_SESSION['role'] ?? '';
+            $__bannerTypes = $__bannerRole === 'Admin' ? ['upload', 'report'] : ($__bannerRole === 'Surveyor' ? ['assign'] : []);
+            if (!empty($__bannerTypes) && function_exists('getDB')) {
+                $__bannerDb = getDB();
+                $__bannerNotif = getTopBannerNotification($__bannerDb, (int)$_SESSION['user_id'], $__bannerTypes);
+            }
+        } catch (Throwable $e) {
+            $__bannerNotif = null;
+        }
+        if ($__bannerNotif) {
+            $__bannerIsUpload = in_array($__bannerNotif['type'], ['upload', 'report'], true);
+            if ($__bannerIsUpload) {
+                $__bannerText = 'Uploaded by ' . ($__bannerNotif['creator_name'] ?: 'Surveyor') . ' — ' . $__bannerNotif['title'];
+            } else {
+                $__bannerText = $__bannerNotif['title'] . ($__bannerNotif['message'] !== '' ? ' — ' . $__bannerNotif['message'] : '');
+            }
+            $__bannerLink = !empty($__bannerNotif['link']) ? $__bannerNotif['link'] : 'index.php';
+            $__bannerIcon = $__bannerIsUpload ? 'fa-file-arrow-up' : 'fa-ship';
+            ?>
+            <div class="top-alert-banner" id="topAlertBanner" data-notif-id="<?= (int)$__bannerNotif['id'] ?>" data-testid="top-alert-banner">
+                <i class="fa-solid <?= $__bannerIcon ?> top-alert-banner-icon"></i>
+                <a href="<?= sanitize($__bannerLink) ?>" class="top-alert-banner-link" id="topAlertBannerLink" data-testid="top-alert-banner-link"><?= sanitize($__bannerText) ?></a>
+                <button type="button" class="top-alert-banner-close" id="topAlertBannerClose" aria-label="Dismiss" data-testid="top-alert-banner-close">&times;</button>
+            </div>
+            <script>
+            (function() {
+                var wrap = document.getElementById('topAlertBanner');
+                if (!wrap) return;
+                var id = wrap.getAttribute('data-notif-id');
+                function dismiss() {
+                    try {
+                        var body = 'action=read&id=' + encodeURIComponent(id);
+                        if (navigator.sendBeacon) {
+                            navigator.sendBeacon('ajax/notifications.php', new Blob([body], {type: 'application/x-www-form-urlencoded'}));
+                        } else {
+                            fetch('ajax/notifications.php', { method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: body, keepalive: true }).catch(function(){});
+                        }
+                    } catch (e) {}
+                }
+                var closeBtn = document.getElementById('topAlertBannerClose');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        dismiss();
+                        wrap.style.transition = 'opacity .25s ease';
+                        wrap.style.opacity = '0';
+                        setTimeout(function() { wrap.remove(); }, 250);
+                    });
+                }
+                var link = document.getElementById('topAlertBannerLink');
+                if (link) {
+                    link.addEventListener('click', function() { dismiss(); });
+                }
+            })();
+            </script>
+            <?php
+        }
+    }
+    ?>

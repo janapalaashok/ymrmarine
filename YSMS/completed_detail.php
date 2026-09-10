@@ -30,7 +30,7 @@ if (!$survey) {
 $current_user_id = (int)($_SESSION['user_id'] ?? 0);
 $role = $_SESSION['role'] ?? '';
 $has_full_access = in_array($role, ['Admin', 'Super Admin'], true);
-if (!$has_full_access && (int)$survey['surveyor_id'] !== $current_user_id) {
+if (!$has_full_access && !isSurveyorAssignedToSurvey($db, $survey['id'], $current_user_id)) {
     $isOwnClient = ($role === 'Client') && (int)$survey['client_id'] === getClientIdForUser($db, $current_user_id);
     if (!$isOwnClient) {
         http_response_code(403);

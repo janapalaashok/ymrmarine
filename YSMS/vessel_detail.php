@@ -211,7 +211,7 @@ if (!$survey) { die("Survey details missing."); }
 // other surveyor's survey — including client and financial details — just by
 // changing the ?id= in the URL. Admins are unrestricted, matching existing
 // admin permissions elsewhere in this file.
-if (!$has_full_access && (int)$survey['surveyor_id'] !== (int)$current_user_id) {
+if (!$has_full_access && !isSurveyorAssignedToSurvey($db, $survey['id'], $current_user_id)) {
     $isOwnClient = ($role === 'Client') && (int)$survey['client_id'] === getClientIdForUser($db, $current_user_id);
     if (!$isOwnClient) {
     http_response_code(403);
@@ -250,6 +250,7 @@ $is_client_viewer = ($role === 'Client');
 // అడ్మిన్ ఎడిట్ ఫారమ్ కోసం డ్రాప్‌డౌన్ లిస్టులు (clients, ports, survey types, surveyors)
 if ($edit_mode) {
     $clients_list = $db->query("SELECT id, company_name FROM clients ORDER BY company_name")->fetchAll();
+    ensurePortAnchorages($db);
     $ports_list = $db->query("SELECT id, port_name FROM ports ORDER BY port_name")->fetchAll();
     $survey_types_list = $db->query("SELECT id, type_name FROM survey_types ORDER BY type_name")->fetchAll();
     $surveyors_list = $db->query("SELECT u.id, u.full_name FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name = 'Surveyor' ORDER BY u.full_name")->fetchAll();
@@ -263,6 +264,7 @@ if (!empty($survey['assign_date']) && $survey['assign_date'] != '0000-00-00 00:0
 
 // 🌟 Shared appointment details (assign-vessel data) for WhatsApp + Email
 $combined_survey_type = getCombinedSurveyTypeNames($db, $survey['survey_type_ids'] ?? '', $survey['type_name'] ?? 'N/A');
+$combined_surveyor_names = getCombinedSurveyorNames($db, $survey['id'] ?? 0, $survey['surveyor_name'] ?? 'N/A');
 $client_name = $survey['company_name'] ?? 'N/A';
 
 $appointment_lines = [
@@ -272,7 +274,7 @@ $appointment_lines = [
     "Survey Type: " . $combined_survey_type,
     "Assigned Date: " . $display_date,
     "Agent: " . ($survey['agent_name'] ?? 'N/A'),
-    "Surveyor: " . ($survey['surveyor_name'] ?? 'N/A'),
+    "Surveyor: " . $combined_surveyor_names,
     "Port: " . ($survey['port_name'] ?? 'N/A'),
     "Status: " . ($survey['status'] ?? 'N/A'),
 ];
@@ -465,7 +467,7 @@ include 'includes/header.php';
                     <?php endif; ?>
                 </span>
             </div>
-            <div class="info-row"><span class="info-label">Surveyor Name</span><span class="info-value text-primary"><?= sanitize($survey['surveyor_name']) ?></span></div>
+            <div class="info-row"><span class="info-label">Surveyor Name</span><span class="info-value text-primary"><?= sanitize($combined_surveyor_names) ?></span></div>
             <div class="info-row"><span class="info-label">Port Name</span><span class="info-value"><?= sanitize($survey['port_name']) ?></span></div>
 
             <div class="info-row"><span class="info-label" style="color: #ea580c;">Admin Remarks</span><span class="info-value text-dark fw-semibold">

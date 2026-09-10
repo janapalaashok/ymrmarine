@@ -37,6 +37,8 @@ if ($is_full_access) {
     ");
     $stmt->execute([$client_id]);
 } else {
+    // 🌟 Include reports assigned via survey_surveyors (multi-surveyor), not
+    // just the primary surveys.surveyor_id.
     $stmt = $db->prepare("
         SELECT s.*, c.company_name, u.full_name as surveyor_name, st.type_name, p.port_name
         FROM surveys s
@@ -44,10 +46,10 @@ if ($is_full_access) {
         LEFT JOIN users u ON s.surveyor_id = u.id
         LEFT JOIN survey_types st ON s.survey_type_id = st.id
         LEFT JOIN ports p ON s.port_id = p.id
-        WHERE s.status = 'Pending Report' AND s.surveyor_id = ?
+        WHERE s.status = 'Pending Report' AND (s.surveyor_id = ? OR s.id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?))
         ORDER BY s.id DESC
     ");
-    $stmt->execute([$user_id]);
+    $stmt->execute([$user_id, $user_id]);
 }
 $surveys = $stmt->fetchAll();
 
@@ -61,7 +63,8 @@ foreach ($db->query("SELECT type_name FROM survey_types ORDER BY type_name ASC")
 foreach ($surveys as $row) {
     if (!empty($row['port_name'])) $survey_places_filter[$row['port_name']] = $row['port_name'];
     if (!empty($row['company_name'])) $survey_clients_filter[$row['company_name']] = $row['company_name'];
-    if (!empty($row['surveyor_name'])) $survey_surveyors_filter[$row['surveyor_name']] = $row['surveyor_name'];
+    $rowSurveyorNames = getCombinedSurveyorNames($db, $row['id'], $row['surveyor_name'] ?? '');
+    if (!empty($rowSurveyorNames)) $survey_surveyors_filter[$rowSurveyorNames] = $rowSurveyorNames;
 }
 
 /* Desktop: pagination */
@@ -76,7 +79,7 @@ $sort = trim((string)($_GET['sort'] ?? 'newest'));
 
 $where = ["s.status = 'Pending Report'"];
 $params = [];
-if ($role === 'Client') { $where[] = 's.client_id = ?'; $params[] = $client_id; } elseif (!$is_full_access) { $where[] = 's.surveyor_id = ?'; $params[] = $user_id; }
+if ($role === 'Client') { $where[] = 's.client_id = ?'; $params[] = $client_id; } elseif (!$is_full_access) { $where[] = '(s.surveyor_id = ? OR s.id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?))'; $params[] = $user_id; $params[] = $user_id; }
 if ($q !== '') {
     $where[] = '(s.vessel_name LIKE ? OR c.company_name LIKE ? OR s.agent_name LIKE ? OR st.type_name LIKE ? OR p.port_name LIKE ? OR u.full_name LIKE ?)';
     $like = '%' . $q . '%';
@@ -85,7 +88,10 @@ if ($q !== '') {
 if ($filter_type !== '') { $where[] = 'st.type_name = ?'; $params[] = $filter_type; }
 if ($filter_place !== '') { $where[] = 'p.port_name = ?'; $params[] = $filter_place; }
 if ($filter_client !== '') { $where[] = 'c.company_name = ?'; $params[] = $filter_client; }
-if ($is_full_access && $filter_surveyor !== '') { $where[] = 'u.full_name = ?'; $params[] = $filter_surveyor; }
+if ($is_full_access && $filter_surveyor !== '') {
+    $where[] = "COALESCE((SELECT GROUP_CONCAT(u2.full_name ORDER BY ss2.id SEPARATOR ' + ') FROM survey_surveyors ss2 JOIN users u2 ON ss2.surveyor_id = u2.id WHERE ss2.survey_id = s.id), u.full_name) = ?";
+    $params[] = $filter_surveyor;
+}
 $whereSql = implode(' AND ', $where);
 $orderSql = 's.id DESC';
 if ($sort === 'oldest') $orderSql = 's.id ASC';
@@ -424,13 +430,14 @@ include 'includes/header.php';
         <?php if (!empty($surveys)): foreach ($surveys as $survey):
             $vessel_name = $survey['vessel_name'] ?: 'Vessel';
             $typeLabel = getCombinedSurveyTypeNames($db, $survey['survey_type_ids'] ?? '', $survey['type_name'] ?? 'N/A');
+            $surveyorNames = getCombinedSurveyorNames($db, $survey['id'], $survey['surveyor_name'] ?? 'N/A');
         ?>
         <div class="vessel-card" onclick="location.href='report_detail.php?id=<?= (int)$survey['id'] ?>'" data-survey-card
              data-name="<?= sanitize(strtolower($vessel_name)) ?>"
              data-type="<?= sanitize($survey['type_name'] ?? '') ?>"
              data-place="<?= sanitize($survey['port_name'] ?? '') ?>"
              data-client="<?= sanitize($survey['company_name'] ?? '') ?>"
-             data-surveyor="<?= sanitize($survey['surveyor_name'] ?? '') ?>"
+             data-surveyor="<?= sanitize($surveyorNames) ?>"
              data-status="pending"
              data-date="<?= strtotime($survey['survey_completed_date'] ?? $survey['assign_date'] ?? '1970-01-01') ?>"
              data-search="<?= sanitize(strtolower(implode(' ', [$vessel_name, $survey['company_name'] ?? '', $survey['agent_name'] ?? '', $typeLabel, $survey['port_name'] ?? '']))) ?>">
@@ -439,7 +446,7 @@ include 'includes/header.php';
                     <h4 class="vessel-name-title"><?= sanitize($vessel_name) ?></h4>
                     <p class="vessel-client-sub">Client: <?= sanitize($survey['company_name'] ?? '') ?></p>
                     <p class="vessel-client-sub">Agent: <?= sanitize($survey['agent_name'] ?? '') ?></p>
-                    <?php if ($is_full_access): ?><p class="vessel-client-sub">Surveyor: <?= sanitize($survey['surveyor_name'] ?? 'N/A') ?></p><?php endif; ?>
+                    <?php if ($is_full_access): ?><p class="vessel-client-sub">Surveyor: <?= sanitize($surveyorNames) ?></p><?php endif; ?>
                 </div></div>
                 <div class="vessel-badge-date text-end">
                     <span class="badge-assigned"><?= sanitize($typeLabel) ?></span>
@@ -523,18 +530,19 @@ include 'includes/header.php';
                             <?php if (!empty($surveys)): foreach ($surveys as $i => $survey):
                                 $vessel_name = $survey['vessel_name'] ?: 'Vessel';
                                 $typeLabel = getCombinedSurveyTypeNames($db, $survey['survey_type_ids'] ?? '', $survey['type_name'] ?? 'N/A');
+                                $surveyorNames = getCombinedSurveyorNames($db, $survey['id'], $survey['surveyor_name'] ?? 'N/A');
                                 $date_src = $survey['report_uploaded_date'] ?? $survey['survey_completed_date'] ?? $survey['assign_date'] ?? '';
                                 $date_disp = (!empty($date_src) && $date_src !== '0000-00-00' && $date_src !== '0000-00-00 00:00:00')
                                     ? date('d M Y H:i', strtotime($date_src)) : '—';
                                 $ts = strtotime($date_src ?: '1970-01-01') ?: 0;
                             ?>
                             <tr class="vd-row"
-                                data-search="<?= sanitize(strtolower(implode(' ', [$vessel_name, $survey['company_name'] ?? '', $survey['agent_name'] ?? '', $typeLabel, $survey['port_name'] ?? '', $survey['surveyor_name'] ?? '', $survey['report_number'] ?? '']))) ?>"
+                                data-search="<?= sanitize(strtolower(implode(' ', [$vessel_name, $survey['company_name'] ?? '', $survey['agent_name'] ?? '', $typeLabel, $survey['port_name'] ?? '', $surveyorNames, $survey['report_number'] ?? '']))) ?>"
                                 data-name="<?= sanitize(strtolower($vessel_name)) ?>"
                                 data-type="<?= sanitize(strtolower($survey['type_name'] ?? '')) ?>"
                                 data-place="<?= sanitize(strtolower($survey['port_name'] ?? '')) ?>"
                                 data-client="<?= sanitize(strtolower($survey['company_name'] ?? '')) ?>"
-                                data-surveyor="<?= sanitize(strtolower($survey['surveyor_name'] ?? '')) ?>"
+                                data-surveyor="<?= sanitize(strtolower($surveyorNames)) ?>"
                                 data-date="<?= (int)$ts ?>">
                                 <td style="color:#94a3b8;font-weight:600;" data-row-num><?= $i + 1 ?></td>
                                 <td>
@@ -550,7 +558,7 @@ include 'includes/header.php';
                                 <td><span class="vd-badge"><?= sanitize($typeLabel) ?></span></td>
                                 <td><i class="fa-solid fa-location-dot" style="opacity:.5;"></i> <?= sanitize($survey['port_name'] ?? 'N/A') ?></td>
                                 <?php if ($is_full_access): ?>
-                                <td><?= sanitize($survey['surveyor_name'] ?? 'N/A') ?></td>
+                                <td><?= sanitize($surveyorNames) ?></td>
                                 <?php endif; ?>
                                 <td style="white-space:nowrap;"><?= sanitize($date_disp) ?></td>
                                 <td>

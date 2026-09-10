@@ -76,7 +76,7 @@ if ($id > 0) {
         } catch (Exception $e) {
             $surveyType = $survey['type_name'] ?? '';
         }
-        $surveyorName = $survey['surveyor_name'] ?? '';
+        $surveyorName = getCombinedSurveyorNames($db, $survey['id'] ?? 0, $survey['surveyor_name'] ?? '');
         if (!empty($survey['survey_completed_date']) && $survey['survey_completed_date'] !== '0000-00-00') {
             $completeDateRaw = $survey['survey_completed_date'];
             $completeDate = date('d M Y', strtotime($survey['survey_completed_date']));

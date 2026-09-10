@@ -73,12 +73,14 @@ if ($action === 'list_excels') {
             JOIN surveys s ON u.survey_id = s.id
             LEFT JOIN survey_types st ON s.survey_type_id = st.id
             WHERE u.file_type = 'Formal Report Excel'
-            " . ($is_admin ? "" : "AND s.surveyor_id = :uid") . "
+            " . ($is_admin ? "" : "AND (s.surveyor_id = :uid OR s.id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = :uid2))") . "
             ORDER BY u.id DESC
         ";
         $stmt = $db->prepare($sql);
         if (!$is_admin) {
-            $stmt->bindValue(':uid', $_SESSION['user_id'] ?? 0, PDO::PARAM_INT);
+            $uid = (int)($_SESSION['user_id'] ?? 0);
+            $stmt->bindValue(':uid', $uid, PDO::PARAM_INT);
+            $stmt->bindValue(':uid2', $uid, PDO::PARAM_INT);
         }
         $stmt->execute();
         $rows = $stmt->fetchAll();

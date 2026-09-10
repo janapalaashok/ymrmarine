@@ -46,11 +46,13 @@ try {
     @ini_set('memory_limit', '256M');
 
     $baseSql = "
-        SELECT s.vessel_name, s.agent_name, c.company_name, t.type_name, u.full_name as surveyor_name, s.recovery_amount, s.report_uploaded_date
+        SELECT s.id, s.vessel_name, s.agent_name, c.company_name, t.type_name, u.full_name as surveyor_name, s.recovery_amount, s.report_uploaded_date,
+               p.port_name, p.country
         FROM surveys s
         LEFT JOIN clients c ON s.client_id = c.id
         LEFT JOIN survey_types t ON s.survey_type_id = t.id
         LEFT JOIN users u ON s.surveyor_id = u.id
+        LEFT JOIN ports p ON s.port_id = p.id
         WHERE s.status = 'Completed'
     ";
     if ($is_full_access) {
@@ -60,8 +62,10 @@ try {
         $stmt = $db->prepare($baseSql . " AND s.client_id = ? ORDER BY s.report_uploaded_date DESC");
         $stmt->execute([$client_row_id]);
     } else {
-        $stmt = $db->prepare($baseSql . " AND s.surveyor_id = ? ORDER BY s.report_uploaded_date DESC");
-        $stmt->execute([$user_id]);
+        // Include completed surveys assigned via survey_surveyors (multi-surveyor),
+        // not just the primary surveys.surveyor_id.
+        $stmt = $db->prepare($baseSql . " AND (s.surveyor_id = ? OR s.id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?)) ORDER BY s.report_uploaded_date DESC");
+        $stmt->execute([$user_id, $user_id]);
     }
     $surveys = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -69,7 +73,7 @@ try {
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('Completed Surveys');
 
-    $headers = ['Vessel Name', 'Client', 'Agent', 'Survey Type', 'Surveyor', 'Recovery (MT)', 'Report Uploaded Date'];
+    $headers = ['Vessel Name', 'Client', 'Agent', 'Port', 'Country', 'Survey Type', 'Surveyor', 'Recovery (MT)', 'Report Uploaded Date'];
     $sheet->fromArray([$headers], null, 'A1');
 
     $rowNum = 2;
@@ -77,14 +81,16 @@ try {
         $sheet->setCellValue('A' . $rowNum, $row['vessel_name'] ?? '');
         $sheet->setCellValue('B' . $rowNum, $row['company_name'] ?? '');
         $sheet->setCellValue('C' . $rowNum, $row['agent_name'] ?? 'N/A');
-        $sheet->setCellValue('D' . $rowNum, $row['type_name'] ?? 'N/A');
-        $sheet->setCellValue('E' . $rowNum, $row['surveyor_name'] ?? 'N/A');
-        $sheet->setCellValue('F' . $rowNum, !empty($row['recovery_amount']) ? (float)$row['recovery_amount'] : 0);
-        $sheet->setCellValue('G' . $rowNum, !empty($row['report_uploaded_date']) ? date('d-m-Y', strtotime($row['report_uploaded_date'])) : '');
+        $sheet->setCellValue('D' . $rowNum, $row['port_name'] ?? 'N/A');
+        $sheet->setCellValue('E' . $rowNum, $row['country'] ?? 'India');
+        $sheet->setCellValue('F' . $rowNum, $row['type_name'] ?? 'N/A');
+        $sheet->setCellValue('G' . $rowNum, getCombinedSurveyorNames($db, $row['id'] ?? 0, $row['surveyor_name'] ?? 'N/A'));
+        $sheet->setCellValue('H' . $rowNum, !empty($row['recovery_amount']) ? (float)$row['recovery_amount'] : 0);
+        $sheet->setCellValue('I' . $rowNum, !empty($row['report_uploaded_date']) ? date('d-m-Y', strtotime($row['report_uploaded_date'])) : '');
         $rowNum++;
     }
 
-    foreach (range('A', 'G') as $col) {
+    foreach (range('A', 'I') as $col) {
         $sheet->getColumnDimension($col)->setAutoSize(true);
     }
 

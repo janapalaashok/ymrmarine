@@ -30,6 +30,7 @@ $fkChecks = $cfg['fk_checks'] ?? [];
 $db = getDB();
 if ($module === 'ports') {
     ensurePortsCountryColumn($db);
+    ensurePortAnchorages($db);
 }
 
 /**
@@ -142,6 +143,12 @@ try {
             $data[$name] = $val;
         }
 
+        // Ports: default a blank Country to India, matching how every other
+        // country/port list in the app already treats an empty ports.country.
+        if ($module === 'ports' && isset($data['country']) && $data['country'] === '') {
+            $data['country'] = 'India';
+        }
+
         // Clients: only write address columns if they actually exist in DB
         if ($module === 'clients') {
             $existingCols = ensureClientAddressColumns($db);
@@ -218,6 +225,20 @@ try {
             $extra = [];
             if ($module === 'clients' && !empty($data['short_code'])) {
                 $extra['short_code'] = $data['short_code'];
+            }
+            // Ports: also create the matching "<name> Anchorage" entry, same
+            // as every existing port already has (e.g. Chennai Port ->
+            // Chennai Anchorage), so Admin doesn't have to add it separately.
+            if ($module === 'ports') {
+                $anchorageName = buildAnchorageName((string)($data['port_name'] ?? ''));
+                if ($anchorageName !== null) {
+                    try {
+                        $db->prepare("INSERT IGNORE INTO ports (port_name, country) VALUES (?, ?)")
+                           ->execute([$anchorageName, $data['country'] ?? 'India']);
+                    } catch (Throwable $ae) {
+                        error_log('admin_master.php auto-anchorage: ' . $ae->getMessage());
+                    }
+                }
             }
             echo json_encode(['success' => true, 'id' => $newId, 'message' => $cfg['singular'] . ' added successfully.'] + $extra);
             exit;

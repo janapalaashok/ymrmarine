@@ -46,11 +46,13 @@ try {
     @ini_set('memory_limit', '256M');
 
     $baseSql = "
-        SELECT s.vessel_name, s.agent_name, c.company_name, t.type_name, u.full_name as surveyor_name, s.assign_date, s.report_number
+        SELECT s.id, s.vessel_name, s.agent_name, c.company_name, t.type_name, u.full_name as surveyor_name, s.assign_date, s.report_number,
+               p.port_name, p.country
         FROM surveys s
         LEFT JOIN clients c ON s.client_id = c.id
         LEFT JOIN survey_types t ON s.survey_type_id = t.id
         LEFT JOIN users u ON s.surveyor_id = u.id
+        LEFT JOIN ports p ON s.port_id = p.id
         WHERE s.status = 'Cancelled'
     ";
     if ($is_full_access) {
@@ -60,8 +62,10 @@ try {
         $stmt = $db->prepare($baseSql . " AND s.client_id = ? ORDER BY s.id DESC");
         $stmt->execute([$client_row_id]);
     } else {
-        $stmt = $db->prepare($baseSql . " AND s.surveyor_id = ? ORDER BY s.id DESC");
-        $stmt->execute([$user_id]);
+        // Include cancelled surveys assigned via survey_surveyors (multi-surveyor),
+        // not just the primary surveys.surveyor_id.
+        $stmt = $db->prepare($baseSql . " AND (s.surveyor_id = ? OR s.id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?)) ORDER BY s.id DESC");
+        $stmt->execute([$user_id, $user_id]);
     }
     $surveys = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -69,7 +73,7 @@ try {
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('Cancelled Vessels');
 
-    $headers = ['Vessel Name', 'Report No', 'Client', 'Agent', 'Survey Type', 'Surveyor', 'Assigned Date'];
+    $headers = ['Vessel Name', 'Report No', 'Client', 'Agent', 'Port', 'Country', 'Survey Type', 'Surveyor', 'Assigned Date'];
     $sheet->fromArray([$headers], null, 'A1');
 
     $rowNum = 2;
@@ -78,17 +82,19 @@ try {
         $sheet->setCellValue('B' . $rowNum, $row['report_number'] ?? '');
         $sheet->setCellValue('C' . $rowNum, $row['company_name'] ?? '');
         $sheet->setCellValue('D' . $rowNum, $row['agent_name'] ?? 'N/A');
-        $sheet->setCellValue('E' . $rowNum, $row['type_name'] ?? 'N/A');
-        $sheet->setCellValue('F' . $rowNum, $row['surveyor_name'] ?? 'N/A');
-        $sheet->setCellValue('G' . $rowNum, !empty($row['assign_date']) ? date('d-m-Y H:i', strtotime($row['assign_date'])) : '');
+        $sheet->setCellValue('E' . $rowNum, $row['port_name'] ?? 'N/A');
+        $sheet->setCellValue('F' . $rowNum, $row['country'] ?? 'India');
+        $sheet->setCellValue('G' . $rowNum, $row['type_name'] ?? 'N/A');
+        $sheet->setCellValue('H' . $rowNum, getCombinedSurveyorNames($db, $row['id'] ?? 0, $row['surveyor_name'] ?? 'N/A'));
+        $sheet->setCellValue('I' . $rowNum, !empty($row['assign_date']) ? date('d-m-Y H:i', strtotime($row['assign_date'])) : '');
         $rowNum++;
     }
 
-    foreach (range('A', 'G') as $col) {
+    foreach (range('A', 'I') as $col) {
         $sheet->getColumnDimension($col)->setAutoSize(true);
     }
 
-    $lastCol = 'G';
+    $lastCol = 'I';
     $lastRow = max(1, $sheet->getHighestRow());
     $headerRange = 'A1:' . $lastCol . '1';
     $dataRange = 'A1:' . $lastCol . $lastRow;

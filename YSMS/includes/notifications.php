@@ -146,6 +146,32 @@ function notificationTimeAgo(?string $datetime): string {
     return date('d M Y', $ts);
 }
 
+/**
+ * Latest unread notification of the given type(s) for one user, with the
+ * creator's name joined in — powers the top alert banner (replaces the old
+ * bell/panel: only these two specific alerts are shown anywhere now).
+ */
+function getTopBannerNotification(PDO $db, int $userId, array $types): ?array {
+    if ($userId <= 0 || empty($types)) return null;
+    try {
+        ensureNotificationsTable($db);
+        $placeholders = implode(',', array_fill(0, count($types), '?'));
+        $stmt = $db->prepare("
+            SELECT n.id, n.title, n.message, n.link, n.type, u.full_name AS creator_name
+            FROM notifications n
+            LEFT JOIN users u ON n.created_by = u.id
+            WHERE n.user_id = ? AND n.is_read = 0 AND n.type IN ($placeholders)
+            ORDER BY n.created_at DESC, n.id DESC
+            LIMIT 1
+        ");
+        $stmt->execute(array_merge([$userId], $types));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
 function notificationIcon(string $type): string {
     $map = [
         'assign'   => 'fa-ship',

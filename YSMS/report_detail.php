@@ -26,7 +26,7 @@ $is_super_admin = ($role === 'Super Admin');
 // Super Admin can view every report like Admin (read-only — no Upload Final
 // Documentation), so it must not be scoped down like a Surveyor/Client.
 $has_full_access = ($is_admin || $is_super_admin);
-if (!$has_full_access && (int)$survey['surveyor_id'] !== (int)$current_user_id) {
+if (!$has_full_access && !isSurveyorAssignedToSurvey($db, $survey['id'], $current_user_id)) {
     $isOwnClient = (($_SESSION['role'] ?? '') === 'Client') && (int)$survey['client_id'] === getClientIdForUser($db, $current_user_id);
     if (!$isOwnClient) {
     http_response_code(403);
@@ -189,7 +189,7 @@ include 'includes/header.php';
         <div class="info-row"><span class="info-label">Vessel Name</span><span class="info-value"><?= sanitize($survey['vessel_name']) ?></span></div>
         <div class="info-row"><span class="info-label">Report No</span><span class="info-value fw-bold text-dark"><?= !empty($survey['report_number']) ? sanitize($survey['report_number']) : '—' ?></span></div>
         <div class="info-row"><span class="info-label">Client Name</span><span class="info-value"><?= sanitize($survey['company_name']) ?></span></div>
-        <div class="info-row"><span class="info-label">Surveyor Name</span><span class="info-value"><?= sanitize($survey['surveyor_name']) ?></span></div>
+        <div class="info-row"><span class="info-label">Surveyor Name</span><span class="info-value"><?= sanitize(getCombinedSurveyorNames($db, $survey['id'] ?? 0, $survey['surveyor_name'] ?? 'N/A')) ?></span></div>
         <div class="info-row"><span class="info-label">Survey Type</span><span class="info-value text-primary"><?= sanitize(getCombinedSurveyTypeNames($db, $survey['survey_type_ids'] ?? '', $survey['type_name'] ?? 'N/A')) ?></span></div>
         <div class="info-row"><span class="info-label">Survey Completed</span><span class="info-value text-success fw-bold"><?= date('d M Y', strtotime($survey['survey_completed_date'])) ?></span></div>
     </div>

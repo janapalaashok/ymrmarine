@@ -18,15 +18,17 @@ if ($role === 'Admin') {
     ");
     $stmt->execute();
 } else {
+    // 🌟 Include vessels assigned via survey_surveyors (multi-surveyor), not
+    // just the primary surveys.surveyor_id.
     $stmt = $db->prepare("
-        SELECT s.*, c.company_name, uu.full_name as modifier_name 
-        FROM surveys s 
-        JOIN clients c ON s.client_id = c.id 
+        SELECT s.*, c.company_name, uu.full_name as modifier_name
+        FROM surveys s
+        JOIN clients c ON s.client_id = c.id
         LEFT JOIN users uu ON s.status_updated_by = uu.id
-        WHERE s.status = 'Pending Vessel' AND s.surveyor_id = ? 
+        WHERE s.status = 'Pending Vessel' AND (s.surveyor_id = ? OR s.id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?))
         ORDER BY s.id DESC
     ");
-    $stmt->execute([$user_id]);
+    $stmt->execute([$user_id, $user_id]);
 }
 $surveys = $stmt->fetchAll();
 

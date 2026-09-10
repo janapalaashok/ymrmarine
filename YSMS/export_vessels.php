@@ -56,11 +56,13 @@ try {
 try {
     $baseSql = "
         SELECT s.vessel_name, s.agent_name, c.company_name, st.type_name,
-               u.full_name AS surveyor_name, s.custom_live_status
+               u.full_name AS surveyor_name, s.custom_live_status,
+               p.port_name, p.country
         FROM surveys s
         LEFT JOIN clients c ON s.client_id = c.id
         LEFT JOIN survey_types st ON s.survey_type_id = st.id
         LEFT JOIN users u ON s.surveyor_id = u.id
+        LEFT JOIN ports p ON s.port_id = p.id
         WHERE s.status = 'Pending Vessel'
     ";
     if ($is_full_access) {
@@ -70,8 +72,10 @@ try {
         $stmt = $db->prepare($baseSql . " AND s.client_id = ? ORDER BY s.id DESC");
         $stmt->execute([$client_row_id]);
     } else {
-        $stmt = $db->prepare($baseSql . " AND s.surveyor_id = ? ORDER BY s.id DESC");
-        $stmt->execute([$user_id]);
+        // Include vessels assigned via survey_surveyors (multi-surveyor), not
+        // just the primary surveys.surveyor_id.
+        $stmt = $db->prepare($baseSql . " AND (s.surveyor_id = ? OR s.id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?)) ORDER BY s.id DESC");
+        $stmt->execute([$user_id, $user_id]);
     }
     $surveys = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
@@ -83,15 +87,17 @@ try {
     exit;
 }
 
-$headers = ['Vessel Name', 'Client', 'Agent', 'Survey Type', 'Surveyor', 'Latest Update'];
+$headers = ['Vessel Name', 'Client', 'Agent', 'Port', 'Country', 'Survey Type', 'Surveyor', 'Latest Update'];
 $rows = [];
 foreach ($surveys as $row) {
     $rows[] = [
         $row['vessel_name'] ?? '',
         $row['company_name'] ?? '',
         $row['agent_name'] ?? 'N/A',
+        $row['port_name'] ?? 'N/A',
+        $row['country'] ?? 'India',
         $row['type_name'] ?? 'N/A',
-        $row['surveyor_name'] ?? 'N/A',
+        getCombinedSurveyorNames($db, $row['id'] ?? 0, $row['surveyor_name'] ?? 'N/A'),
         $row['custom_live_status'] ?? '',
     ];
 }
@@ -113,15 +119,15 @@ if (is_file($autoload)) {
                 $sheet->fromArray([$row], null, 'A' . $r);
                 $r++;
             }
-            foreach (range('A', 'F') as $col) {
+            foreach (range('A', 'H') as $col) {
                 $sheet->getColumnDimension($col)->setAutoSize(true);
             }
             $lastRow = max(1, $sheet->getHighestRow());
-            $sheet->getStyle('A1:F1')->getFont()->setBold(true)->getColor()->setRGB('FF0000');
-            $sheet->getStyle('A1:F1')->getFill()
+            $sheet->getStyle('A1:H1')->getFont()->setBold(true)->getColor()->setRGB('FF0000');
+            $sheet->getStyle('A1:H1')->getFill()
                 ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
                 ->getStartColor()->setRGB('FFFF00');
-            $sheet->getStyle('A1:F' . $lastRow)->getBorders()->getAllBorders()
+            $sheet->getStyle('A1:H' . $lastRow)->getBorders()->getAllBorders()
                 ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
             while (ob_get_level() > 0) { ob_end_clean(); }

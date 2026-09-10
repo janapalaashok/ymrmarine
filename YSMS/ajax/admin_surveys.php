@@ -62,6 +62,7 @@ try {
 
         foreach ($rows as &$row) {
             $row['survey_type_display'] = getCombinedSurveyTypeNames($db, $row['survey_type_ids'] ?? '', $row['type_name'] ?? '');
+            $row['surveyor_name'] = getCombinedSurveyorNames($db, $row['id'] ?? 0, $row['surveyor_name'] ?? '');
             unset($row['survey_type_ids'], $row['type_name']);
         }
         unset($row);

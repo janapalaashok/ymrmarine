@@ -490,6 +490,7 @@ $(document).ready(function() {
                 if (f.hint) fieldsHtml += '<div class="admin-field-hint">' + escapeHtml(f.hint) + '</div>';
             } else {
                 fieldsHtml += '<input type="text" name="' + f.name + '" value="' + escapeHtml(val) + '" ' + (f.required ? 'required' : '') + ' data-testid="admin-field-' + f.name + '">';
+                if (f.hint) fieldsHtml += '<div class="admin-field-hint">' + escapeHtml(f.hint) + '</div>';
             }
             fieldsHtml += '</div>';
         });

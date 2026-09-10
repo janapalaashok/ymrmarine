@@ -45,11 +45,13 @@ try {
         } catch (Throwable $e) { error_log('export_reports.php client lookup: ' . $e->getMessage()); }
     }
 
-    $baseSql = "SELECT s.vessel_name, s.agent_name, c.company_name, st.type_name, u.full_name as surveyor_name, s.survey_completed_date
+    $baseSql = "SELECT s.id, s.vessel_name, s.agent_name, c.company_name, st.type_name, u.full_name as surveyor_name, s.survey_completed_date,
+                       p.port_name, p.country
                         FROM surveys s
                         LEFT JOIN clients c ON s.client_id = c.id
                         LEFT JOIN survey_types st ON s.survey_type_id = st.id
                         LEFT JOIN users u ON s.surveyor_id = u.id
+                        LEFT JOIN ports p ON s.port_id = p.id
                         WHERE s.status = 'Pending Report'";
     if ($is_full_access) {
         $stmt = $db->prepare($baseSql . " ORDER BY s.id DESC");
@@ -58,8 +60,10 @@ try {
         $stmt = $db->prepare($baseSql . " AND s.client_id = ? ORDER BY s.id DESC");
         $stmt->execute([$client_row_id]);
     } else {
-        $stmt = $db->prepare($baseSql . " AND s.surveyor_id = ? ORDER BY s.id DESC");
-        $stmt->execute([$user_id]);
+        // Include reports assigned via survey_surveyors (multi-surveyor), not
+        // just the primary surveys.surveyor_id.
+        $stmt = $db->prepare($baseSql . " AND (s.surveyor_id = ? OR s.id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?)) ORDER BY s.id DESC");
+        $stmt->execute([$user_id, $user_id]);
     }
     $surveys = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -67,7 +71,7 @@ try {
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('Pending Reports');
 
-    $headers = ['Vessel Name', 'Client', 'Agent', 'Survey Type', 'Surveyor', 'Survey Completed Date'];
+    $headers = ['Vessel Name', 'Client', 'Agent', 'Port', 'Country', 'Survey Type', 'Surveyor', 'Survey Completed Date'];
     $sheet->fromArray([$headers], null, 'A1');
 
     $rowNum = 2;
@@ -75,13 +79,15 @@ try {
         $sheet->setCellValue('A'.$rowNum, $row['vessel_name'] ?? '');
         $sheet->setCellValue('B'.$rowNum, $row['company_name'] ?? '');
         $sheet->setCellValue('C'.$rowNum, $row['agent_name'] ?? 'N/A');
-        $sheet->setCellValue('D'.$rowNum, $row['type_name'] ?? 'N/A');
-        $sheet->setCellValue('E'.$rowNum, $row['surveyor_name'] ?? 'N/A');
-        $sheet->setCellValue('F'.$rowNum, $row['survey_completed_date'] ?? '');
+        $sheet->setCellValue('D'.$rowNum, $row['port_name'] ?? 'N/A');
+        $sheet->setCellValue('E'.$rowNum, $row['country'] ?? 'India');
+        $sheet->setCellValue('F'.$rowNum, $row['type_name'] ?? 'N/A');
+        $sheet->setCellValue('G'.$rowNum, getCombinedSurveyorNames($db, $row['id'] ?? 0, $row['surveyor_name'] ?? 'N/A'));
+        $sheet->setCellValue('H'.$rowNum, $row['survey_completed_date'] ?? '');
         $rowNum++;
     }
 
-    foreach (range('A', 'F') as $col) {
+    foreach (range('A', 'H') as $col) {
         $sheet->getColumnDimension($col)->setAutoSize(true);
     }
 

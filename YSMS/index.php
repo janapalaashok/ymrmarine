@@ -65,37 +65,39 @@ if (in_array($role, ['Admin', 'Super Admin'], true)) {
     $stmt_lsmgo->execute([$client_row_id]);
     $total_lsmgo = $stmt_lsmgo->fetchColumn();
 } else {
-    // సర్వేయర్ కి కేవలం తనకు assign చేసినవి మాత్రమే
-    $stmt_v = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Vessel' AND surveyor_id = ?");
-    $stmt_v->execute([$user_id]);
+    // సర్వేయర్ కి కేవలం తనకు assign చేసినవి మాత్రమే — primary surveys.surveyor_id
+    // మరియు survey_surveyors జంక్షన్ టేబుల్ (multi-surveyor) రెండూ కలిపి.
+    $assignedSql = "(surveyor_id = ? OR id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?))";
+    $stmt_v = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Vessel' AND $assignedSql");
+    $stmt_v->execute([$user_id, $user_id]);
     $pending_vessels = $stmt_v->fetchColumn();
 
-    $stmt_r = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Report' AND surveyor_id = ?");
-    $stmt_r->execute([$user_id]);
+    $stmt_r = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Report' AND $assignedSql");
+    $stmt_r->execute([$user_id, $user_id]);
     $pending_reports = $stmt_r->fetchColumn();
 
-    $stmt_c = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Completed' AND surveyor_id = ?");
-    $stmt_c->execute([$user_id]);
+    $stmt_c = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Completed' AND $assignedSql");
+    $stmt_c->execute([$user_id, $user_id]);
     $completed_vessels = $stmt_c->fetchColumn();
 
     // సర్వేయర్ కి కేవలం తను అప్‌లోడ్ చేసిన రిపోర్ట్స్ లోని టోటల్ రికవరీ సమ్ మాత్రమే
-    $stmt_t_rec = $db->prepare("SELECT SUM(recovery_amount) FROM surveys WHERE recovery_amount IS NOT NULL AND surveyor_id = ?");
-    $stmt_t_rec->execute([$user_id]);
+    $stmt_t_rec = $db->prepare("SELECT SUM(recovery_amount) FROM surveys WHERE recovery_amount IS NOT NULL AND $assignedSql");
+    $stmt_t_rec->execute([$user_id, $user_id]);
     $total_recovery = $stmt_t_rec->fetchColumn();
-    
+
     // సర్వేయర్ కి ఈ నెలలో వచ్చిన రికవరీ సమ్ మాత్రమే
-    $stmt_m_rec = $db->prepare("SELECT SUM(recovery_amount) FROM surveys WHERE recovery_amount IS NOT NULL AND surveyor_id = ? AND MONTH(COALESCE(survey_completed_date, report_uploaded_date)) = MONTH(CURDATE()) AND YEAR(COALESCE(survey_completed_date, report_uploaded_date)) = YEAR(CURDATE())");
-    $stmt_m_rec->execute([$user_id]);
+    $stmt_m_rec = $db->prepare("SELECT SUM(recovery_amount) FROM surveys WHERE recovery_amount IS NOT NULL AND $assignedSql AND MONTH(COALESCE(survey_completed_date, report_uploaded_date)) = MONTH(CURDATE()) AND YEAR(COALESCE(survey_completed_date, report_uploaded_date)) = YEAR(CURDATE())");
+    $stmt_m_rec->execute([$user_id, $user_id]);
     $month_recovery = $stmt_m_rec->fetchColumn();
 
     // సర్వేయర్ కి తన VLSFO (M20) రికవరీ సమ్ మాత్రమే
-    $stmt_vlsfo = $db->prepare("SELECT SUM(vlsfo_recovery) FROM surveys WHERE vlsfo_recovery IS NOT NULL AND surveyor_id = ?");
-    $stmt_vlsfo->execute([$user_id]);
+    $stmt_vlsfo = $db->prepare("SELECT SUM(vlsfo_recovery) FROM surveys WHERE vlsfo_recovery IS NOT NULL AND $assignedSql");
+    $stmt_vlsfo->execute([$user_id, $user_id]);
     $total_vlsfo = $stmt_vlsfo->fetchColumn();
 
     // సర్వేయర్ కి తన LSMGO (O20) రికవరీ సమ్ మాత్రమే
-    $stmt_lsmgo = $db->prepare("SELECT SUM(lsmgo_recovery) FROM surveys WHERE lsmgo_recovery IS NOT NULL AND surveyor_id = ?");
-    $stmt_lsmgo->execute([$user_id]);
+    $stmt_lsmgo = $db->prepare("SELECT SUM(lsmgo_recovery) FROM surveys WHERE lsmgo_recovery IS NOT NULL AND $assignedSql");
+    $stmt_lsmgo->execute([$user_id, $user_id]);
     $total_lsmgo = $stmt_lsmgo->fetchColumn();
 }
 
@@ -123,14 +125,15 @@ if (in_array($role, ['Admin', 'Super Admin'], true)) {
     $avg_recovery_per_ship = null;
     $avg_recovery_per_surveyor = null;
 } else {
-    $stmt_recent = $db->prepare("SELECT vessel_name, vlsfo_recovery, lsmgo_recovery, recovery_amount FROM surveys WHERE recovery_amount IS NOT NULL AND surveyor_id = ? ORDER BY COALESCE(survey_completed_date, report_uploaded_date) DESC, id DESC LIMIT 1");
-    $stmt_recent->execute([$user_id]);
+    $assignedSql = "(surveyor_id = ? OR id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?))";
+    $stmt_recent = $db->prepare("SELECT vessel_name, vlsfo_recovery, lsmgo_recovery, recovery_amount FROM surveys WHERE recovery_amount IS NOT NULL AND $assignedSql ORDER BY COALESCE(survey_completed_date, report_uploaded_date) DESC, id DESC LIMIT 1");
+    $stmt_recent->execute([$user_id, $user_id]);
     $recent_row = $stmt_recent->fetch(PDO::FETCH_ASSOC);
-    $stmt_avg = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Completed' AND surveyor_id = ?");
-    $stmt_avg->execute([$user_id]);
+    $stmt_avg = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Completed' AND $assignedSql");
+    $stmt_avg->execute([$user_id, $user_id]);
     $avg_ships = $stmt_avg->fetchColumn();
-    $stmt_ms = $db->prepare("SELECT GREATEST(1, TIMESTAMPDIFF(MONTH, MIN(COALESCE(survey_completed_date, report_uploaded_date, assign_date)), CURDATE()) + 1) FROM surveys WHERE surveyor_id = ? AND status IN ('Completed','Pending Report')");
-    $stmt_ms->execute([$user_id]);
+    $stmt_ms = $db->prepare("SELECT GREATEST(1, TIMESTAMPDIFF(MONTH, MIN(COALESCE(survey_completed_date, report_uploaded_date, assign_date)), CURDATE()) + 1) FROM surveys WHERE $assignedSql AND status IN ('Completed','Pending Report')");
+    $stmt_ms->execute([$user_id, $user_id]);
     $months_span = $stmt_ms->fetchColumn();
     $avg_ships_per_month = $months_span > 0 ? round(((float)$avg_ships) / (float)$months_span, 1) : 0;
     $avg_recovery_per_ship = null;
@@ -195,7 +198,6 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
             <p><?= getGreeting() ?>! Have a productive day.</p>
         </div>
         <div class="dash-header-right" style="display:flex;align-items:center;gap:8px;">
-            <?php include 'includes/notifications_bell.php'; ?>
             <?php include 'includes/profile_dropdown.php'; ?>
         </div>
     </div>

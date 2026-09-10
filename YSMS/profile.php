@@ -304,7 +304,6 @@ include 'includes/header.php';
         <a href="index.php" class="text-dark"><i class="fa-solid fa-chevron-left"></i></a>
         <h5 class="fw-bold m-0 text-center flex-grow-1" style="font-size: 16px;">Account Settings</h5>
         <div class="d-flex align-items-center gap-2" style="flex-shrink:0;">
-            <?php include 'includes/notifications_bell.php'; ?>
             <?php include 'includes/profile_dropdown.php'; ?>
         </div>
     </div>

@@ -134,6 +134,53 @@ function ensurePortsCountryColumn(PDO $db): void {
     }
 }
 
+/**
+ * "Visakhapatnam Port" -> "Visakhapatnam Anchorage"; "Port of Singapore" ->
+ * "Singapore Anchorage"; "King Abdulaziz Port (Dammam)" -> "King Abdulaziz
+ * Anchorage (Dammam)". Falls back to appending " Anchorage" to the full name
+ * for anything that doesn't match the "X Port" / "Port of X" patterns.
+ * Returns null for a name that's already an anchorage (avoids "X Anchorage
+ * Anchorage" if this ever runs against its own output).
+ */
+function buildAnchorageName(string $portName): ?string {
+    $name = trim($portName);
+    if ($name === '' || stripos($name, 'anchorage') !== false) return null;
+    if (preg_match('/^Port of\s+(.+)$/i', $name, $m)) {
+        return trim($m[1]) . ' Anchorage';
+    }
+    if (preg_match('/^(.+?)\s+Port(\s*\(.+\))?$/i', $name, $m)) {
+        return trim($m[1]) . ' Anchorage' . (!empty($m[2]) ? ' ' . trim($m[2]) : '');
+    }
+    return $name . ' Anchorage';
+}
+
+/**
+ * One-time backfill: every port that existed before the Anchorage feature
+ * gets a matching "<name> Anchorage" row (same country), e.g. Visakhapatnam
+ * Port -> Visakhapatnam Anchorage. Skips entirely once any "* Anchorage"
+ * port already exists, so it only ever runs once. New ports added after
+ * that get their anchorage created inline instead (see
+ * ajax/admin_master.php's 'ports' add handler).
+ */
+function ensurePortAnchorages(PDO $db): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+        $already = (int)$db->query("SELECT COUNT(*) FROM ports WHERE port_name LIKE '%Anchorage%'")->fetchColumn();
+        if ($already > 0) return;
+        $ports = $db->query("SELECT port_name, country FROM ports")->fetchAll(PDO::FETCH_ASSOC);
+        $ins = $db->prepare("INSERT IGNORE INTO ports (port_name, country) VALUES (?, ?)");
+        foreach ($ports as $p) {
+            $anchorageName = buildAnchorageName((string)$p['port_name']);
+            if ($anchorageName === null) continue;
+            $ins->execute([$anchorageName, $p['country'] ?: 'India']);
+        }
+    } catch (Throwable $e) {
+        error_log('ensurePortAnchorages: ' . $e->getMessage());
+    }
+}
+
 // 🌟 ఒక సర్వేకి బహుళ Survey Types ఎంచుకున్నప్పుడు, వాటన్నింటినీ "+" తో కలిపి చూపించడానికి హెల్పర్
 // (survey_type_ids కాలమ్ ఖాళీగా ఉంటే, పాత రికార్డుల కోసం $fallback_name ఇస్తుంది)
 function getCombinedSurveyTypeNames($db, $ids_csv, $fallback_name = '') {
@@ -157,5 +204,67 @@ function getCombinedSurveyTypeNames($db, $ids_csv, $fallback_name = '') {
         if (isset($name_by_id[$tid])) $names[] = $name_by_id[$tid];
     }
     return !empty($names) ? implode(' + ', $names) : $fallback_name;
+}
+
+// 🌟 ఒక సర్వేకి బహుళ Surveyors అసైన్ చేసినప్పుడు (survey_surveyors జంక్షన్ టేబుల్), వాటన్నింటినీ
+// "+" తో కలిపి చూపించడానికి హెల్పర్ — ఏ surveyor రికార్డు లేకపోతే (పాత single-surveyor
+// అసైన్‌మెంట్లు) $fallback_name (సాధారణంగా surveys.surveyor_id నుండి వచ్చిన పేరు) ఇస్తుంది.
+// Per-request memoization: అదే survey_id కి ఒకే పేజీలో రెండుసార్లు (mobile + desktop view వంటివి)
+// పిలిస్తే మళ్ళీ query చేయదు.
+function getAssignedSurveyorNamesArray($db, $surveyId): array {
+    static $cache = [];
+    $surveyId = (int)$surveyId;
+    if ($surveyId <= 0) {
+        return [];
+    }
+    if (array_key_exists($surveyId, $cache)) {
+        return $cache[$surveyId];
+    }
+    try {
+        $stmt = $db->prepare("
+            SELECT u.full_name
+            FROM survey_surveyors ss
+            JOIN users u ON ss.surveyor_id = u.id
+            WHERE ss.survey_id = ?
+            ORDER BY ss.id ASC
+        ");
+        $stmt->execute([$surveyId]);
+        $names = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (Throwable $e) {
+        $names = [];
+    }
+    $cache[$surveyId] = $names;
+    return $names;
+}
+
+function getCombinedSurveyorNames($db, $surveyId, $fallback_name = '') {
+    $names = getAssignedSurveyorNamesArray($db, $surveyId);
+    return !empty($names) ? implode(' + ', $names) : $fallback_name;
+}
+
+// 🌟 ఒక Surveyor ఒక సర్వేకి అసైన్ అయ్యాడో లేదో చెక్ చేయడానికి — legacy single
+// surveys.surveyor_id కాలమ్ (primary) మరియు survey_surveyors జంక్షన్ టేబుల్ (బహుళ
+// surveyors) రెండింటినీ చూస్తుంది. వెసెల్/రిపోర్ట్/కంప్లీటెడ్ డీటెయిల్ పేజీలు, ఎక్స్‌పెన్స్
+// జనరేటర్ లాంటివి — "ఈ సర్వేయర్ ఈ సర్వేని చూడగలడా/యాక్సెస్ చేయగలడా" అని చెక్ చేసేచోట
+// వాడాలి, కేవలం $survey['surveyor_id'] === $user_id పోల్చడం వల్ల seconday (multi-assign)
+// surveyor లు తమ సొంత అసైన్‌మెంట్‌నే చూడలేకపోయే బగ్ రాకుండా.
+function isSurveyorAssignedToSurvey($db, $surveyId, $userId): bool {
+    $surveyId = (int)$surveyId;
+    $userId = (int)$userId;
+    if ($surveyId <= 0 || $userId <= 0) {
+        return false;
+    }
+    try {
+        $stmt = $db->prepare("
+            SELECT 1 FROM surveys WHERE id = ? AND surveyor_id = ?
+            UNION
+            SELECT 1 FROM survey_surveyors WHERE survey_id = ? AND surveyor_id = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$surveyId, $userId, $surveyId, $userId]);
+        return (bool)$stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
 }
 ?>

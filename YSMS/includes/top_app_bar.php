@@ -14,7 +14,6 @@ $page_testid = isset($page_testid) ? $page_testid : 'page';
     </div>
     <h1 class="top-app-bar-title" data-testid="<?= sanitize($page_testid) ?>-page-title"><?= sanitize($page_title) ?></h1>
     <div class="top-app-bar-right">
-        <?php include __DIR__ . '/notifications_bell.php'; ?>
         <?php include __DIR__ . '/profile_dropdown.php'; ?>
     </div>
 </div>
