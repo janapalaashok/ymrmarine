@@ -47,6 +47,11 @@ $fab_user_role = $user_role ?? ($_SESSION['role'] ?? '');
             <i class="fa-solid fa-user-shield text-primary" style="width: 24px; text-align: center;"></i>
             <span>Add Admin</span>
         </a>
+        <!-- TEMPORARY — remove once go-live test-data cleanup is done. -->
+        <a href="super_admin_controls.php" class="fab-option-item" data-testid="fab-data-cleanup-link">
+            <i class="fa-solid fa-trash text-danger" style="width: 24px; text-align: center;"></i>
+            <span>Data Cleanup (Temp)</span>
+        </a>
         <?php endif; ?>
 
         <button class="btn btn-light w-100 mt-3 rounded-3 fw-bold text-danger" id="closeFabBtn" style="font-size: 14px; padding: 12px;" data-testid="fab-close-button">Close</button>

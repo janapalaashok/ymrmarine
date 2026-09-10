@@ -141,6 +141,12 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
             <i class="fa-solid fa-user-shield"></i>
             <span>Add Admin</span>
         </a>
+        <!-- 🌟 TEMPORARY — remove this link (and super_admin_controls.php) once
+             go-live test-data cleanup is done. -->
+        <a href="super_admin_controls.php" class="nav-item-btn desktop-only-nav <?= ($current_page == 'super_admin_controls.php') ? 'active' : '' ?>" data-testid="sidebar-data-cleanup-link">
+            <i class="fa-solid fa-trash"></i>
+            <span>Data Cleanup (Temp)</span>
+        </a>
         <?php endif; ?>
 
         <div class="desktop-sidebar-section-label desktop-only-nav">Account</div>
