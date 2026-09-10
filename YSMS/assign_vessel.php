@@ -973,6 +973,17 @@ include 'includes/top_app_bar.php';
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script>
+    // 🌟 The "+ Other (Add New Client/Port/Survey Type)" inline-save buttons below
+    // POST to ajax/add_client.php / ajax/add_port.php / ajax/add_survey_type.php,
+    // which all call checkAuth() -> csrf_require() and reject any POST that
+    // doesn't carry the session's CSRF token (403, plain text) — jQuery then
+    // reports that as "Network error." Same root cause and fix as
+    // admin_controls.php: send the token as a header on every AJAX call here.
+    const CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;
+    $.ajaxSetup({
+        headers: { 'X-CSRF-Token': CSRF_TOKEN }
+    });
+
     $(document).ready(function() {
 
         // ---- Single searchable select (Client / Port) ----
