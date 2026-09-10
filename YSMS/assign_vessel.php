@@ -210,9 +210,13 @@ $survey_types = $db->query("SELECT * FROM survey_types")->fetchAll();
 
 // ఫార్మ్ సబ్మిషన్ ప్రాసెస్
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $vessel_name = trim($_POST['vessel_name']);
+    // 🌟 Vessel Name / Agent Name / Remarks always stored upper case, however
+    // Admin/Client typed them — Vessel Name additionally always gets the
+    // "MV. " prefix (normalizeVesselName), e.g. "vessel name" or "mv Vessel
+    // Name" both become "MV. VESSEL NAME".
+    $vessel_name = normalizeVesselName(trim($_POST['vessel_name']));
     $client_id = (int)$_POST['client_id'];
-    $agent_name = trim($_POST['agent_name']);
+    $agent_name = mb_strtoupper(trim($_POST['agent_name']), 'UTF-8');
     $port_id = (int)$_POST['port_id'];
 
     // 🌟 బహుళ Survey Types (checkbox multi-select) — CSV గా వస్తుంది, ఉదా. "3,5,7"
@@ -224,7 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $survey_type_id = !empty($survey_type_ids_arr) ? $survey_type_ids_arr[0] : 0;
 
     $surveyor_id = $_POST['surveyor_id'] ?? ''; // 'outsourcing' లేదా ID కావచ్చు (legacy single field, kept for back-compat)
-    $remarks = trim($_POST['remarks']);
+    $remarks = mb_strtoupper(trim($_POST['remarks']), 'UTF-8');
 
     // 🌟 బహుళ Surveyors (checkbox multi-select) — CSV గా వస్తుంది, ఉదా. "3,5,7" లేదా "outsourcing"
     $surveyor_ids_csv = trim($_POST['surveyor_ids'] ?? '');
@@ -471,6 +475,15 @@ include 'includes/header.php';
         color: var(--text-dark);
         outline: none;
         background: #f8fafc;
+    }
+    /* Vessel Name / Agent Name / Remarks: shown in caps as typed, matching how
+       they're stored (server-side upper-cased on submit — see the POST
+       handler above). Placeholders stay normal case for readability. */
+    input[name="vessel_name"], input[name="agent_name"], textarea[name="remarks"] {
+        text-transform: uppercase;
+    }
+    input[name="vessel_name"]::placeholder, input[name="agent_name"]::placeholder, textarea[name="remarks"]::placeholder {
+        text-transform: none;
     }
     .form-group-custom input:focus, .form-group-custom select:focus, .form-group-custom textarea:focus {
         border-color: #3b32b3;

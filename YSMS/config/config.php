@@ -83,17 +83,19 @@ function sanitize($data) {
 
 /**
  * Ensures a vessel name always carries a single, consistent "MV. " prefix —
- * whatever the admin/surveyor typed (with or without "MV", "M.V.", any
- * case, extra spaces). Never doubles an existing prefix.
+ * whatever the admin/client typed (with or without "MV", "M.V.", any case,
+ * extra spaces) — and that the rest of the name is upper case, e.g.
+ * "vessel name", "Vessel Name" and "mv vessel name" all normalize to
+ * "MV. VESSEL NAME". Never doubles an existing prefix.
  */
 function normalizeVesselName(string $name): string {
     $name = trim($name);
     if ($name === '') return $name;
     if (preg_match('/^m\.?\s*v\.?\s*/i', $name)) {
         $rest = preg_replace('/^m\.?\s*v\.?\s*/i', '', $name);
-        return 'MV. ' . ltrim($rest);
+        return 'MV. ' . mb_strtoupper(ltrim($rest), 'UTF-8');
     }
-    return 'MV. ' . $name;
+    return 'MV. ' . mb_strtoupper($name, 'UTF-8');
 }
 
 /** For a Client-role user, returns their linked clients.id (0 if not linked/not a client). */
