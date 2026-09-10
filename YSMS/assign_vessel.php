@@ -476,15 +476,6 @@ include 'includes/header.php';
         border-color: #3b32b3;
         background: white;
     }
-    #otherClientContainer, #otherPortContainer, #otherSurveyTypeContainer {
-        display: none;
-        background: #f1f5f9;
-        padding: 12px;
-        border-radius: 10px;
-        margin-top: -10px;
-        margin-bottom: 15px;
-    }
-
     /* Searchable dropdown */
     .searchable-select { position: relative; }
     .searchable-select .ss-trigger {
@@ -669,9 +660,6 @@ include 'includes/header.php';
         .form-box-custom > .alert {
             grid-column: 1 / -1;
         }
-        .form-box-custom > #otherClientContainer,
-        .form-box-custom > #otherPortContainer,
-        .form-box-custom > #otherSurveyTypeContainer,
         .form-box-custom > #reportNumberGroup {
             grid-column: 1 / -1;
         }
@@ -771,7 +759,9 @@ include 'includes/top_app_bar.php';
                 <input type="hidden" name="client_id" id="clientSelect" value="<?= (int)$own_client_id ?>">
             </div>
             <?php else: ?>
-            <!-- 🌟 Client Name: searchable dropdown with search box inside + Other -->
+            <!-- 🌟 Client Name: searchable dropdown with search box inside.
+                 New clients/ports/survey types are added only from Admin Controls,
+                 not inline here. -->
             <div class="form-group-custom">
                 <label>Client Name *</label>
                 <div class="searchable-select" data-ss-root="client">
@@ -788,7 +778,6 @@ include 'includes/top_app_bar.php';
                             <?php foreach($clients as $client): ?>
                                 <li class="ss-option" data-value="<?= $client['id'] ?>" data-name="<?= strtolower(sanitize($client['company_name'])) ?>" data-short="<?= sanitize(strtoupper(trim($client['short_code'] ?? ''))) ?>"><?= sanitize($client['company_name']) ?><?php if (!empty($client['short_code'])): ?> <span style="color:#64748b;font-weight:600;">(<?= sanitize(strtoupper($client['short_code'])) ?>)</span><?php endif; ?></li>
                             <?php endforeach; ?>
-                            <li class="ss-option ss-option-other" data-value="other_client" data-name="other">+ Other (Add New Client)</li>
                         </ul>
                     </div>
                 </div>
@@ -797,19 +786,7 @@ include 'includes/top_app_bar.php';
                     <?php foreach($clients as $client): ?>
                         <option value="<?= $client['id'] ?>"><?= sanitize($client['company_name']) ?></option>
                     <?php endforeach; ?>
-                    <option value="other_client">Other</option>
                 </select>
-            </div>
-            <!-- Client "Other" టెక్స్ట్ ఫీల్డ్ (డైనమిక్, AJAX సేవ్) -->
-            <div id="otherClientContainer">
-                <div class="form-group-custom m-0">
-                    <label class="text-primary"><i class="fa-solid fa-pen"></i> Enter Client Name *</label>
-                    <div class="d-flex gap-2">
-                        <input type="text" id="newClientNameInput" placeholder="Enter new client name" style="flex: 1;" data-testid="new-client-name-input">
-                        <button type="button" id="saveNewClientBtn" class="btn btn-sm" style="background:#3b32b3; color:#fff; font-weight:600;" data-testid="save-new-client-button">Save</button>
-                    </div>
-                    <div id="newClientStatus" class="small mt-1"></div>
-                </div>
             </div>
             <?php endif; ?>
 
@@ -830,7 +807,7 @@ include 'includes/top_app_bar.php';
                 <input type="text" name="agent_name" placeholder="e.g. Oceanus Agencies" required>
             </div>
 
-            <!-- 🌟 Port Name: searchable dropdown with search box inside + Other -->
+            <!-- 🌟 Port Name: searchable dropdown with search box inside -->
             <div class="form-group-custom">
                 <label>Port Name *</label>
                 <div class="searchable-select" data-ss-root="port">
@@ -856,7 +833,6 @@ include 'includes/top_app_bar.php';
                             <?php foreach($ports as $port): ?>
                                 <li class="ss-option" data-value="<?= $port['id'] ?>" data-name="<?= strtolower(sanitize($port['port_name'])) ?>" data-country="<?= strtolower(sanitize($port['country'] ?? 'India')) ?>"><?= sanitize($port['port_name']) ?> <span class="ss-option-country"><?= sanitize($port['country'] ?? 'India') ?></span></li>
                             <?php endforeach; ?>
-                            <li class="ss-option ss-option-other" data-value="other_port" data-name="other" data-country="">+ Other (Add New Port)</li>
                         </ul>
                     </div>
                 </div>
@@ -865,23 +841,10 @@ include 'includes/top_app_bar.php';
                     <?php foreach($ports as $port): ?>
                         <option value="<?= $port['id'] ?>"><?= sanitize($port['port_name']) ?></option>
                     <?php endforeach; ?>
-                    <option value="other_port">Other</option>
                 </select>
             </div>
-            <!-- Port "Other" టెక్స్ట్ ఫీల్డ్ (డైనమిక్, AJAX సేవ్) -->
-            <div id="otherPortContainer">
-                <div class="form-group-custom m-0">
-                    <label class="text-primary"><i class="fa-solid fa-pen"></i> Enter Port Name *</label>
-                    <div class="d-flex gap-2">
-                        <input type="text" id="newPortNameInput" placeholder="Enter new port name" style="flex: 1;" data-testid="new-port-name-input">
-                        <input type="text" id="newPortCountryInput" placeholder="Country" style="width:140px;" data-testid="new-port-country-input">
-                        <button type="button" id="saveNewPortBtn" class="btn btn-sm" style="background:#3b32b3; color:#fff; font-weight:600;" data-testid="save-new-port-button">Save</button>
-                    </div>
-                    <div id="newPortStatus" class="small mt-1"></div>
-                </div>
-            </div>
 
-            <!-- 🌟 Survey Type: searchable MULTI-select (checkboxes) with search box inside + Other -->
+            <!-- 🌟 Survey Type: searchable MULTI-select (checkboxes) with search box inside -->
             <div class="form-group-custom">
                 <label>Survey Type * <span class="text-muted fw-normal" style="font-size:10.5px;">(select one or more)</span></label>
                 <div class="searchable-select ss-multi" data-ss-root="surveyType">
@@ -901,22 +864,10 @@ include 'includes/top_app_bar.php';
                                     <span class="ss-option-label"><?= sanitize($type['type_name']) ?></span>
                                 </li>
                             <?php endforeach; ?>
-                            <li class="ss-option ss-option-other" data-value="other_survey_type" data-name="other">+ Other (Add New Survey Type)</li>
                         </ul>
                     </div>
                 </div>
                 <input type="hidden" name="survey_type_ids" id="surveyTypeIdsInput" value="">
-            </div>
-            <!-- Survey Type "Other" టెక్స్ట్ ఫీల్డ్ (డైనమిక్, AJAX సేవ్) -->
-            <div id="otherSurveyTypeContainer">
-                <div class="form-group-custom m-0">
-                    <label class="text-primary"><i class="fa-solid fa-pen"></i> Enter Survey Type *</label>
-                    <div class="d-flex gap-2">
-                        <input type="text" id="newSurveyTypeInput" placeholder="Enter your custom survey style name" style="flex: 1;" data-testid="new-survey-type-input">
-                        <button type="button" id="saveNewSurveyTypeBtn" class="btn btn-sm" style="background:#3b32b3; color:#fff; font-weight:600;" data-testid="save-new-survey-type-button">Save</button>
-                    </div>
-                    <div id="newSurveyTypeStatus" class="small mt-1"></div>
-                </div>
             </div>
 
             <?php if (!$is_client_role): ?>
@@ -973,17 +924,6 @@ include 'includes/top_app_bar.php';
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script>
-    // 🌟 The "+ Other (Add New Client/Port/Survey Type)" inline-save buttons below
-    // POST to ajax/add_client.php / ajax/add_port.php / ajax/add_survey_type.php,
-    // which all call checkAuth() -> csrf_require() and reject any POST that
-    // doesn't carry the session's CSRF token (403, plain text) — jQuery then
-    // reports that as "Network error." Same root cause and fix as
-    // admin_controls.php: send the token as a header on every AJAX call here.
-    const CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;
-    $.ajaxSetup({
-        headers: { 'X-CSRF-Token': CSRF_TOKEN }
-    });
-
     $(document).ready(function() {
 
         // ---- Single searchable select (Client / Port) ----
@@ -1303,97 +1243,6 @@ include 'includes/top_app_bar.php';
             if (e.key === 'Escape') { $('.searchable-select.open').removeClass('open'); }
         });
 
-        // ---- "+ Other" handlers ----
-        function wireOtherOption(config) {
-            const $hiddenSelect = config.selectSel ? $(config.selectSel) : $();
-            const $ssRoot = $('[data-ss-root="' + config.ssKey + '"]');
-            const $container = $(config.containerSel);
-            const $input = $(config.inputSel);
-            const $saveBtn = $(config.saveBtnSel);
-            const $status = $(config.statusSel);
-
-            if ($hiddenSelect.length) {
-                $hiddenSelect.on('change', function() {
-                    if ($(this).val() === config.otherValue) {
-                        $container.show();
-                        try { $input[0].focus(); } catch (e) {}
-                    } else {
-                        $container.hide();
-                        $status.text('');
-                    }
-                });
-            }
-
-            $saveBtn.on('click', function() {
-                const newName = String($input.val() || '').trim();
-                if (!newName) {
-                    $status.removeClass('text-success').addClass('text-danger').text('Please enter a name first.');
-                    return;
-                }
-                $saveBtn.prop('disabled', true).text('Saving...');
-                $status.removeClass('text-danger text-success').text('');
-
-                $.ajax({
-                    url: config.ajaxUrl,
-                    method: 'POST',
-                    data: config.postData(newName),
-                    dataType: 'json'
-                }).done(function(res) {
-                    if (res && res.success) {
-                        const api = $ssRoot.data('ssApi');
-                        if (api && typeof api.addAndSelect === 'function') {
-                            api.addAndSelect(res.id, res.name || newName);
-                        }
-                        $container.hide();
-                        $input.val('');
-                        $status.removeClass('text-danger').addClass('text-success').text(res.existed ? 'Selected existing entry.' : 'Saved and selected.');
-                    } else {
-                        $status.removeClass('text-success').addClass('text-danger').text((res && res.message) ? res.message : 'Could not save. Please try again.');
-                    }
-                }).fail(function() {
-                    $status.removeClass('text-success').addClass('text-danger').text('Network error. Please try again.');
-                }).always(function() {
-                    $saveBtn.prop('disabled', false).text('Save');
-                });
-            });
-        }
-
-        wireOtherOption({
-            ssKey: 'client',
-            selectSel: '#clientSelect',
-            containerSel: '#otherClientContainer',
-            inputSel: '#newClientNameInput',
-            saveBtnSel: '#saveNewClientBtn',
-            statusSel: '#newClientStatus',
-            otherValue: 'other_client',
-            ajaxUrl: 'ajax/add_client.php',
-            postData: function(name) { return { company_name: name }; }
-        });
-
-        wireOtherOption({
-            ssKey: 'port',
-            selectSel: '#portSelect',
-            containerSel: '#otherPortContainer',
-            inputSel: '#newPortNameInput',
-            saveBtnSel: '#saveNewPortBtn',
-            statusSel: '#newPortStatus',
-            otherValue: 'other_port',
-            ajaxUrl: 'ajax/add_port.php',
-            postData: function(name) { return { port_name: name, country: String($('#newPortCountryInput').val() || '').trim() || 'India' }; }
-        });
-
-        wireOtherOption({
-            ssKey: 'surveyType',
-            selectSel: null,
-            containerSel: '#otherSurveyTypeContainer',
-            inputSel: '#newSurveyTypeInput',
-            saveBtnSel: '#saveNewSurveyTypeBtn',
-            statusSel: '#newSurveyTypeStatus',
-            otherValue: 'other_survey_type',
-            ajaxUrl: 'ajax/add_survey_type.php',
-            postData: function(name) { return { type_name: name }; }
-        });
-
         // ---- Form submit validation ----
         $('#assignVesselForm').on('submit', function(e) {
             const clientVal = String($('#clientSelect').val() || '');
@@ -1409,19 +1258,11 @@ include 'includes/top_app_bar.php';
             if (!vesselVal) messages.push('Vessel Name is required.');
             if (!agentVal) messages.push('Agent Name is required.');
 
-            if (clientVal === 'other_client') {
-                $('#newClientStatus').removeClass('text-success').addClass('text-danger').text('Please save the new client before submitting.');
-                $('#otherClientContainer').show();
-                messages.push('Please save the new client first.');
-            } else if (!clientVal || clientVal === '0') {
+            if (!clientVal || clientVal === '0') {
                 messages.push('Please select a Client.');
             }
 
-            if (portVal === 'other_port') {
-                $('#newPortStatus').removeClass('text-success').addClass('text-danger').text('Please save the new port before submitting.');
-                $('#otherPortContainer').show();
-                messages.push('Please save the new port first.');
-            } else if (!portVal || portVal === '0') {
+            if (!portVal || portVal === '0') {
                 messages.push('Please select a Port.');
             }
 
