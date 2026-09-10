@@ -98,6 +98,20 @@ function normalizeVesselName(string $name): string {
     return 'MV. ' . mb_strtoupper($name, 'UTF-8');
 }
 
+/**
+ * Shared "Updated on 10th Sep - 04:02 PM" phrase for the Latest Update
+ * feature (vessels.php, vessel_detail.php, photo_report.php) — kept in one
+ * place so the date/time formatting stays identical everywhere it's shown.
+ * Caller is responsible for the "Latest Update : {status}" prefix and the
+ * "By {name}" suffix (sanitize()d separately, since this returns a value
+ * meant to be echoed directly, not escaped again).
+ */
+function formatLatestUpdateWhen(string $updatedAt): string {
+    $ts = strtotime($updatedAt);
+    if (!$ts) return '';
+    return 'Updated on ' . date('jS M', $ts) . ' - ' . date('h:i A', $ts);
+}
+
 /** For a Client-role user, returns their linked clients.id (0 if not linked/not a client). */
 function getClientIdForUser(PDO $db, int $userId): int {
     $stmt = $db->prepare('SELECT id FROM clients WHERE user_id = ?');

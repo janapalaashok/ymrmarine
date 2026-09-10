@@ -556,7 +556,7 @@ include 'includes/header.php';
             <div class="d-flex justify-content-between align-items-center">
                 <div style="font-size: 11px; color: var(--text-muted);">
                     <?php if (!empty($survey['status_updated_at'])): ?>
-                        Last Active: <span class="text-dark fw-bold"><?= date('d M - h:i A', strtotime($survey['status_updated_at'])) ?></span> By <span class="text-primary fw-bold"><?= sanitize($survey['modifier_name'] ?? 'User') ?></span>
+                        <span class="text-dark fw-bold"><?= formatLatestUpdateWhen($survey['status_updated_at']) ?></span> By <span class="text-primary fw-bold"><?= sanitize($survey['modifier_name'] ?? 'User') ?></span>
                     <?php endif; ?>
                 </div>
                 <button type="submit" name="update_latest_status" class="small-status-btn">Update</button>

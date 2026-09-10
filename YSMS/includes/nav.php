@@ -62,21 +62,14 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
 
         <?php
         // Mobile only FAB — desktop uses expanded sidebar links below.
-        // Admin and Super Admin both get the FAB (its content in
-        // includes/footer.php is role-aware — Super Admin only sees
-        // Add Client + Add Admin there, not the full Admin menu).
-        if (in_array($user_role, ['Admin', 'Super Admin'], true)):
+        // Admin, Super Admin and Client all get the FAB (its content in
+        // includes/footer.php is role-aware per role: Super Admin sees Add
+        // Client + Add Admin, Client sees Request Survey).
+        if (in_array($user_role, ['Admin', 'Super Admin', 'Client'], true)):
         ?>
             <button class="center-fab-btn" id="globalFabTrigger" data-testid="global-add-menu-button">
                 <i class="fa-solid fa-plus"></i>
             </button>
-        <?php
-        elseif ($user_role === 'Client'):
-        ?>
-            <a href="assign_vessel.php" class="nav-item-btn <?= ($current_page == 'assign_vessel.php') ? 'active' : '' ?>" data-testid="navigation-request-survey-link">
-                <i class="fa-solid fa-plus"></i>
-                <span>Request Survey</span>
-            </a>
         <?php
         endif;
         ?>
@@ -90,11 +83,11 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
             <span>Completed</span>
         </a>
         <?php
-        // Admin and Super Admin: hide Cancelled on mobile bottom bar only — the
-        // bar there is Home / Pending Vessels / FAB / Reports / Completed — while
-        // keeping it reachable via the sidebar (drawer + desktop). Surveyor and
-        // Client: always show (same as before).
-        $cancelled_bn_class = in_array($user_role, ['Admin', 'Super Admin'], true) ? ' hide-cancelled-on-mobile-bn' : '';
+        // Admin, Super Admin and Client: hide Cancelled on mobile bottom bar
+        // only — the bar there is Home / Pending Vessels / FAB / Reports /
+        // Completed — while keeping it reachable via the sidebar (drawer +
+        // desktop). Surveyor: always show (same as before).
+        $cancelled_bn_class = in_array($user_role, ['Admin', 'Super Admin', 'Client'], true) ? ' hide-cancelled-on-mobile-bn' : '';
         ?>
         <a href="cancelled.php" class="nav-item-btn<?= $cancelled_bn_class ?> <?= ($current_page == 'cancelled.php') ? 'active' : '' ?>" data-testid="navigation-cancelled-link">
             <i class="fa-solid fa-ban"></i>

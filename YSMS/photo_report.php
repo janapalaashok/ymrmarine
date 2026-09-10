@@ -89,11 +89,11 @@ include 'includes/header.php';
                     <div class="vessel-live-status-bar">
                         <?php if (!empty($survey['custom_live_status'])): ?>
                             <div class="text-dark fw-semibold mb-1" style="line-height: 1.3;">
-                                <i class="fa-solid fa-comment-dots text-primary me-1"></i> <?= sanitize($survey['custom_live_status']) ?>
+                                <i class="fa-solid fa-comment-dots text-primary me-1"></i> Latest Update : <?= sanitize($survey['custom_live_status']) ?>
                             </div>
                             <div class="text-muted" style="font-size: 10px;">
-                                Updated: <span class="fw-bold"><?= date('d M Y - h:i A', strtotime($survey['status_updated_at'])) ?></span> 
-                                by <span class="text-primary fw-bold"><?= !empty($survey['modifier_name']) ? sanitize($survey['modifier_name']) : 'User' ?></span>
+                                <span class="fw-bold"><?= !empty($survey['status_updated_at']) ? formatLatestUpdateWhen($survey['status_updated_at']) : '—' ?></span>
+                                By <span class="text-primary fw-bold"><?= !empty($survey['modifier_name']) ? sanitize($survey['modifier_name']) : 'User' ?></span>
                             </div>
                         <?php else: ?>
                             <div class="text-muted italic" style="font-size: 11px;">

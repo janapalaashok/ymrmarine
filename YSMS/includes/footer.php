@@ -1,10 +1,11 @@
 </div> <!-- .mobile-container క్లోజింగ్ ట్యాగ్ -->
 
 <?php
-// The FAB trigger button itself is only rendered for Admin and Super Admin
-// (see includes/nav.php), but its content here must still match each role's
-// own permissions — Super Admin never gets Assign Vessel / Add Surveyor /
-// Admin Controls, only Add Client + Add Admin.
+// The FAB trigger button itself is only rendered for Admin, Super Admin and
+// Client (see includes/nav.php), but its content here must still match each
+// role's own permissions — Super Admin never gets Assign Vessel / Add
+// Surveyor / Admin Controls (only Add Client + Add Admin), and Client only
+// ever gets Request Survey.
 $fab_user_role = $user_role ?? ($_SESSION['role'] ?? '');
 ?>
 <!-- Global Center FAB Action Drawer Overlay -->
@@ -51,6 +52,11 @@ $fab_user_role = $user_role ?? ($_SESSION['role'] ?? '');
         <a href="super_admin_controls.php" class="fab-option-item" data-testid="fab-data-cleanup-link">
             <i class="fa-solid fa-trash text-danger" style="width: 24px; text-align: center;"></i>
             <span>Data Cleanup (Temp)</span>
+        </a>
+        <?php elseif ($fab_user_role === 'Client'): ?>
+        <a href="assign_vessel.php" class="fab-option-item" data-testid="fab-request-survey-link">
+            <i class="fa-solid fa-ship text-primary" style="width: 24px; text-align: center;"></i>
+            <span>Request Survey</span>
         </a>
         <?php endif; ?>
 
