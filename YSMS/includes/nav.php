@@ -36,16 +36,16 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
 <div class="bottom-nav-bar" data-testid="global-navigation">
     <!-- Brand (desktop sidebar only) — logo image if present, else anchor icon -->
     <div class="desktop-sidebar-brand" data-testid="desktop-sidebar-brand">
-        <div class="desktop-sidebar-mark">
+        <div class="desktop-sidebar-mark<?= $sidebar_has_logo ? ' has-logo' : '' ?>">
             <?php if ($sidebar_has_logo): ?>
-                <img src="<?= sanitize($sidebar_logo_path) ?>" alt="YSMS Logo" class="desktop-sidebar-logo-img">
+                <img src="<?= sanitize($sidebar_logo_path) ?>" alt="YMR Survey Management Logo" class="desktop-sidebar-logo-img">
             <?php else: ?>
                 <i class="fa-solid fa-anchor" aria-hidden="true"></i>
             <?php endif; ?>
         </div>
         <div class="desktop-sidebar-brand-text">
-            <b>YSMS</b>
-            <span>Survey Management</span>
+            <b>YMR</b>
+            <span>SURVEY MANAGEMENT</span>
         </div>
     </div>
 

@@ -556,9 +556,15 @@ require_once __DIR__ . '/../config/config.php';
         flex: none;
         overflow: hidden;
     }
+    /* Logo badge gets a white background (the logo itself has its own color),
+       instead of the purple gradient meant for the fallback anchor icon. */
+    .desktop-sidebar-mark.has-logo {
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(15,23,42,.18);
+    }
     .desktop-sidebar-mark i { font-size: 18px; color: #fff; }
     .desktop-sidebar-logo-img {
-        width: 100%; height: 100%; object-fit: cover; display: block;
+        width: 100%; height: 100%; object-fit: contain; display: block; padding: 4px;
     }
     .desktop-sidebar-brand-text b {
         display: block; color: #fff; font-size: 15px; font-weight: 700; line-height: 1.2;
