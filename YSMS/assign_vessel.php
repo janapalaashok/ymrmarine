@@ -205,6 +205,7 @@ try {
 } catch (Exception $e) {
     error_log('assign_vessel.php survey_surveyors table check/create error: ' . $e->getMessage());
 }
+ensureSurveyAttachmentsTable($db);
 
 // 4. సర్వే టైప్స్ తెచ్చుకోవడం
 $survey_types = $db->query("SELECT * FROM survey_types")->fetchAll();
@@ -294,19 +295,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     $success = "Vessel assigned successfully! Report No: " . $report_number;
                     
-                    // Optional assignment attachment
-                    if ($new_survey_id > 0 && !empty($_FILES['assignment_attachment']['name']) && is_uploaded_file($_FILES['assignment_attachment']['tmp_name'])) {
+                    // 🌟 Optional assignment attachment(s) — the file input allows
+                    // selecting multiple files at once (assignment_attachment[]), so
+                    // $_FILES['assignment_attachment'] arrives as PHP's classic
+                    // multi-file array (each key holding a list of values, one per
+                    // file) rather than a single flat file. Normalize that into one
+                    // array per file and save every one — none get skipped or
+                    // overwritten, each gets its own uploads/assignments/ file and
+                    // its own survey_attachments row.
+                    if ($new_survey_id > 0 && !empty($_FILES['assignment_attachment']['name'])) {
+                        $rawNames = (array)$_FILES['assignment_attachment']['name'];
+                        $rawTmp   = (array)$_FILES['assignment_attachment']['tmp_name'];
+                        $rawError = (array)$_FILES['assignment_attachment']['error'];
+                        $rawSize  = (array)$_FILES['assignment_attachment']['size'];
+
                         $attDir = __DIR__ . '/uploads/assignments/';
                         if (!is_dir($attDir)) { @mkdir($attDir, 0755, true); }
-                        $orig = basename($_FILES['assignment_attachment']['name']);
-                        $safe = time() . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $orig);
-                        $dest = $attDir . $safe;
-                        if (@move_uploaded_file($_FILES['assignment_attachment']['tmp_name'], $dest)) {
+
+                        $insAtt = $db->prepare('INSERT INTO survey_attachments (survey_id, file_name, file_path, file_size) VALUES (?, ?, ?, ?)');
+                        $firstRel = null;
+
+                        foreach ($rawNames as $i => $origName) {
+                            if ($origName === '' || ($rawError[$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
+                            $tmpName = $rawTmp[$i] ?? '';
+                            if (!is_uploaded_file($tmpName)) continue;
+
+                            $orig = basename($origName);
+                            $safe = time() . '_' . $i . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $orig);
+                            $dest = $attDir . $safe;
+                            if (!@move_uploaded_file($tmpName, $dest)) continue;
+
                             $rel = 'uploads/assignments/' . $safe;
+                            if ($firstRel === null) $firstRel = $rel;
                             try {
-                                $db->prepare('UPDATE surveys SET attachment_path = ? WHERE id = ?')->execute([$rel, $new_survey_id]);
+                                $insAtt->execute([$new_survey_id, $orig, $rel, (int)($rawSize[$i] ?? 0)]);
                             } catch (Throwable $ue) {
                                 error_log('assign attachment save: ' . $ue->getMessage());
+                            }
+                        }
+
+                        // Keep the legacy single-file column pointed at the first
+                        // upload too, so any older code still reading it directly
+                        // keeps working exactly as before.
+                        if ($firstRel !== null) {
+                            try {
+                                $db->prepare('UPDATE surveys SET attachment_path = ? WHERE id = ?')->execute([$firstRel, $new_survey_id]);
+                            } catch (Throwable $ue) {
+                                error_log('assign attachment_path save: ' . $ue->getMessage());
                             }
                         }
                     }
@@ -925,9 +960,9 @@ include 'includes/top_app_bar.php';
 
             
             <div class="form-group-custom">
-                <label>Assignment Attachment <span class="text-muted" style="font-weight:500;text-transform:none;letter-spacing:0;">(optional)</span></label>
-                <input type="file" name="assignment_attachment" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip">
-                <div class="text-muted" style="font-size:11px;margin-top:4px;">Surveyor will see this file on vessel detail page.</div>
+                <label>Assignment Attachment(s) <span class="text-muted" style="font-weight:500;text-transform:none;letter-spacing:0;">(optional)</span></label>
+                <input type="file" name="assignment_attachment[]" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip" multiple>
+                <div class="text-muted" style="font-size:11px;margin-top:4px;">You can select multiple files at once. Surveyor will see all of them on the vessel detail page.</div>
             </div>
 
             <button type="submit" class="blue-action-btn mt-3" style="background: #3b32b3;">

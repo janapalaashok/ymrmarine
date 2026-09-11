@@ -267,4 +267,56 @@ function isSurveyorAssignedToSurvey($db, $surveyId, $userId): bool {
         return false;
     }
 }
+
+// 🌟 SAFETY NET: survey_attachments — one row per assignment-time document
+// (Assign Vessel form supports multiple files at once; each gets its own row
+// here instead of overwriting a single surveys.attachment_path column).
+// Mirrors the survey_surveyors lazy-create pattern already used in this app.
+function ensureSurveyAttachmentsTable(PDO $db): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+        $db->exec("CREATE TABLE IF NOT EXISTS `survey_attachments` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `survey_id` int(11) NOT NULL,
+            `file_name` varchar(255) NOT NULL,
+            `file_path` varchar(255) NOT NULL,
+            `file_size` int(11) DEFAULT NULL,
+            `uploaded_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `idx_survey_attachments_survey` (`survey_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } catch (Throwable $e) {
+        error_log('ensureSurveyAttachmentsTable: ' . $e->getMessage());
+    }
+}
+
+/**
+ * All assignment-time attachments for one survey, newest first. Falls back
+ * to the legacy single surveys.attachment_path column (as a single-item
+ * list) for vessels assigned before multi-file upload existed, so old
+ * assignments keep showing their one attachment exactly as before.
+ */
+function getSurveyAttachments($db, $surveyId, $legacyAttachmentPath = ''): array {
+    $surveyId = (int)$surveyId;
+    if ($surveyId <= 0) return [];
+    try {
+        ensureSurveyAttachmentsTable($db);
+        $stmt = $db->prepare("SELECT file_name, file_path, file_size, uploaded_at FROM survey_attachments WHERE survey_id = ? ORDER BY id ASC");
+        $stmt->execute([$surveyId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        $rows = [];
+    }
+    if (empty($rows) && !empty($legacyAttachmentPath)) {
+        $rows = [[
+            'file_name' => basename($legacyAttachmentPath),
+            'file_path' => $legacyAttachmentPath,
+            'file_size' => null,
+            'uploaded_at' => null,
+        ]];
+    }
+    return $rows;
+}
 ?>

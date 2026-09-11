@@ -50,7 +50,7 @@ if ($is_full_access) {
         LEFT JOIN survey_types st ON s.survey_type_id = st.id
         LEFT JOIN ports p ON s.port_id = p.id
         WHERE s.status = 'Pending Vessel' 
-        ORDER BY s.id DESC
+        ORDER BY s.assign_date DESC, s.id DESC
     ");
     $stmt->execute();
 } elseif ($is_client_role) {
@@ -63,7 +63,7 @@ if ($is_full_access) {
         LEFT JOIN survey_types st ON s.survey_type_id = st.id
         LEFT JOIN ports p ON s.port_id = p.id
         WHERE s.status = 'Pending Vessel' AND s.client_id = ?
-        ORDER BY s.id DESC
+        ORDER BY s.assign_date DESC, s.id DESC
     ");
     $stmt->execute([$client_row_id]);
 } else {
@@ -80,7 +80,7 @@ if ($is_full_access) {
         LEFT JOIN survey_types st ON s.survey_type_id = st.id
         LEFT JOIN ports p ON s.port_id = p.id
         WHERE s.status = 'Pending Vessel' AND (s.surveyor_id = ? OR s.id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?))
-        ORDER BY s.id DESC
+        ORDER BY s.assign_date DESC, s.id DESC
     ");
     $stmt->execute([$user_id, $user_id]);
 }
@@ -144,8 +144,11 @@ if ($is_full_access && $filter_surveyor !== '') {
     $params[] = $filter_surveyor;
 }
 $whereSql = implode(' AND ', $where);
-$orderSql = 's.id DESC';
-if ($sort === 'oldest') $orderSql = 's.id ASC';
+// 🌟 Sort by the actual assignment timestamp (assign_date), latest first by
+// default — not by id/insert order, which can drift from assign_date once
+// records are edited. id is only a tie-breaker for identical timestamps.
+$orderSql = 's.assign_date DESC, s.id DESC';
+if ($sort === 'oldest') $orderSql = 's.assign_date ASC, s.id ASC';
 elseif ($sort === 'name-asc') $orderSql = 's.vessel_name ASC';
 elseif ($sort === 'name-desc') $orderSql = 's.vessel_name DESC';
 
@@ -543,18 +546,23 @@ include 'includes/header.php';
                                 </td>
                                 <td>
                                     <span class="vd-badge"><?= sanitize($typeLabel) ?></span>
-                                    <?php if (!empty($survey['custom_live_status'])): ?>
-                                        <div class="vd-sub" style="max-width:220px;white-space:normal;">
-                                            <i class="fa-solid fa-comment-dots" style="opacity:.6;"></i>
-                                            Latest Update : <?= sanitize($survey['custom_live_status']) ?>
-                                            <?php if (!empty($survey['status_updated_at'])): ?>
-                                                - <?= formatLatestUpdateWhen($survey['status_updated_at']) ?>
-                                            <?php endif; ?>
-                                            <?php if (!empty($survey['modifier_name'])): ?>
-                                                By <?= sanitize($survey['modifier_name']) ?>
-                                            <?php endif; ?>
-                                        </div>
-                                    <?php endif; ?>
+                                    <?php /* 🌟 Desktop mirrors the mobile card's Latest Update block exactly —
+                                             same wording/hierarchy/fallback, same data source
+                                             (custom_live_status / status_updated_at / modifier_name), just
+                                             laid out for a table cell instead of a card. */ ?>
+                                    <div class="vd-sub vd-latest-update" style="max-width:240px;white-space:normal;margin-top:4px;">
+                                        <?php if (!empty($survey['custom_live_status'])): ?>
+                                            <div class="text-dark fw-semibold" style="font-size:11.5px;">
+                                                <i class="fa-solid fa-comment-dots text-primary me-1"></i>Latest Update : <?= sanitize($survey['custom_live_status']) ?>
+                                            </div>
+                                            <div class="text-muted" style="font-size:10px;">
+                                                <span class="fw-bold"><?= !empty($survey['status_updated_at']) ? formatLatestUpdateWhen($survey['status_updated_at']) : '—' ?></span>
+                                                By <span class="text-primary fw-bold"><?= !empty($survey['modifier_name']) ? sanitize($survey['modifier_name']) : 'User' ?></span>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="text-muted fst-italic" style="font-size:10.5px;"><i class="fa-solid fa-info-circle text-warning"></i> No updates recorded yet.</div>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                                 <td><i class="fa-solid fa-location-dot" style="opacity:.5;"></i> <?= sanitize($survey['port_name'] ?? 'N/A') ?></td>
                                 <?php if ($is_full_access): ?>

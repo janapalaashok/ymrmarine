@@ -488,13 +488,19 @@ include 'includes/header.php';
         <div class="fw-bold text-dark mb-3" style="font-size: 14px;"><i class="fa-solid fa-cloud-arrow-up text-primary"></i> Upload Required Reports</div>
         
     <?php
-    $assign_att = $survey['attachment_path'] ?? ($survey['assignment_attachment'] ?? '');
-    if (!empty($assign_att)):
+    // 🌟 One or more files uploaded at assignment time (Assign Vessel form
+    // now allows selecting multiple at once). getSurveyAttachments() reads
+    // the new survey_attachments table, falling back to the legacy single
+    // surveys.attachment_path column for vessels assigned before multi-file
+    // upload existed, so older assignments still show their one attachment.
+    $assign_attachments = getSurveyAttachments($db, $survey['id'], $survey['attachment_path'] ?? '');
+    foreach ($assign_attachments as $assign_att_row):
+        $assign_att = $assign_att_row['file_path'];
         $att_fs = (strpos($assign_att, '/') === 0 || preg_match('#^[A-Za-z]:#', $assign_att)) ? $assign_att : (__DIR__ . '/' . ltrim($assign_att, '/'));
         $att_url = $assign_att;
-        $att_label = basename($assign_att);
-        // Strip numeric time prefix for display if present
-        $att_label_clean = preg_replace('/^[0-9]+_/', '', $att_label);
+        $att_label = $assign_att_row['file_name'] ?: basename($assign_att);
+        // Strip numeric time (+ index) prefix for display if present
+        $att_label_clean = preg_replace('/^[0-9]+(_[0-9]+)?_/', '', $att_label);
         if (is_file($att_fs)):
 ?>
     <div class="px-3 mb-3">
@@ -506,7 +512,7 @@ include 'includes/header.php';
             <a href="<?= sanitize($att_url) ?>" download="<?= sanitize($att_label_clean) ?>" class="btn btn-sm btn-light border text-primary"><i class="fa-solid fa-download"></i></a>
         </div>
     </div>
-    <?php endif; endif; ?>
+    <?php endif; endforeach; ?>
 
 <form action="ajax/upload_handler.php" method="POST" enctype="multipart/form-data">
                     <?= csrf_field() ?>
