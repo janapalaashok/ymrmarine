@@ -972,6 +972,34 @@ include 'includes/top_app_bar.php';
     </form>
 </div>
 
+<?php /* 🌟 Duplicate-vessel-name confirmation — shown only when the entered
+         name already matches a Pending Vessel entry (checked via AJAX right
+         before the real submit). Not a hard block: Yes proceeds anyway. */ ?>
+<div class="modal fade" id="duplicateVesselModal" tabindex="-1" aria-hidden="true" data-testid="duplicate-vessel-modal">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold"><i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> Already in Pending Vessels</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="font-size: 13.5px;">
+                <p class="mb-2">A vessel named <strong id="dupVesselName"></strong> is already in Pending Vessels:</p>
+                <div class="bg-light rounded-3 p-2 mb-2" style="font-size:12.5px;">
+                    <div>Report No: <strong id="dupReportNumber"></strong></div>
+                    <div>Client: <strong id="dupClientName"></strong></div>
+                    <div>Port: <strong id="dupPortName"></strong></div>
+                    <div>Assigned: <strong id="dupAssignDate"></strong></div>
+                </div>
+                <p class="mb-0 fw-bold">Are you sure you want to add this?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light border" data-bs-dismiss="modal" data-testid="duplicate-vessel-cancel">Cancel</button>
+                <button type="button" class="btn btn-primary" id="duplicateVesselConfirmBtn" style="background:#3b32b3;border-color:#3b32b3;" data-testid="duplicate-vessel-confirm">Yes, Add Anyway</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script>
     $(document).ready(function() {
@@ -1294,7 +1322,10 @@ include 'includes/top_app_bar.php';
         });
 
         // ---- Form submit validation ----
+        var duplicateCheckedFor = null; // vessel name already confirmed past the duplicate warning
         $('#assignVesselForm').on('submit', function(e) {
+            e.preventDefault();
+            const $form = $(this);
             const clientVal = String($('#clientSelect').val() || '');
             const portVal = String($('#portSelect').val() || '');
             const typeIdsVal = String($('#surveyTypeIdsInput').val() || '').trim();
@@ -1325,15 +1356,59 @@ include 'includes/top_app_bar.php';
             }
 
             if (messages.length) {
-                e.preventDefault();
                 alert(messages.join('\n'));
                 return false;
             }
 
-            const $btn = $(this).find('button[type="submit"]');
-            $btn.prop('disabled', true).css('opacity', '0.7');
-            setTimeout(function() { $btn.prop('disabled', false).css('opacity', '1'); }, 10000);
-            return true;
+            function doRealSubmit() {
+                const $btn = $form.find('button[type="submit"]');
+                $btn.prop('disabled', true).css('opacity', '0.7');
+                setTimeout(function() { $btn.prop('disabled', false).css('opacity', '1'); }, 10000);
+                $form[0].submit(); // native submit — bypasses this jQuery handler, no re-check loop
+            }
+
+            // Already confirmed the duplicate warning for this exact name (e.g. user
+            // clicked "Yes, Add Anyway" and then re-submitted) — skip straight through.
+            if (duplicateCheckedFor === vesselVal) {
+                doRealSubmit();
+                return false;
+            }
+
+            // 🌟 Warn if this vessel name already has an entry in Pending Vessels —
+            // not a hard block, just a confirmation before creating what may be a
+            // duplicate. If the check itself fails, don't block assignment over it.
+            const $submitBtn = $form.find('button[type="submit"]');
+            $submitBtn.prop('disabled', true).css('opacity', '0.7');
+            $.ajax({
+                url: 'ajax/check_pending_vessel_duplicate.php',
+                method: 'GET',
+                data: { vessel_name: vesselVal },
+                dataType: 'json'
+            }).done(function(resp) {
+                if (resp && resp.exists && resp.entry) {
+                    $submitBtn.prop('disabled', false).css('opacity', '1');
+                    $('#dupVesselName').text(resp.entry.vessel_name || vesselVal);
+                    $('#dupReportNumber').text(resp.entry.report_number || 'N/A');
+                    $('#dupClientName').text(resp.entry.client_name || 'N/A');
+                    $('#dupPortName').text(resp.entry.port_name || 'N/A');
+                    $('#dupAssignDate').text(resp.entry.assign_date || 'N/A');
+                    const modalEl = document.getElementById('duplicateVesselModal');
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.show();
+                    $('#duplicateVesselConfirmBtn').off('click').on('click', function() {
+                        duplicateCheckedFor = vesselVal;
+                        modal.hide();
+                        doRealSubmit();
+                    });
+                } else {
+                    duplicateCheckedFor = vesselVal;
+                    doRealSubmit();
+                }
+            }).fail(function() {
+                doRealSubmit();
+            });
+
+            return false;
         });
     });
 </script>
