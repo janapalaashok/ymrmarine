@@ -210,8 +210,58 @@ ensureSurveyAttachmentsTable($db);
 // 4. సర్వే టైప్స్ తెచ్చుకోవడం
 $survey_types = $db->query("SELECT * FROM survey_types")->fetchAll();
 
+// 🌟 EDIT MODE — reuse this exact same rich form (country/port cascading,
+// multi survey-type, multi-surveyor, multi-file attachments) to edit an
+// existing assignment, instead of the old, simpler inline form that used to
+// live on vessel_detail.php. Admin only, same restriction the old edit form
+// had (Client only ever creates new requests, never edits existing ones).
+$edit_id = (int)($_GET['edit_id'] ?? 0);
+$edit_mode = false;
+$edit_survey = null;
+$edit_surveyor_ids = [];
+$edit_attachments = [];
+if ($edit_id > 0) {
+    if (($_SESSION['role'] ?? '') !== 'Admin') {
+        header('Location: index.php');
+        exit;
+    }
+    $editStmt = $db->prepare("SELECT * FROM surveys WHERE id = ?");
+    $editStmt->execute([$edit_id]);
+    $edit_survey = $editStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$edit_survey) {
+        header('Location: vessels.php');
+        exit;
+    }
+    $edit_mode = true;
+
+    // Prefer the survey_surveyors junction table (accurate for multi-surveyor
+    // assignments); fall back to the legacy single surveyor_id only when no
+    // junction rows exist yet (pre-multi-surveyor assignments), and only if
+    // it's a real surveyor (not the outsourcing/unassigned dummy id 1).
+    try {
+        $esStmt = $db->prepare("SELECT surveyor_id FROM survey_surveyors WHERE survey_id = ? ORDER BY id ASC");
+        $esStmt->execute([$edit_id]);
+        $edit_surveyor_ids = array_map('intval', $esStmt->fetchAll(PDO::FETCH_COLUMN));
+    } catch (Throwable $e) {
+        $edit_surveyor_ids = [];
+    }
+    if (empty($edit_surveyor_ids) && (int)($edit_survey['surveyor_id'] ?? 0) > 1) {
+        $edit_surveyor_ids = [(int)$edit_survey['surveyor_id']];
+    }
+
+    $edit_attachments = getSurveyAttachments($db, $edit_id, $edit_survey['attachment_path'] ?? '');
+}
+
 // ఫార్మ్ సబ్మిషన్ ప్రాసెస్
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // 🌟 Present (and a real existing survey, and Admin) only when this
+    // submission is an edit of an existing assignment rather than a brand
+    // new one — see the branch at the bottom of this block.
+    $post_edit_id = (int)($_POST['edit_id'] ?? 0);
+    if ($post_edit_id > 0 && ($_SESSION['role'] ?? '') !== 'Admin') {
+        $post_edit_id = 0; // never let a non-Admin update someone else's assignment
+    }
+
     // 🌟 Vessel Name / Agent Name / Remarks always stored upper case, however
     // Admin/Client typed them — Vessel Name additionally always gets the
     // "MV. " prefix (normalizeVesselName), e.g. "vessel name" or "mv Vessel
@@ -265,7 +315,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $remarks = "Outsourced Survey.";
     }
 
-    if (!empty($vessel_name) && $client_id > 0 && !empty($agent_name) && $port_id > 0 && !empty($survey_type_ids_arr) && ($is_client_role || !empty($surveyor_id))) {
+    if ($post_edit_id > 0) {
+        // 🌟 EDIT MODE — update the existing survey row in place instead of
+        // creating a new one. Report number, assign date and status are
+        // deliberately left untouched (this is a correction tool, not a
+        // re-assignment); everything else the create form can set is
+        // editable here too. No surveyor email/WhatsApp/in-app notification
+        // is sent on an edit — those already fired when the vessel was
+        // first assigned, and re-notifying on every correction (e.g. a typo
+        // fix in remarks) would be noisy and unexpected.
+        if (!empty($vessel_name) && $client_id > 0 && !empty($agent_name) && $port_id > 0 && !empty($survey_type_ids_arr) && !empty($surveyor_id)) {
+            try {
+                $upd = $db->prepare("
+                    UPDATE surveys SET
+                        vessel_name = ?, client_id = ?, agent_name = ?, surveyor_id = ?,
+                        survey_type_id = ?, survey_type_ids = ?, port_id = ?, remarks = ?
+                    WHERE id = ?
+                ");
+                $upd->execute([$vessel_name, $client_id, $agent_name, $final_surveyor_id, $survey_type_id, $survey_type_ids_csv, $port_id, $remarks, $post_edit_id]);
+
+                // Replace the surveyor assignment set entirely with whatever
+                // is selected now (full replace, matching "save this form's
+                // complete state" semantics for an edit form).
+                try {
+                    $db->prepare("DELETE FROM survey_surveyors WHERE survey_id = ?")->execute([$post_edit_id]);
+                    if (!empty($all_surveyor_ids)) {
+                        $ssStmt = $db->prepare("INSERT IGNORE INTO survey_surveyors (survey_id, surveyor_id) VALUES (?, ?)");
+                        foreach ($all_surveyor_ids as $sid_each) {
+                            if ($sid_each > 0) $ssStmt->execute([$post_edit_id, $sid_each]);
+                        }
+                    }
+                } catch (Throwable $sse) {
+                    error_log('assign_vessel.php edit survey_surveyors sync: ' . $sse->getMessage());
+                }
+
+                // 🌟 Any newly selected files are ADDED to the existing
+                // attachments (same multi-file handling as create) — never
+                // replaces what was already uploaded.
+                if (!empty($_FILES['assignment_attachment']['name'])) {
+                    $rawNames = (array)$_FILES['assignment_attachment']['name'];
+                    $rawTmp   = (array)$_FILES['assignment_attachment']['tmp_name'];
+                    $rawError = (array)$_FILES['assignment_attachment']['error'];
+                    $rawSize  = (array)$_FILES['assignment_attachment']['size'];
+
+                    $attDir = __DIR__ . '/uploads/assignments/';
+                    if (!is_dir($attDir)) { @mkdir($attDir, 0755, true); }
+
+                    $insAtt = $db->prepare('INSERT INTO survey_attachments (survey_id, file_name, file_path, file_size) VALUES (?, ?, ?, ?)');
+                    $firstNewRel = null;
+                    foreach ($rawNames as $i => $origName) {
+                        if ($origName === '' || ($rawError[$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
+                        $tmpName = $rawTmp[$i] ?? '';
+                        if (!is_uploaded_file($tmpName)) continue;
+                        $orig = basename($origName);
+                        $safe = time() . '_' . $i . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $orig);
+                        $dest = $attDir . $safe;
+                        if (!@move_uploaded_file($tmpName, $dest)) continue;
+                        $rel = 'uploads/assignments/' . $safe;
+                        if ($firstNewRel === null) $firstNewRel = $rel;
+                        try {
+                            $insAtt->execute([$post_edit_id, $orig, $rel, (int)($rawSize[$i] ?? 0)]);
+                        } catch (Throwable $ue) {
+                            error_log('assign_vessel.php edit attachment save: ' . $ue->getMessage());
+                        }
+                    }
+                    // Only back-fill the legacy single-file column if it was empty before.
+                    if ($firstNewRel !== null && empty($edit_survey['attachment_path'])) {
+                        try {
+                            $db->prepare('UPDATE surveys SET attachment_path = ? WHERE id = ?')->execute([$firstNewRel, $post_edit_id]);
+                        } catch (Throwable $ue) {
+                            error_log('assign_vessel.php edit attachment_path save: ' . $ue->getMessage());
+                        }
+                    }
+                }
+
+                $_SESSION['flash_msg'] = 'Vessel assignment updated successfully.';
+                header('Location: vessel_detail.php?id=' . $post_edit_id);
+                exit;
+            } catch (Throwable $e) {
+                error_log('assign_vessel.php edit update error: ' . $e->getMessage());
+                $error = 'Could not save the changes. Please check the details and try again.';
+            }
+        } else {
+            $error = "Please fill all required fields.";
+        }
+    } elseif (!empty($vessel_name) && $client_id > 0 && !empty($agent_name) && $port_id > 0 && !empty($survey_type_ids_arr) && ($is_client_role || !empty($surveyor_id))) {
         // 🌟 DB ఇన్సర్ట్‌ను try/catch లో ఉంచడం — ఏదైనా DB ఎర్రర్ వస్తే (ఉదా. FK మిస్‌మ్యాచ్,
         // మిస్సింగ్ కాలమ్ మొదలైనవి) తెల్లతెరతో సైట్ క్రాష్ అవ్వకుండా, ఫారమ్ మీదే స్పష్టమైన
         // ఎర్రర్ మెసేజ్ చూపించడానికి (ఇతర పేజీల్లో — వెసెల్ డీటెయిల్ లాంటివి — ఇదే పద్ధతి వాడారు)
@@ -758,8 +892,8 @@ include 'includes/header.php';
 </style>
 
 <?php
-$page_title = 'Assign New Vessel';
-$back_url = 'index.php';
+$page_title = $edit_mode ? 'Edit Vessel Assignment' : 'Assign New Vessel';
+$back_url = $edit_mode ? 'vessel_detail.php?id=' . (int)$edit_id : 'index.php';
 $page_testid = 'assign-vessel';
 include 'includes/top_app_bar.php';
 ?>
@@ -789,13 +923,35 @@ include 'includes/top_app_bar.php';
     <?php endif; ?>
     <?php if($error): ?><div class="alert alert-danger mx-3 mt-3 py-2" style="font-size:12px;"><?= $error ?></div><?php endif; ?>
 
+    <?php
+    // 🌟 Edit-mode pre-fill values — computed once here, used throughout the
+    // form below so every field (including the client/port searchable
+    // selects and the survey-type/surveyor multi-selects) opens already
+    // showing the existing assignment's current values.
+    $edit_client_id = $edit_mode ? (int)($edit_survey['client_id'] ?? 0) : 0;
+    $edit_client_name = '';
+    if ($edit_mode) {
+        foreach ($clients as $c) {
+            if ((int)$c['id'] === $edit_client_id) { $edit_client_name = $c['company_name']; break; }
+        }
+    }
+    $edit_port_id = $edit_mode ? (int)($edit_survey['port_id'] ?? 0) : 0;
+    $edit_port_name = '';
+    if ($edit_mode) {
+        foreach ($ports as $p) {
+            if ((int)$p['id'] === $edit_port_id) { $edit_port_name = $p['port_name']; break; }
+        }
+    }
+    $edit_type_ids = $edit_mode ? array_values(array_unique(array_filter(array_map('intval', explode(',', (string)($edit_survey['survey_type_ids'] ?? '')))))) : [];
+    ?>
     <!-- Assignment Form -->
-    <form action="assign_vessel.php" method="POST" id="assignVesselForm" enctype="multipart/form-data"><?= csrf_field() ?>
+    <form action="assign_vessel.php<?= $edit_mode ? '?edit_id=' . (int)$edit_id : '' ?>" method="POST" id="assignVesselForm" enctype="multipart/form-data"><?= csrf_field() ?>
+        <?php if ($edit_mode): ?><input type="hidden" name="edit_id" value="<?= (int)$edit_id ?>"><?php endif; ?>
         <div class="form-box-custom shadow-sm" style="padding-top:20px;">
-            
+
             <div class="form-group-custom" id="vesselNameField">
                 <label for="vessel_name">Vessel Name *</label>
-                <input type="text" name="vessel_name" id="vessel_name" placeholder="e.g. MV Pacific Dawn" required autocomplete="off" inputmode="text" style="font-size:16px;min-height:48px;">
+                <input type="text" name="vessel_name" id="vessel_name" value="<?= $edit_mode ? sanitize($edit_survey['vessel_name']) : '' ?>" placeholder="e.g. MV Pacific Dawn" required autocomplete="off" inputmode="text" style="font-size:16px;min-height:48px;">
             </div>
 
                         <?php if ($is_client_role): ?>
@@ -816,7 +972,7 @@ include 'includes/top_app_bar.php';
                 <label>Client Name *</label>
                 <div class="searchable-select" data-ss-root="client">
                     <button type="button" class="ss-trigger" data-testid="client-select-trigger">
-                        <span class="ss-trigger-text placeholder" data-placeholder="Select Client" style="color:#64748b !important;font-weight:500;font-size:14px;">Select Client</span>
+                        <span class="ss-trigger-text<?= ($edit_mode && $edit_client_id) ? '' : ' placeholder' ?>" data-placeholder="Select Client" style="color:#64748b !important;font-weight:500;font-size:14px;"><?= ($edit_mode && $edit_client_id) ? sanitize($edit_client_name) : 'Select Client' ?></span>
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
                     <div class="ss-panel">
@@ -826,7 +982,7 @@ include 'includes/top_app_bar.php';
                         </div>
                         <ul class="ss-options" data-testid="client-options-list">
                             <?php foreach($clients as $client): ?>
-                                <li class="ss-option" data-value="<?= $client['id'] ?>" data-name="<?= strtolower(sanitize($client['company_name'])) ?>" data-short="<?= sanitize(strtoupper(trim($client['short_code'] ?? ''))) ?>"><?= sanitize($client['company_name']) ?><?php if (!empty($client['short_code'])): ?> <span style="color:#64748b;font-weight:600;">(<?= sanitize(strtoupper($client['short_code'])) ?>)</span><?php endif; ?></li>
+                                <li class="ss-option<?= ($edit_mode && (int)$client['id'] === $edit_client_id) ? ' ss-selected' : '' ?>" data-value="<?= $client['id'] ?>" data-name="<?= strtolower(sanitize($client['company_name'])) ?>" data-short="<?= sanitize(strtoupper(trim($client['short_code'] ?? ''))) ?>"><?= sanitize($client['company_name']) ?><?php if (!empty($client['short_code'])): ?> <span style="color:#64748b;font-weight:600;">(<?= sanitize(strtoupper($client['short_code'])) ?>)</span><?php endif; ?></li>
                             <?php endforeach; ?>
                         </ul>
                     </div>
@@ -834,27 +990,31 @@ include 'includes/top_app_bar.php';
                 <select name="client_id" id="clientSelect" class="ss-hidden-select" tabindex="-1" aria-hidden="true">
                     <option value="">Select Client</option>
                     <?php foreach($clients as $client): ?>
-                        <option value="<?= $client['id'] ?>"><?= sanitize($client['company_name']) ?></option>
+                        <option value="<?= $client['id'] ?>"<?= ($edit_mode && (int)$client['id'] === $edit_client_id) ? ' selected' : '' ?>><?= sanitize($client['company_name']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <?php endif; ?>
 
-            <!-- Report Number: shown only after client selected — YMR/{SHORT}/{YYYY}/{MM}/{NNNN} -->
-            <div class="form-group-custom" id="reportNumberGroup" style="display:none;">
-                <label>Report Number <span class="text-muted fw-normal">(auto)</span></label>
-                <input type="text" id="reportNumberPreview" value="" readonly
+            <!-- Report Number: shown only after client selected — YMR/{SHORT}/{YYYY}/{MM}/{NNNN}.
+                 In edit mode this shows the assignment's existing (fixed) number instead of a
+                 live preview — editing never generates a new one. -->
+            <div class="form-group-custom" id="reportNumberGroup" style="<?= ($edit_mode && !empty($edit_survey['report_number'])) ? '' : 'display:none;' ?>">
+                <label>Report Number <?php if (!$edit_mode): ?><span class="text-muted fw-normal">(auto)</span><?php endif; ?></label>
+                <input type="text" id="reportNumberPreview" value="<?= $edit_mode ? sanitize($edit_survey['report_number'] ?? '') : '' ?>" readonly
                        style="background:#f1f5f9; color:#0b1e46; font-weight:700; letter-spacing:0.5px; cursor:default;"
                        data-testid="report-number-preview" placeholder="Select client to generate">
+                <?php if (!$edit_mode): ?>
                 <div class="small text-muted mt-1" style="font-size:11px;">
                     <i class="fa-solid fa-lock me-1"></i>Format: <strong>YMR/AS/<?= date('Y') ?>/<?= date('m') ?>/0001</strong> — client short form + year + month + sequence.
                 </div>
+                <?php endif; ?>
             </div>
 
-            
+
 <div class="form-group-custom">
                 <label>Agent Name *</label>
-                <input type="text" name="agent_name" placeholder="e.g. Oceanus Agencies" required>
+                <input type="text" name="agent_name" value="<?= $edit_mode ? sanitize($edit_survey['agent_name']) : '' ?>" placeholder="e.g. Oceanus Agencies" required>
             </div>
 
             <!-- 🌟 Port Name: searchable dropdown with search box inside -->
@@ -862,7 +1022,7 @@ include 'includes/top_app_bar.php';
                 <label>Port Name *</label>
                 <div class="searchable-select" data-ss-root="port">
                     <button type="button" class="ss-trigger" data-testid="port-select-trigger">
-                        <span class="ss-trigger-text placeholder" data-placeholder="Select Port" style="color:#64748b !important;font-weight:500;font-size:14px;">Select Port</span>
+                        <span class="ss-trigger-text<?= ($edit_mode && $edit_port_id) ? '' : ' placeholder' ?>" data-placeholder="Select Port" style="color:#64748b !important;font-weight:500;font-size:14px;"><?= ($edit_mode && $edit_port_id) ? sanitize($edit_port_name) : 'Select Port' ?></span>
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
                     <div class="ss-panel">
@@ -881,7 +1041,7 @@ include 'includes/top_app_bar.php';
                         </div>
                         <ul class="ss-options" data-testid="port-options-list">
                             <?php foreach($ports as $port): ?>
-                                <li class="ss-option" data-value="<?= $port['id'] ?>" data-name="<?= strtolower(sanitize($port['port_name'])) ?>" data-country="<?= strtolower(sanitize($port['country'] ?? 'India')) ?>"><?= sanitize($port['port_name']) ?> <span class="ss-option-country"><?= sanitize($port['country'] ?? 'India') ?></span></li>
+                                <li class="ss-option<?= ($edit_mode && (int)$port['id'] === $edit_port_id) ? ' ss-selected' : '' ?>" data-value="<?= $port['id'] ?>" data-name="<?= strtolower(sanitize($port['port_name'])) ?>" data-country="<?= strtolower(sanitize($port['country'] ?? 'India')) ?>"><?= sanitize($port['port_name']) ?> <span class="ss-option-country"><?= sanitize($port['country'] ?? 'India') ?></span></li>
                             <?php endforeach; ?>
                         </ul>
                     </div>
@@ -889,7 +1049,7 @@ include 'includes/top_app_bar.php';
                 <select name="port_id" id="portSelect" class="ss-hidden-select" tabindex="-1" aria-hidden="true">
                     <option value="">Select Port</option>
                     <?php foreach($ports as $port): ?>
-                        <option value="<?= $port['id'] ?>"><?= sanitize($port['port_name']) ?></option>
+                        <option value="<?= $port['id'] ?>"<?= ($edit_mode && (int)$port['id'] === $edit_port_id) ? ' selected' : '' ?>><?= sanitize($port['port_name']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -908,9 +1068,9 @@ include 'includes/top_app_bar.php';
                             <input type="text" class="ss-search-input" placeholder="Search survey type..." autocomplete="off" data-testid="survey-type-search-input">
                         </div>
                         <ul class="ss-options" data-testid="survey-type-options-list">
-                            <?php foreach($survey_types as $type): ?>
-                                <li class="ss-option" data-value="<?= $type['id'] ?>" data-name="<?= strtolower(sanitize($type['type_name'])) ?>">
-                                    <input type="checkbox" class="ss-option-checkbox" tabindex="-1">
+                            <?php foreach($survey_types as $type): $typeSelected = $edit_mode && in_array((int)$type['id'], $edit_type_ids, true); ?>
+                                <li class="ss-option<?= $typeSelected ? ' ss-selected' : '' ?>" data-value="<?= $type['id'] ?>" data-name="<?= strtolower(sanitize($type['type_name'])) ?>">
+                                    <input type="checkbox" class="ss-option-checkbox" tabindex="-1"<?= $typeSelected ? ' checked' : '' ?>>
                                     <span class="ss-option-label"><?= sanitize($type['type_name']) ?></span>
                                 </li>
                             <?php endforeach; ?>
@@ -934,9 +1094,9 @@ include 'includes/top_app_bar.php';
                             <input type="text" class="ss-search-input" placeholder="Search surveyor..." autocomplete="off" data-testid="surveyor-search-input">
                         </div>
                         <ul class="ss-options" data-testid="surveyor-options-list">
-                            <?php foreach($surveyors as $surveyor): ?>
-                                <li class="ss-option" data-value="<?= (int)$surveyor['id'] ?>" data-name="<?= strtolower(sanitize($surveyor['full_name'])) ?>">
-                                    <input type="checkbox" class="ss-option-checkbox" tabindex="-1">
+                            <?php foreach($surveyors as $surveyor): $surveyorSelected = $edit_mode && in_array((int)$surveyor['id'], $edit_surveyor_ids, true); ?>
+                                <li class="ss-option<?= $surveyorSelected ? ' ss-selected' : '' ?>" data-value="<?= (int)$surveyor['id'] ?>" data-name="<?= strtolower(sanitize($surveyor['full_name'])) ?>">
+                                    <input type="checkbox" class="ss-option-checkbox" tabindex="-1"<?= $surveyorSelected ? ' checked' : '' ?>>
                                     <span class="ss-option-label"><?= sanitize($surveyor['full_name']) ?></span>
                                 </li>
                             <?php endforeach; ?>
@@ -955,18 +1115,29 @@ include 'includes/top_app_bar.php';
 
             <div class="form-group-custom">
                 <label>Remarks (Optional)</label>
-                <textarea name="remarks" rows="3" placeholder="Enter any specific instructions or notes..."></textarea>
+                <textarea name="remarks" rows="3" placeholder="Enter any specific instructions or notes..."><?= $edit_mode ? sanitize($edit_survey['remarks'] ?? '') : '' ?></textarea>
             </div>
 
-            
+            <?php if ($edit_mode && !empty($edit_attachments)): ?>
+            <div class="form-group-custom">
+                <label>Already Uploaded</label>
+                <?php foreach ($edit_attachments as $att): ?>
+                    <div style="display:flex;align-items:center;justify-content:space-between;background:#f8fafc;border:1px solid var(--border-color);border-radius:10px;padding:8px 12px;margin-bottom:6px;font-size:12px;">
+                        <span><i class="fa-solid fa-paperclip text-primary me-1"></i><?= sanitize($att['file_name']) ?></span>
+                        <a href="<?= sanitize($att['file_path']) ?>" download class="text-primary"><i class="fa-solid fa-download"></i></a>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
             <div class="form-group-custom">
                 <label>Assignment Attachment(s) <span class="text-muted" style="font-weight:500;text-transform:none;letter-spacing:0;">(optional)</span></label>
                 <input type="file" name="assignment_attachment[]" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip" multiple>
-                <div class="text-muted" style="font-size:11px;margin-top:4px;">You can select multiple files at once. Surveyor will see all of them on the vessel detail page.</div>
+                <div class="text-muted" style="font-size:11px;margin-top:4px;"><?= $edit_mode ? 'Any files selected here are added to the ones already uploaded above — nothing gets removed.' : 'You can select multiple files at once. Surveyor will see all of them on the vessel detail page.' ?></div>
             </div>
 
             <button type="submit" class="blue-action-btn mt-3" style="background: #3b32b3;">
-                <i class="fa-solid fa-ship"></i> Assign & Save Vessel
+                <i class="fa-solid fa-ship"></i> <?= $edit_mode ? 'Save Changes' : 'Assign & Save Vessel' ?>
             </button>
         </div>
     </form>
@@ -1003,6 +1174,7 @@ include 'includes/top_app_bar.php';
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script>
     $(document).ready(function() {
+        var EDIT_MODE = <?= $edit_mode ? 'true' : 'false' ?>; // editing an existing assignment, not creating a new one
 
         // ---- Single searchable select (Client / Port) ----
         function initSearchableSelect(rootEl) {
@@ -1278,8 +1450,11 @@ include 'includes/top_app_bar.php';
         });
 
 
-        // Report number appears only after a real client is selected
+        // Report number appears only after a real client is selected. In edit
+        // mode the field already shows the assignment's existing (fixed)
+        // number — never overwrite it with a live "next number" preview.
         function refreshReportNumber(clientId) {
+            if (EDIT_MODE) return;
             var $grp = $('#reportNumberGroup');
             var $inp = $('#reportNumberPreview');
             if (!clientId || clientId === 'other_client' || clientId === '0') {
@@ -1367,9 +1542,10 @@ include 'includes/top_app_bar.php';
                 $form[0].submit(); // native submit — bypasses this jQuery handler, no re-check loop
             }
 
-            // Already confirmed the duplicate warning for this exact name (e.g. user
-            // clicked "Yes, Add Anyway" and then re-submitted) — skip straight through.
-            if (duplicateCheckedFor === vesselVal) {
+            // Editing an existing Pending Vessel entry always "matches" itself by
+            // name, so the duplicate warning would otherwise fire on every save —
+            // skip it entirely in edit mode.
+            if (EDIT_MODE || duplicateCheckedFor === vesselVal) {
                 doRealSubmit();
                 return false;
             }

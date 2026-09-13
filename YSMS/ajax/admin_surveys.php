@@ -1,8 +1,8 @@
 <?php
 // 🌟 Admin Controls లో "Assigned Vessels" మరియు "Pending Reports" ట్యాబ్‌ల కోసం —
 // surveys టేబుల్‌పై list + delete ఇచ్చే AJAX ఎండ్‌పాయింట్ (అడ్మిన్ మాత్రమే వాడగలరు).
-// Edit ఇప్పటికే ఉన్న vessel_detail.php?id=X&edit=1 పేజీ ద్వారానే జరుగుతుంది (బిజినెస్ లాజిక్
-// మార్చకుండా, ఉన్న ఎడిట్ ఫారమ్‌నే తిరిగి వాడటం). ఇక్కడ కేవలం లిస్ట్ చూపించడం + డిలీట్ చేయడం మాత్రమే.
+// Edit ఇప్పుడు assign_vessel.php?edit_id=X పేజీ ద్వారా జరుగుతుంది (అదే రిచ్
+// Assign Vessel ఫారమ్‌ని reuse చేస్తూ). ఇక్కడ కేవలం లిస్ట్ చూపించడం + డిలీట్ చేయడం మాత్రమే.
 
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/notifications.php';

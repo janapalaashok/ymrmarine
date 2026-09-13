@@ -17,7 +17,6 @@ $is_super_admin = ($role === 'Super Admin');
 // Super Admin can view every survey like Admin (read-only — no Edit, no Upload,
 // no Send-Email-to-Agent), so it must not be scoped down like a Surveyor/Client.
 $has_full_access = ($is_admin || $is_super_admin);
-$edit_mode = $is_admin && isset($_GET['edit']);
 
 // Safety net: ensure live-status columns exist (see database/migration_custom_live_status.sql)
 try {
@@ -35,113 +34,6 @@ try {
     }
 } catch (Exception $e) {
     error_log('vessel_detail.php live-status column check: ' . $e->getMessage());
-}
-
-// 🌟 అడ్మిన్ మాత్రమే వెసెల్/సర్వే వివరాలను మార్చగలరు (existing workflow, this page)
-if ($is_admin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_survey_details'])) {
-    $u_vessel_name = normalizeVesselName(trim($_POST['vessel_name']));
-    $u_client_id = (int)$_POST['client_id'];
-    $u_agent_name = trim($_POST['agent_name']);
-    $u_port_id = (int)$_POST['port_id'];
-    $u_survey_type_id = (int)$_POST['survey_type_id'];
-    $u_surveyor_id = (int)$_POST['surveyor_id'];
-    $u_assign_date = trim($_POST['assign_date']);
-    $u_remarks = trim($_POST['remarks']);
-
-    // Capture the surveyor/report-number BEFORE the update, so we can tell whether
-    // this save is an actual (new) surveyor assignment — e.g. a client-submitted
-    // vessel that had no surveyor yet — vs. re-saving the form unchanged.
-    $old_surveyor_id = 0;
-    $existing_report_number = '';
-    try {
-        $osStmt = $db->prepare('SELECT surveyor_id, report_number FROM surveys WHERE id = ?');
-        $osStmt->execute([$id]);
-        $orow = $osStmt->fetch(PDO::FETCH_ASSOC) ?: [];
-        $old_surveyor_id = (int)($orow['surveyor_id'] ?? 0);
-        $existing_report_number = (string)($orow['report_number'] ?? '');
-    } catch (Throwable $oe) { error_log('vessel_detail old surveyor lookup: ' . $oe->getMessage()); }
-
-    try {
-        $update_details = $db->prepare("
-            UPDATE surveys
-            SET vessel_name = ?, client_id = ?, agent_name = ?, port_id = ?, survey_type_id = ?, surveyor_id = ?, assign_date = ?, remarks = ?
-            WHERE id = ?
-        ");
-        if ($update_details->execute([$u_vessel_name, $u_client_id, $u_agent_name, $u_port_id, $u_survey_type_id, $u_surveyor_id, $u_assign_date, $u_remarks, $id])) {
-            $success = "Vessel details updated successfully!";
-            $edit_mode = false;
-            try {
-                $sid = (int)$u_surveyor_id;
-                if ($sid > 0) {
-                    createNotification($db, $sid, 'Vessel details edited',
-                        ($_SESSION['full_name'] ?? 'Admin') . ' updated details for ' . $u_vessel_name . '.',
-                        'edit', 'vessel_detail.php?id=' . (int)$id, (int)$current_user_id);
-                }
-            } catch (Throwable $ne) { error_log('edit notif: '.$ne->getMessage()); }
-
-            // 🌟 Surveyor actually (re)assigned via this edit — e.g. Admin picking a
-            // surveyor for a vessel the Client submitted unassigned. Reuse the exact
-            // same email + WhatsApp workflow as a normal direct Admin assignment
-            // (assign_vessel.php → notifySurveyorOfAssignment). Only fires when the
-            // surveyor value actually changed, so re-saving the same surveyor never
-            // sends a duplicate notification.
-            $sid = (int)$u_surveyor_id;
-            if ($sid > 0 && $sid !== $old_surveyor_id) {
-                try {
-                    $cName = '';
-                    $pName = '';
-                    try {
-                        $cst = $db->prepare('SELECT company_name FROM clients WHERE id = ?');
-                        $cst->execute([$u_client_id]);
-                        $cName = (string)($cst->fetchColumn() ?: '');
-                        $pst = $db->prepare('SELECT port_name FROM ports WHERE id = ?');
-                        $pst->execute([$u_port_id]);
-                        $pName = (string)($pst->fetchColumn() ?: '');
-                    } catch (Throwable $le) { error_log('vessel_detail reassign lookup: ' . $le->getMessage()); }
-                    $tNames = getCombinedSurveyTypeNames($db, (string)$u_survey_type_id, '');
-
-                    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-                    $base = rtrim(str_replace('\\', '/', dirname($_SERVER['PHP_SELF'] ?? '')), '/');
-                    $app_url = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $base . '/vessel_detail.php?id=' . (int)$id;
-
-                    $admin_name = (string)($_SESSION['full_name'] ?? $_SESSION['username'] ?? 'Admin');
-                    $admin_email = '';
-                    try {
-                        $uidA = (int)($_SESSION['user_id'] ?? 0);
-                        if ($uidA > 0) {
-                            $ast = $db->prepare('SELECT email FROM users WHERE id = ? LIMIT 1');
-                            $ast->execute([$uidA]);
-                            $admin_email = trim((string)($ast->fetchColumn() ?: ''));
-                        }
-                    } catch (Throwable $ae) {}
-
-                    $job = [
-                        'vessel_name'        => $u_vessel_name,
-                        'report_number'      => $existing_report_number,
-                        'client_name'        => $cName,
-                        'port_name'          => $pName,
-                        'survey_types'       => $tNames,
-                        'agent_name'         => $u_agent_name,
-                        'assign_date'        => $u_assign_date !== '' ? date('d-m-Y', strtotime($u_assign_date)) : date('d-m-Y'),
-                        'remarks'            => $u_remarks,
-                        'app_url'            => $app_url,
-                        'assigned_by_name'   => $admin_name,
-                        'assigned_by_email'  => $admin_email,
-                    ];
-                    $notify_msg = notifySurveyorOfAssignment($db, $sid, $job);
-                    if ($notify_msg !== '') {
-                        $success .= ' · ' . $notify_msg;
-                    }
-                } catch (Throwable $ne3) {
-                    error_log('vessel_detail surveyor reassign notify: ' . $ne3->getMessage());
-                }
-            }
-        } else {
-            $error = "Failed to update vessel details.";
-        }
-    } catch (Exception $e) {
-        $error = "Database Error: " . $e->getMessage();
-    }
 }
 
 // 🌟 సర్వేయర్ సబ్మిట్ చేసినప్పుడు custom_live_status అప్‌డేట్ చేసే పక్కా లాజిక్
@@ -246,15 +138,6 @@ if (!$has_full_access && !isSurveyorAssignedToSurvey($db, $survey['id'], $curren
     }
 }
 $is_client_viewer = ($role === 'Client');
-
-// అడ్మిన్ ఎడిట్ ఫారమ్ కోసం డ్రాప్‌డౌన్ లిస్టులు (clients, ports, survey types, surveyors)
-if ($edit_mode) {
-    $clients_list = $db->query("SELECT id, company_name FROM clients ORDER BY company_name")->fetchAll();
-    ensurePortAnchorages($db);
-    $ports_list = $db->query("SELECT id, port_name FROM ports ORDER BY port_name")->fetchAll();
-    $survey_types_list = $db->query("SELECT id, type_name FROM survey_types ORDER BY type_name")->fetchAll();
-    $surveyors_list = $db->query("SELECT u.id, u.full_name FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name = 'Surveyor' ORDER BY u.full_name")->fetchAll();
-}
 
 // డేట్ వాలిడేషన్ చెక్
 $display_date = '--/--/----';
@@ -375,72 +258,13 @@ include 'includes/header.php';
     <?php if($success): ?><div class="alert alert-success mx-3 mt-3 py-2" style="font-size:12px;"><?= $success ?></div><?php endif; ?>
     <?php if($error): ?><div class="alert alert-danger mx-3 mt-3 py-2" style="font-size:12px;"><?= $error ?></div><?php endif; ?>
 
-    <?php if ($edit_mode): ?>
-        <div class="info-table-list shadow-sm p-3">
-            <form action="vessel_detail.php?id=<?= $survey['id'] ?>&edit=1" method="POST">
-    <?= csrf_field() ?>
-                <div class="mb-2">
-                    <label class="form-label fw-bold text-secondary" style="font-size:11px;">Vessel Name</label>
-                    <input type="text" name="vessel_name" class="form-control form-control-sm" value="<?= sanitize($survey['vessel_name']) ?>" required>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label fw-bold text-secondary" style="font-size:11px;">Client</label>
-                    <select name="client_id" class="form-select form-select-sm" required>
-                        <?php foreach ($clients_list as $c): ?>
-                            <option value="<?= (int)$c['id'] ?>" <?= ((int)$c['id'] === (int)$survey['client_id']) ? 'selected' : '' ?>><?= sanitize($c['company_name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label fw-bold text-secondary" style="font-size:11px;">Assigned Date</label>
-                    <input type="date" name="assign_date" class="form-control form-control-sm" value="<?= sanitize(date('Y-m-d', strtotime($survey['assign_date']))) ?>" required>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label fw-bold text-secondary" style="font-size:11px;">Agent Name</label>
-                    <input type="text" name="agent_name" class="form-control form-control-sm" value="<?= sanitize($survey['agent_name']) ?>" required>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label fw-bold text-secondary" style="font-size:11px;">Surveyor</label>
-                    <select name="surveyor_id" class="form-select form-select-sm" required>
-                        <?php foreach ($surveyors_list as $s): ?>
-                            <option value="<?= (int)$s['id'] ?>" <?= ((int)$s['id'] === (int)$survey['surveyor_id']) ? 'selected' : '' ?>><?= sanitize($s['full_name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label fw-bold text-secondary" style="font-size:11px;">Survey Type</label>
-                    <select name="survey_type_id" class="form-select form-select-sm" required>
-                        <?php foreach ($survey_types_list as $t): ?>
-                            <option value="<?= (int)$t['id'] ?>" <?= ((int)$t['id'] === (int)$survey['survey_type_id']) ? 'selected' : '' ?>><?= sanitize($t['type_name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label fw-bold text-secondary" style="font-size:11px;">Port</label>
-                    <select name="port_id" class="form-select form-select-sm" required>
-                        <?php foreach ($ports_list as $p): ?>
-                            <option value="<?= (int)$p['id'] ?>" <?= ((int)$p['id'] === (int)$survey['port_id']) ? 'selected' : '' ?>><?= sanitize($p['port_name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold text-secondary" style="font-size:11px;">Admin Remarks</label>
-                    <textarea name="remarks" class="form-control form-control-sm" rows="2"><?= !empty($survey['remarks']) ? sanitize($survey['remarks']) : '' ?></textarea>
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="submit" name="update_survey_details" class="small-status-btn flex-fill">Save Changes</button>
-                    <a href="vessel_detail.php?id=<?= $survey['id'] ?>" class="btn btn-outline-secondary btn-sm flex-fill text-center">Cancel</a>
-                </div>
-            </form>
-        </div>
-    <?php else: ?>
         <div class="detail-main-row">
         <div class="info-table-list shadow-sm">
             <div class="text-end p-2 d-flex justify-content-end gap-2 flex-wrap">
                 <a href="<?= sanitize($whatsapp_share_url) ?>" target="_blank" rel="noopener" class="btn-whatsapp" data-testid="vessel-detail-whatsapp-link" title="Send via WhatsApp"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
                 <a href="<?= sanitize($mail_share_url) ?>" class="btn-email" data-testid="vessel-detail-mail-link" title="Send via Email (Outlook)"><i class="fa-solid fa-envelope"></i> Email</a>
                 <?php if ($is_admin): ?>
-                    <a href="vessel_detail.php?id=<?= $survey['id'] ?>&edit=1" class="vessel-edit-btn" data-testid="vessel-detail-edit-link"><i class="fa-solid fa-pen"></i> Edit</a>
+                    <a href="assign_vessel.php?edit_id=<?= (int)$survey['id'] ?>" class="vessel-edit-btn" data-testid="vessel-detail-edit-link"><i class="fa-solid fa-pen"></i> Edit</a>
                 <?php endif; ?>
             </div>
             <div class="info-row"><span class="info-label">Vessel Name</span><span class="info-value"><?= sanitize($survey['vessel_name']) ?></span></div>
@@ -549,7 +373,6 @@ include 'includes/header.php';
             </div>
         </div>
         <?php endif; ?>
-    <?php endif; ?>
 
     <div class="status-update-card shadow-sm">
         <form action="vessel_detail.php?id=<?= $survey['id'] ?>" method="POST">

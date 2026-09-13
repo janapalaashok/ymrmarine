@@ -46,7 +46,7 @@ try {
     @ini_set('memory_limit', '256M');
 
     $baseSql = "
-        SELECT s.id, s.vessel_name, s.agent_name, c.company_name, t.type_name, u.full_name as surveyor_name, s.assign_date, s.report_number,
+        SELECT s.id, s.vessel_name, s.agent_name, c.company_name, t.type_name, s.survey_type_ids, u.full_name as surveyor_name, s.assign_date, s.report_number,
                p.port_name, p.country
         FROM surveys s
         LEFT JOIN clients c ON s.client_id = c.id
@@ -84,7 +84,7 @@ try {
         $sheet->setCellValue('D' . $rowNum, $row['agent_name'] ?? 'N/A');
         $sheet->setCellValue('E' . $rowNum, $row['port_name'] ?? 'N/A');
         $sheet->setCellValue('F' . $rowNum, $row['country'] ?? 'India');
-        $sheet->setCellValue('G' . $rowNum, $row['type_name'] ?? 'N/A');
+        $sheet->setCellValue('G' . $rowNum, getCombinedSurveyTypeNames($db, $row['survey_type_ids'] ?? '', $row['type_name'] ?? 'N/A'));
         $sheet->setCellValue('H' . $rowNum, getCombinedSurveyorNames($db, $row['id'] ?? 0, $row['surveyor_name'] ?? 'N/A'));
         $sheet->setCellValue('I' . $rowNum, !empty($row['assign_date']) ? date('d-m-Y H:i', strtotime($row['assign_date'])) : '');
         $rowNum++;

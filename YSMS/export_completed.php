@@ -46,7 +46,7 @@ try {
     @ini_set('memory_limit', '256M');
 
     $baseSql = "
-        SELECT s.id, s.vessel_name, s.agent_name, c.company_name, t.type_name, u.full_name as surveyor_name, s.recovery_amount, s.report_uploaded_date,
+        SELECT s.id, s.vessel_name, s.agent_name, c.company_name, t.type_name, s.survey_type_ids, u.full_name as surveyor_name, s.recovery_amount, s.report_uploaded_date,
                p.port_name, p.country
         FROM surveys s
         LEFT JOIN clients c ON s.client_id = c.id
@@ -83,7 +83,7 @@ try {
         $sheet->setCellValue('C' . $rowNum, $row['agent_name'] ?? 'N/A');
         $sheet->setCellValue('D' . $rowNum, $row['port_name'] ?? 'N/A');
         $sheet->setCellValue('E' . $rowNum, $row['country'] ?? 'India');
-        $sheet->setCellValue('F' . $rowNum, $row['type_name'] ?? 'N/A');
+        $sheet->setCellValue('F' . $rowNum, getCombinedSurveyTypeNames($db, $row['survey_type_ids'] ?? '', $row['type_name'] ?? 'N/A'));
         $sheet->setCellValue('G' . $rowNum, getCombinedSurveyorNames($db, $row['id'] ?? 0, $row['surveyor_name'] ?? 'N/A'));
         $sheet->setCellValue('H' . $rowNum, !empty($row['recovery_amount']) ? (float)$row['recovery_amount'] : 0);
         $sheet->setCellValue('I' . $rowNum, !empty($row['report_uploaded_date']) ? date('d-m-Y', strtotime($row['report_uploaded_date'])) : '');

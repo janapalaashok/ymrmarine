@@ -183,8 +183,9 @@ include 'includes/header.php';
     }
     .vessel-client-sub { font-size: 11px; color: #666; margin: 2px 0 0 0; text-align: left; }
     .badge-assigned {
-        background: #00a3df; color: #fff; padding: 4px 10px; border-radius: 50px;
+        background: #00a3df; color: #fff; padding: 5px 10px; border-radius: 10px;
         font-weight: 600; font-size: 10px; text-transform: uppercase; display: inline-block;
+        max-width: 100%; text-align: left; line-height: 1.4;
     }
     .vessel-live-status-bar {
         background: #f1f5f9;
@@ -389,8 +390,9 @@ include 'includes/header.php';
     }
 
 .badge-assigned {
-    background: #f59e0b; color: #fff; padding: 4px 10px; border-radius: 50px;
+    background: #f59e0b; color: #fff; padding: 5px 10px; border-radius: 10px;
     font-weight: 600; font-size: 10px; text-transform: uppercase; display: inline-block;
+    max-width: 100%; text-align: left; line-height: 1.4;
 }
 .vessel-card {
     border: 2px solid #f59e0b; background: #fff; border-radius: 12px; margin-bottom: 15px;
@@ -565,7 +567,7 @@ include 'includes/header.php';
                                     <div class="vd-actions">
                                         <a href="report_detail.php?id=<?= (int)$survey['id'] ?>"><i class="fa-solid fa-eye"></i> View</a>
                                         <?php if ($role === 'Admin' && 'reports' === 'vessels'): ?>
-                                        <a class="edit" href="vessel_detail.php?id=<?= (int)$survey['id'] ?>&edit=1"><i class="fa-solid fa-pen"></i> Edit</a>
+                                        <a class="edit" href="assign_vessel.php?edit_id=<?= (int)$survey['id'] ?>"><i class="fa-solid fa-pen"></i> Edit</a>
                                         <?php endif; ?>
                                     </div>
                                 </td>

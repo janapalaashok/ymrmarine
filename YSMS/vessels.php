@@ -214,12 +214,15 @@ include 'includes/header.php';
     .badge-assigned {
         background: #00a3df;
         color: #fff;
-        padding: 4px 10px;
-        border-radius: 50px;
+        padding: 5px 10px;
+        border-radius: 10px;
         font-weight: 600;
         font-size: 10px;
         text-transform: uppercase;
         display: inline-block;
+        max-width: 100%;
+        text-align: left;
+        line-height: 1.4;
         box-shadow: 0 2px 4px rgba(0, 163, 223, 0.3);
     }
     .vessel-edit-btn {
@@ -336,8 +339,8 @@ include 'includes/header.php';
         .vd-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
         .vd-badge {
             display: inline-block; background: #e0f2fe; color: #0369a1;
-            font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px;
-            text-transform: uppercase;
+            font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 8px;
+            text-transform: uppercase; max-width: 100%; text-align: left; line-height: 1.4;
         }
         .vd-status-ok { color: #047857; font-size: 12px; }
         .vd-status-none { color: #94a3b8; font-size: 12px; font-style: italic; }
@@ -422,7 +425,7 @@ include 'includes/header.php';
                                 <span class="badge-assigned"><?= sanitize(getCombinedSurveyTypeNames($db, $survey['survey_type_ids'] ?? '', !empty($survey['type_name']) ? $survey['type_name'] : 'N/A')) ?></span>
                                 <div><span class="badge-place" data-testid="pending-vessel-place-<?= (int)$survey['id'] ?>"><i class="fa-solid fa-location-dot"></i><?= sanitize($survey['port_name'] ?? 'N/A') ?></span></div>
                                 <?php if ($can_edit): ?>
-                                    <a href="vessel_detail.php?id=<?= (int)$survey['id'] ?>&edit=1" class="vessel-edit-btn" onclick="event.stopPropagation();" data-testid="pending-vessel-edit-<?= (int)$survey['id'] ?>">
+                                    <a href="assign_vessel.php?edit_id=<?= (int)$survey['id'] ?>" class="vessel-edit-btn" onclick="event.stopPropagation();" data-testid="pending-vessel-edit-<?= (int)$survey['id'] ?>">
                                         <i class="fa-solid fa-pen"></i> Edit
                                     </a>
                                 <?php endif; ?>
@@ -573,7 +576,7 @@ include 'includes/header.php';
                                     <div class="vd-actions">
                                         <a href="vessel_detail.php?id=<?= (int)$survey['id'] ?>"><i class="fa-solid fa-eye"></i> View</a>
                                         <?php if ($can_edit): ?>
-                                        <a class="edit" href="vessel_detail.php?id=<?= (int)$survey['id'] ?>&edit=1"><i class="fa-solid fa-pen"></i> Edit</a>
+                                        <a class="edit" href="assign_vessel.php?edit_id=<?= (int)$survey['id'] ?>"><i class="fa-solid fa-pen"></i> Edit</a>
                                         <?php endif; ?>
                                     </div>
                                 </td>

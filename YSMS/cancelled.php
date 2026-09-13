@@ -203,7 +203,8 @@ include 'includes/header.php';
         .vd-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
         .vd-badge {
             display: inline-block; background: #e0f2fe; color: #0369a1;
-            font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: uppercase;
+            font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 8px; text-transform: uppercase;
+            max-width: 100%; text-align: left; line-height: 1.4;
         }
         .vd-actions { display: flex; gap: 6px; flex-wrap: wrap; }
         .vd-actions a {
@@ -398,7 +399,7 @@ include 'includes/header.php';
                                     <div class="vd-actions">
                                         <a href="vessel_detail.php?id=<?= (int)$survey['id'] ?>"><i class="fa-solid fa-eye"></i> View</a>
                                         <?php if ($role === 'Admin' && 'cancelled' === 'vessels'): ?>
-                                        <a class="edit" href="vessel_detail.php?id=<?= (int)$survey['id'] ?>&edit=1"><i class="fa-solid fa-pen"></i> Edit</a>
+                                        <a class="edit" href="assign_vessel.php?edit_id=<?= (int)$survey['id'] ?>"><i class="fa-solid fa-pen"></i> Edit</a>
                                         <?php endif; ?>
                                     </div>
                                 </td>

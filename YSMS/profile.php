@@ -143,9 +143,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                     $query_parts[] = "email = ?";
                     $params[] = $email;
                 }
-                if ($has_phone && !empty($phone)) {
+                if ($has_phone) {
+                    // Always include phone (not just when non-empty) so clearing
+                    // the field actually saves the clear instead of silently
+                    // leaving the old value in place.
                     $query_parts[] = "phone = ?";
-                    $params[] = $phone;
+                    $params[] = ($phone !== '' ? $phone : null);
                 }
                 if ($has_pic && $uploaded_pic_path) {
                     $query_parts[] = "profile_pic = ?";
@@ -175,7 +178,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                     $error = "Failed to update profile data.";
                 }
             } catch (Exception $e) {
-                $error = "Database Notice: " . $e->getMessage();
+                error_log('profile.php update: ' . $e->getMessage());
+                $error = (stripos($e->getMessage(), 'duplicate') !== false)
+                    ? 'That email is already used by another account.'
+                    : 'Could not save your changes. Please try again.';
             }
         }
     }
@@ -213,9 +219,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
                 $error = "Current password is incorrect.";
             }
         } catch (Exception $e) {
-            $error = "Password Error: " . $e->getMessage();
+            error_log('profile.php password update: ' . $e->getMessage());
+            $error = "Could not update password. Please try again.";
         }
     }
+}
+
+// 🌟 Post-Redirect-Get: on any successful save, redirect back to this same
+// page instead of falling through and re-rendering in the same response.
+// Without this, refreshing the page after saving could resubmit the same
+// POST (browser "Confirm Form Resubmission"), and there was no guarantee
+// the page was reading fully-fresh data rather than request-local state —
+// a redirect forces a clean GET that always reflects what's actually in
+// the database. The success message survives the redirect via flash_msg
+// (same toast mechanism already used elsewhere in the app).
+if (!empty($success) && empty($error)) {
+    $_SESSION['flash_msg'] = $success;
+    header('Location: profile.php');
+    exit;
 }
 
 // 🌟 1.2 SAFETY NET: business_card_path / id_card_path కాలమ్‌లు లేకపోతే ఆటోమేటిక్‌గా జోడించడం

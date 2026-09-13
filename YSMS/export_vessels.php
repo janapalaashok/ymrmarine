@@ -55,7 +55,7 @@ try {
 
 try {
     $baseSql = "
-        SELECT s.vessel_name, s.agent_name, c.company_name, st.type_name,
+        SELECT s.id, s.vessel_name, s.agent_name, c.company_name, st.type_name, s.survey_type_ids,
                u.full_name AS surveyor_name, s.custom_live_status,
                p.port_name, p.country
         FROM surveys s
@@ -96,7 +96,7 @@ foreach ($surveys as $row) {
         $row['agent_name'] ?? 'N/A',
         $row['port_name'] ?? 'N/A',
         $row['country'] ?? 'India',
-        $row['type_name'] ?? 'N/A',
+        getCombinedSurveyTypeNames($db, $row['survey_type_ids'] ?? '', $row['type_name'] ?? 'N/A'),
         getCombinedSurveyorNames($db, $row['id'] ?? 0, $row['surveyor_name'] ?? 'N/A'),
         $row['custom_live_status'] ?? '',
     ];
