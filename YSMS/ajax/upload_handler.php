@@ -44,6 +44,10 @@ require_once __DIR__ . '/../includes/notifications.php';
         $pdf_orig = basename($_FILES['pdf_report']['name']);
         $pdf_name = time() . "_" . preg_replace('/[^A-Za-z0-9._-]/', '_', $pdf_orig);
         if (move_uploaded_file($_FILES['pdf_report']['tmp_name'], $target_dir . $pdf_name)) {
+            // Re-uploading (e.g. to complete a stuck Pending Vessel after the
+            // other required file failed earlier) replaces the previous PDF
+            // row instead of adding a duplicate entry to the file list.
+            $db->prepare("DELETE FROM uploads WHERE survey_id = ? AND file_type = 'Formal Report PDF'")->execute([$survey_id]);
             $stmt = $db->prepare("INSERT INTO uploads (survey_id, file_name, file_type, file_path, file_size) VALUES (?, ?, 'Formal Report PDF', ?, '1.2 MB')");
             $stmt->execute([$survey_id, $pdf_orig, "uploads/" . $pdf_name]);
             $files_uploaded++;
@@ -144,7 +148,8 @@ require_once __DIR__ . '/../includes/notifications.php';
                 }
             }
 
-            // అప్‌లోడ్స్ టేబుల్ లో ఎంట్రీ
+            // అప్‌లోడ్స్ టేబుల్ లో ఎంట్రీ (re-upload replaces, doesn't duplicate — see PDF note above)
+            $db->prepare("DELETE FROM uploads WHERE survey_id = ? AND file_type = 'Formal Report Excel'")->execute([$survey_id]);
             $stmt = $db->prepare("INSERT INTO uploads (survey_id, file_name, file_type, file_path, file_size) VALUES (?, ?, 'Formal Report Excel', ?, '245 KB')");
             $stmt->execute([$survey_id, $excel_orig, "uploads/" . $excel_name]);
             
@@ -163,6 +168,7 @@ require_once __DIR__ . '/../includes/notifications.php';
         $word_orig = basename($_FILES['word_report']['name']);
         $word_name = time() . "_" . preg_replace('/[^A-Za-z0-9._-]/', '_', $word_orig);
         if (move_uploaded_file($_FILES['word_report']['tmp_name'], $target_dir . $word_name)) {
+            $db->prepare("DELETE FROM uploads WHERE survey_id = ? AND file_type = 'Formal Report Word'")->execute([$survey_id]);
             $stmt = $db->prepare("INSERT INTO uploads (survey_id, file_name, file_type, file_path, file_size) VALUES (?, ?, 'Formal Report Word', ?, '512 KB')");
             $stmt->execute([$survey_id, $word_orig, "uploads/" . $word_name]);
             $files_uploaded = 3; // Word అప్‌లోడ్ అయిందని గుర్తుగా 3 ఇస్తున్నాం
@@ -195,8 +201,46 @@ require_once __DIR__ . '/../includes/notifications.php';
         return $scheme . '://' . $host . $base;
     })();
 
+    // 🌟 Required-files check is now cumulative (from the uploads table),
+    // not just "both succeeded in this one request". Previously the
+    // Pending Vessel -> Pending Report move needed $files_uploaded to
+    // reach 2 in a SINGLE submission — if one file silently failed (wrong
+    // extension, over the server's upload size limit) while the other
+    // succeeded, the survey could sit in Pending Vessel forever even after
+    // both files eventually made it in across separate attempts, since no
+    // single request ever saw both at once. Checking what's actually saved
+    // for this survey fixes that regardless of how many attempts it took.
+    $has_pdf_uploaded = false;
+    $has_excel_uploaded = false;
+    try {
+        $chk = $db->prepare("SELECT DISTINCT file_type FROM uploads WHERE survey_id = ? AND file_type IN ('Formal Report PDF', 'Formal Report Excel')");
+        $chk->execute([$survey_id]);
+        foreach ($chk->fetchAll(PDO::FETCH_COLUMN) as $ft) {
+            if ($ft === 'Formal Report PDF') $has_pdf_uploaded = true;
+            if ($ft === 'Formal Report Excel') $has_excel_uploaded = true;
+        }
+    } catch (Throwable $e) { error_log('upload_handler required-files check: ' . $e->getMessage()); }
+
+    // 🌟 Tell the user plainly when a required file they selected did NOT
+    // actually get saved (wrong extension, upload error, move failed) —
+    // previously this failed completely silently, so the page just showed
+    // "success" implicitly by redirecting with no message at all, leaving
+    // no clue as to why the vessel never left Pending Vessel.
+    $pdf_selected = isset($_FILES['pdf_report']['name']) && $_FILES['pdf_report']['name'] !== '';
+    $pdf_failed_this_request = $pdf_selected && !$isAllowedExt($_FILES['pdf_report']['name'], ['pdf']) || ($pdf_selected && $_FILES['pdf_report']['error'] != 0);
+    $excel_selected = isset($_FILES['excel_report']['name']) && $_FILES['excel_report']['name'] !== '';
+    $excel_failed_this_request = $excel_selected && !$isAllowedExt($_FILES['excel_report']['name'], ['xlsx', 'xls', 'xlsm']) || ($excel_selected && $_FILES['excel_report']['error'] != 0);
+    if ($current_status === 'Pending Vessel' && ($pdf_failed_this_request || $excel_failed_this_request) && !($has_pdf_uploaded && $has_excel_uploaded)) {
+        $problems = [];
+        if ($pdf_failed_this_request) $problems[] = 'PDF Report (must be a .pdf file, check its size)';
+        if ($excel_failed_this_request) $problems[] = 'Calculation Sheet (must be .xlsx/.xls, check its size)';
+        $_SESSION['flash_msg'] = 'Could not save: ' . implode(' and ', $problems) . '. Please try uploading it again.';
+        header('Location: ../vessel_detail.php?id=' . $survey_id);
+        exit;
+    }
+
     // ⚙️ వర్క్‌ఫ్లో & సెషన్ అలర్ట్ మెసేజ్ లాజిక్
-    if ($current_status === 'Pending Vessel' && $files_uploaded >= 2) {
+    if ($current_status === 'Pending Vessel' && $has_pdf_uploaded && $has_excel_uploaded) {
         $update = $db->prepare("UPDATE surveys SET status = 'Pending Report', survey_completed_date = NOW(), status_updated_by = ? WHERE id = ?");
         $update->execute([$_SESSION['user_id'], $survey_id]);
         $_SESSION['flash_msg'] = "Pending vessel is uploaded and moved to pending report";
@@ -278,6 +322,28 @@ require_once __DIR__ . '/../includes/notifications.php';
             error_log('upload_handler admin notify (completed): ' . $e->getMessage());
         }
         header("Location: ../completed.php");
+        exit;
+    }
+
+    // 🌟 Anything that reaches here uploaded successfully (files_uploaded > 0)
+    // but didn't complete a status transition — e.g. only the PDF or only the
+    // Excel has been provided so far for a Pending Vessel, or extra files were
+    // added to a survey that's already Completed/Cancelled. Previously this
+    // fell through to a bare redirect to index.php with zero explanation,
+    // which looked identical to nothing having happened at all. Send the user
+    // back to the same vessel with an accurate status message instead.
+    if ($files_uploaded > 0) {
+        if ($current_status === 'Pending Vessel') {
+            $missing = [];
+            if (!$has_pdf_uploaded) $missing[] = 'PDF Report';
+            if (!$has_excel_uploaded) $missing[] = 'Calculation Sheet (Excel)';
+            $_SESSION['flash_msg'] = !empty($missing)
+                ? 'File saved. Still need: ' . implode(' and ', $missing) . ' before this moves to Pending Report.'
+                : 'File saved.';
+        } else {
+            $_SESSION['flash_msg'] = 'File(s) uploaded successfully.';
+        }
+        header('Location: ../vessel_detail.php?id=' . $survey_id);
         exit;
     }
 }
