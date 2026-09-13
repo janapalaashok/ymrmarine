@@ -117,16 +117,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             $first_name = trim($_POST['first_name'] ?? '');
             $last_name  = trim($_POST['last_name'] ?? '');
             $dob        = trim($_POST['dob'] ?? '');
+            // 🌟 The Surveyor form also renders Email and Phone inputs (Section A
+            // shows them for every role, not just Admin/Client) — but this branch
+            // was never including them in the UPDATE below, so a Surveyor
+            // changing email/phone got "success" while the value silently never
+            // saved. Read and save them the same way the non-surveyor branch does.
+            $email = isset($_POST['email']) ? trim($_POST['email']) : '';
+            $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
             if ($first_name === '' || $last_name === '') {
                 $error = 'First name and last name are required.';
             } else {
                 $full_name = trim($first_name . ' ' . $last_name);
                 $dobVal = ($dob !== '') ? $dob : null;
                 try {
+                    $has_email = $db->query("SHOW COLUMNS FROM users LIKE 'email'")->fetch();
+                    $has_phone = $db->query("SHOW COLUMNS FROM users LIKE 'phone'")->fetch();
                     $has_pic = $db->query("SHOW COLUMNS FROM users LIKE 'profile_pic'")->fetch();
                     $has_avatar = $db->query("SHOW COLUMNS FROM users LIKE 'avatar'")->fetch();
                     $query_parts = ['full_name = ?', 'first_name = ?', 'last_name = ?', 'dob = ?'];
                     $params = [$full_name, $first_name, $last_name, $dobVal];
+                    if ($has_email && !empty($email)) {
+                        $query_parts[] = "email = ?";
+                        $params[] = $email;
+                    }
+                    if ($has_phone) {
+                        // Always include phone (not just when non-empty) so clearing
+                        // the field actually saves the clear instead of silently
+                        // leaving the old value in place.
+                        $query_parts[] = "phone = ?";
+                        $params[] = ($phone !== '' ? $phone : null);
+                    }
                     if ($has_pic && $uploaded_pic_path) { $query_parts[] = "profile_pic = ?"; $params[] = $uploaded_pic_path; }
                     if ($has_avatar && $uploaded_pic_path) { $query_parts[] = "avatar = ?"; $params[] = $uploaded_pic_path; }
                     $params[] = $user_id;
@@ -135,10 +155,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
 
                     // Verify the write actually landed (see note above) before
                     // claiming success.
-                    $verify = $db->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+                    $verify = $db->prepare("SELECT first_name, last_name, " . ($has_email ? "email" : "first_name") . " AS email_col, " . ($has_phone ? "phone" : "first_name") . " AS phone_col FROM users WHERE id = ?");
                     $verify->execute([$user_id]);
                     $vrow = $verify->fetch(PDO::FETCH_ASSOC) ?: [];
-                    if ((string)($vrow['first_name'] ?? '') === $first_name && (string)($vrow['last_name'] ?? '') === $last_name) {
+                    $emailOk = !$has_email || empty($email) || (string)($vrow['email_col'] ?? '') === $email;
+                    $phoneOk = !$has_phone || (string)($vrow['phone_col'] ?? '') === ($phone !== '' ? $phone : '');
+                    if ((string)($vrow['first_name'] ?? '') === $first_name && (string)($vrow['last_name'] ?? '') === $last_name && $emailOk && $phoneOk) {
                         $_SESSION['full_name'] = $full_name;
                         if ($uploaded_pic_path) {
                             $_SESSION['avatar'] = $uploaded_pic_path;
@@ -146,13 +168,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                         $success = 'Profile updated successfully.';
                     } else {
                         error_log('surveyor profile update did not persist: user_id=' . $user_id
-                            . ' sent=' . json_encode(['first_name' => $first_name, 'last_name' => $last_name])
+                            . ' sent=' . json_encode(['first_name' => $first_name, 'last_name' => $last_name, 'email' => $email, 'phone' => $phone])
                             . ' found=' . json_encode($vrow));
                         $error = 'Could not save your changes. Please try again.';
                     }
                 } catch (Exception $e) {
-                    $error = 'Failed to update profile.';
                     error_log('surveyor profile update: '.$e->getMessage());
+                    $error = (stripos($e->getMessage(), 'duplicate') !== false)
+                        ? 'That email is already used by another account.'
+                        : 'Failed to update profile.';
                 }
             }
         }
