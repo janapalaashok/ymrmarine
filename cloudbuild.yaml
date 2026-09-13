@@ -6,24 +6,26 @@ steps:
       - '--platform=linux/amd64'
       - '--no-cache'
       - '-t'
-      - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine-staging:$COMMIT_SHA'
+      - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine:$COMMIT_SHA'
       - '.'
 
   # 2. Push Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine-staging:$COMMIT_SHA'
+      - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine:$COMMIT_SHA'
 
-  # 3. Deploy to Cloud Run staging service — full explicit config
+  # 3. Deploy to Cloud Run — full explicit config (env vars, secrets, Cloud SQL, storage volumes)
+  # This is deliberately explicit rather than relying on Cloud Run to carry over the
+  # previous revision's config, so every auto-deploy is reproducible from this file alone.
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - 'run'
       - 'deploy'
-      - 'ymrmarine-staging'
+      - 'ymrmarine'
       - '--image'
-      - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine-staging:$COMMIT_SHA'
+      - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine:$COMMIT_SHA'
       - '--region'
       - 'asia-south1'
       - '--platform'
@@ -31,7 +33,7 @@ steps:
       - '--add-cloudsql-instances'
       - 'ymr-sms:asia-south1:ymrmarine'
       - '--set-env-vars'
-      - 'YMR_DB_HOST=/cloudsql/ymr-sms:asia-south1:ymrmarine,YMR_DB_USER=ymrmarine,YMR_DB_NAME=ymrmarine_staging,YSMS_DB_HOST=/cloudsql/ymr-sms:asia-south1:ymrmarine,YSMS_DB_USER=ysms_user,YSMS_DB_NAME=ysms_db_staging'
+      - 'YMR_DB_HOST=/cloudsql/ymr-sms:asia-south1:ymrmarine,YMR_DB_USER=ymrmarine,YMR_DB_NAME=ymrmarine,YSMS_DB_HOST=/cloudsql/ymr-sms:asia-south1:ymrmarine,YSMS_DB_USER=ysms_user,YSMS_DB_NAME=ysms_db'
       - '--set-secrets'
       - 'YMR_DB_PASS=YMR_DB_PASS:latest,YSMS_DB_PASS=YSMS_DB_PASS:latest,YSMS_SMTP_PASSWORD=YSMS_SMTP_PASSWORD:latest'
       - '--add-volume'
@@ -45,7 +47,7 @@ steps:
       - '--allow-unauthenticated'
 
 images:
-  - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine-staging:$COMMIT_SHA'
+  - 'asia-south1-docker.pkg.dev/ymr-sms/cloud-run-source-deploy/ymrmarine/ymrmarine:$COMMIT_SHA'
 
 options:
   logging: CLOUD_LOGGING_ONLY
