@@ -31,6 +31,10 @@ RUN sed -i 's/Listen 80/Listen 8080/' /etc/apache2/ports.conf && \
 # Enable Apache rewrite module
 RUN a2enmod rewrite
 
+# Raise PHP's stock upload/post size limits — the default 2M/8M rejects real
+# survey PDF/Excel/Word reports and scanned attachments (see docker/uploads.ini).
+COPY docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+
 # Copy application
 COPY . /var/www/html/
 

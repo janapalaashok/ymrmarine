@@ -2,6 +2,16 @@
 require_once 'config/config.php';
 checkAuth();
 
+// 🌟 Force this page to never be cached by a proxy/CDN in front of the site
+// (e.g. Cloudflare). A cached copy would serve stale profile data together
+// with a stale "success" banner baked into that same cached HTML — which
+// looks exactly like "I saved, it said success, but it still shows the old
+// data." PHP's session cache limiter already sends similar headers, but this
+// makes it explicit and unconditional for this specific page.
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 $db = getDB();
 
 // Ensure first_name / last_name / dob columns for profile edit limits
@@ -81,8 +91,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                     $params[] = $user_id;
                     $sql = "UPDATE users SET " . implode(", ", $query_parts) . " WHERE id = ?";
                     $db->prepare($sql)->execute($params);
-                    $_SESSION['avatar'] = $uploaded_pic_path;
-                    $success = "Profile photo updated successfully!";
+
+                    // Verify the write actually landed instead of trusting execute()'s
+                    // return value alone — PDO returns true even when the WHERE clause
+                    // matches zero rows, which was letting "success" show while the
+                    // page kept rendering the old photo.
+                    $verify = $db->prepare("SELECT " . ($has_pic ? "profile_pic" : "avatar") . " FROM users WHERE id = ?");
+                    $verify->execute([$user_id]);
+                    $savedPath = (string)($verify->fetchColumn() ?: '');
+                    if ($savedPath === $uploaded_pic_path) {
+                        $_SESSION['avatar'] = $uploaded_pic_path;
+                        $success = "Profile photo updated successfully!";
+                    } else {
+                        error_log('surveyor photo update did not persist: user_id=' . $user_id . ' sent=' . $uploaded_pic_path . ' found=' . $savedPath);
+                        $error = "Could not save your photo. Please try again.";
+                    }
                 } else {
                     $error = "Could not update photo columns.";
                 }
@@ -94,29 +117,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             $first_name = trim($_POST['first_name'] ?? '');
             $last_name  = trim($_POST['last_name'] ?? '');
             $dob        = trim($_POST['dob'] ?? '');
+            // 🌟 The Surveyor form also renders Email and Phone inputs (Section A
+            // shows them for every role, not just Admin/Client) — but this branch
+            // was never including them in the UPDATE below, so a Surveyor
+            // changing email/phone got "success" while the value silently never
+            // saved. Read and save them the same way the non-surveyor branch does.
+            $email = isset($_POST['email']) ? trim($_POST['email']) : '';
+            $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
             if ($first_name === '' || $last_name === '') {
                 $error = 'First name and last name are required.';
             } else {
                 $full_name = trim($first_name . ' ' . $last_name);
                 $dobVal = ($dob !== '') ? $dob : null;
                 try {
+                    $has_email = $db->query("SHOW COLUMNS FROM users LIKE 'email'")->fetch();
+                    $has_phone = $db->query("SHOW COLUMNS FROM users LIKE 'phone'")->fetch();
                     $has_pic = $db->query("SHOW COLUMNS FROM users LIKE 'profile_pic'")->fetch();
                     $has_avatar = $db->query("SHOW COLUMNS FROM users LIKE 'avatar'")->fetch();
                     $query_parts = ['full_name = ?', 'first_name = ?', 'last_name = ?', 'dob = ?'];
                     $params = [$full_name, $first_name, $last_name, $dobVal];
+                    if ($has_email && !empty($email)) {
+                        $query_parts[] = "email = ?";
+                        $params[] = $email;
+                    }
+                    if ($has_phone) {
+                        // Always include phone (not just when non-empty) so clearing
+                        // the field actually saves the clear instead of silently
+                        // leaving the old value in place.
+                        $query_parts[] = "phone = ?";
+                        $params[] = ($phone !== '' ? $phone : null);
+                    }
                     if ($has_pic && $uploaded_pic_path) { $query_parts[] = "profile_pic = ?"; $params[] = $uploaded_pic_path; }
                     if ($has_avatar && $uploaded_pic_path) { $query_parts[] = "avatar = ?"; $params[] = $uploaded_pic_path; }
                     $params[] = $user_id;
                     $sql = "UPDATE users SET " . implode(", ", $query_parts) . " WHERE id = ?";
                     $db->prepare($sql)->execute($params);
-                    $_SESSION['full_name'] = $full_name;
-                    if ($uploaded_pic_path) {
-                        $_SESSION['avatar'] = $uploaded_pic_path;
+
+                    // Verify the write actually landed (see note above) before
+                    // claiming success.
+                    $verify = $db->prepare("SELECT first_name, last_name, " . ($has_email ? "email" : "first_name") . " AS email_col, " . ($has_phone ? "phone" : "first_name") . " AS phone_col FROM users WHERE id = ?");
+                    $verify->execute([$user_id]);
+                    $vrow = $verify->fetch(PDO::FETCH_ASSOC) ?: [];
+                    $emailOk = !$has_email || empty($email) || (string)($vrow['email_col'] ?? '') === $email;
+                    $phoneOk = !$has_phone || (string)($vrow['phone_col'] ?? '') === ($phone !== '' ? $phone : '');
+                    if ((string)($vrow['first_name'] ?? '') === $first_name && (string)($vrow['last_name'] ?? '') === $last_name && $emailOk && $phoneOk) {
+                        $_SESSION['full_name'] = $full_name;
+                        if ($uploaded_pic_path) {
+                            $_SESSION['avatar'] = $uploaded_pic_path;
+                        }
+                        $success = 'Profile updated successfully.';
+                    } else {
+                        error_log('surveyor profile update did not persist: user_id=' . $user_id
+                            . ' sent=' . json_encode(['first_name' => $first_name, 'last_name' => $last_name, 'email' => $email, 'phone' => $phone])
+                            . ' found=' . json_encode($vrow));
+                        $error = 'Could not save your changes. Please try again.';
                     }
-                    $success = 'Profile updated successfully.';
                 } catch (Exception $e) {
-                    $error = 'Failed to update profile.';
                     error_log('surveyor profile update: '.$e->getMessage());
+                    $error = (stripos($e->getMessage(), 'duplicate') !== false)
+                        ? 'That email is already used by another account.'
+                        : 'Failed to update profile.';
                 }
             }
         }
@@ -162,12 +222,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                 }
 
                 $params[] = $user_id; // WHERE కండిషన్ ఐడీ కోసం
-                
+
                 $sql = "UPDATE users SET " . implode(", ", $query_parts) . " WHERE id = ?";
                 $stmt = $db->prepare($sql);
                 $result = $stmt->execute($params);
 
-                if ($result) {
+                // 🌟 Verify the write actually landed instead of trusting execute()'s
+                // return value alone — PDO/MySQL return true even when the WHERE
+                // clause matches zero rows or nothing actually changed, which was
+                // letting the "success" message show while the page still
+                // rendered the old data (id mismatch, stale session, etc. would
+                // all look identical to a real success otherwise).
+                $verify = $db->prepare("SELECT full_name FROM users WHERE id = ?");
+                $verify->execute([$user_id]);
+                $savedName = (string)($verify->fetchColumn() ?: '');
+
+                if ($result && $savedName === $full_name) {
                     $_SESSION['full_name'] = $full_name;
                     // 🌟 అప్‌లోడ్ చేసిన వెంటనే, రీ-లాగిన్ అవ్వకుండానే హెడర్/డ్రాప్‌డౌన్‌లో కొత్త ఫోటో కనిపించడానికి
                     if ($uploaded_pic_path) {
@@ -175,6 +245,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                     }
                     $success = "Changes saved successfully!";
                 } else {
+                    error_log('profile.php update did not persist: user_id=' . $user_id
+                        . ' sent_full_name=' . $full_name . ' found_full_name=' . $savedName);
                     $error = "Failed to update profile data.";
                 }
             } catch (Exception $e) {
