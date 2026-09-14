@@ -28,6 +28,13 @@ define('DB_NAME', getenv('YSMS_DB_NAME') ?: 'ysms_db');
 define('SITE_NAME', 'YMR Survey Management System');
 define('WHATSAPP_NUMBER', getenv('YSMS_WHATSAPP_NUMBER') ?: '');
 
+// 🌟 Email Auto-Fill (Assign Vessel form) — Anthropic API key, server-side only,
+// never sent to the browser. Empty by default until a real key is configured
+// (via Secret Manager in staging/production); the feature degrades to a clear
+// "not configured" error rather than failing in a confusing way.
+define('ANTHROPIC_API_KEY', getenv('YSMS_ANTHROPIC_API_KEY') ?: '');
+define('ANTHROPIC_MODEL', getenv('YSMS_ANTHROPIC_MODEL') ?: 'claude-opus-5');
+
 function getDB() {
     try {
         // Cloud Run + Cloud SQL connects via Unix socket (path starts with /cloudsql/);
