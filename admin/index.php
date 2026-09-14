@@ -49,6 +49,7 @@ $recent = $pdo->query('SELECT * FROM contact_submissions ORDER BY created_at DES
 <div class="card">
   <div class="card-title">Quick Links</div>
   <div style="display:flex;flex-wrap:wrap;gap:0.75rem;">
+    <a href="analytics.php" class="btn btn-secondary"><i class="fas fa-chart-line"></i> View Analytics</a>
     <a href="hero.php" class="btn btn-secondary"><i class="fas fa-home"></i> Edit Hero</a>
     <a href="services.php" class="btn btn-secondary"><i class="fas fa-ship"></i> Manage Services</a>
     <a href="team.php" class="btn btn-secondary"><i class="fas fa-users"></i> Manage Team</a>

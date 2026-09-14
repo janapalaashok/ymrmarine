@@ -65,6 +65,7 @@ $flash = getFlash();
     </div>
     <nav class="sidebar-nav">
       <a href="index.php" class="<?= $current==='index'?'active':'' ?>"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+      <a href="analytics.php" class="<?= $current==='analytics'?'active':'' ?>"><i class="fas fa-chart-line"></i> Analytics</a>
       <a href="settings.php" class="<?= $current==='settings'?'active':'' ?>"><i class="fas fa-cog"></i> Site Settings</a>
       <a href="hero.php" class="<?= $current==='hero'?'active':'' ?>"><i class="fas fa-home"></i> Hero Section</a>
       <a href="about.php" class="<?= $current==='about'?'active':'' ?>"><i class="fas fa-info-circle"></i> About</a>

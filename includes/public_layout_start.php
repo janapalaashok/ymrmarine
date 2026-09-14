@@ -5,6 +5,9 @@
  * $chrome (from loadSiteChrome), $activeNav (about|services|ports|contact|home)
  * $heroImage, $heroTitle, $heroSubtitle (optional), $schemaJson (optional string)
  */
+require_once __DIR__ . '/analytics.php';
+trackVisit(getDB());
+
 $c = $chrome;
 $logoUrl = 'https://www.ymrmarine.com/' . ltrim($c['logo'], '/');
 $ogImage = !empty($heroImage)
