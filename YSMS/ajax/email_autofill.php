@@ -47,17 +47,6 @@ if (mb_strlen($emailText) > 20000) {
 
 $db = getDB();
 
-try {
-    $extracted = extractSurveyInfoFromEmail($emailText);
-} catch (EmailAutoFillException $e) {
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    exit;
-} catch (Throwable $e) {
-    error_log('email_autofill.php: unexpected error: ' . $e->getMessage());
-    echo json_encode(['success' => false, 'message' => 'Something went wrong analyzing the email. Please try again.']);
-    exit;
-}
-
 // Same role-scoped client visibility as the rest of this form — a Client
 // user's own company is fixed and never offered as a match target, and
 // staff-only surveyor assignment is intentionally never touched by this
@@ -73,10 +62,31 @@ try {
     $surveyTypes = $db->query("SELECT id, type_name FROM survey_types")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
     error_log('email_autofill.php: form-options lookup failed: ' . $e->getMessage());
-    echo json_encode(['success' => false, 'message' => 'Could not match the extracted information. Please try again.']);
+    echo json_encode(['success' => false, 'message' => 'Could not analyze the email right now. Please try again.']);
+    exit;
+}
+
+// No Anthropic API key configured → use the free, no-API rule-based
+// extractor (scans the email for your actual client/port/survey-type names
+// plus label patterns for Vessel/Agent). Configuring YSMS_ANTHROPIC_API_KEY
+// later switches this to the AI path automatically, no code change needed.
+if (trim(ANTHROPIC_API_KEY) === '') {
+    $matched = extractSurveyInfoRuleBased($emailText, $clients, $ports, $surveyTypes);
+    echo json_encode(['success' => true, 'data' => $matched, 'mode' => 'rule_based']);
+    exit;
+}
+
+try {
+    $extracted = extractSurveyInfoFromEmail($emailText);
+} catch (EmailAutoFillException $e) {
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    exit;
+} catch (Throwable $e) {
+    error_log('email_autofill.php: unexpected error: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Something went wrong analyzing the email. Please try again.']);
     exit;
 }
 
 $matched = matchExtractedInfoToFormOptions($extracted, $clients, $ports, $surveyTypes);
 
-echo json_encode(['success' => true, 'data' => $matched]);
+echo json_encode(['success' => true, 'data' => $matched, 'mode' => 'ai']);
