@@ -2,18 +2,27 @@
 /**
  * Email Auto-Fill for the Assign Vessel form (assign_vessel.php).
  *
- * Two-stage design, deliberately kept separate:
- *   1. extractSurveyInfoFromEmail() asks Claude to pull plain TEXT values out
- *      of a pasted email — it never sees or guesses at database IDs, because
- *      it has no way to know them.
- *   2. matchExtractedInfoToFormOptions() fuzzy-matches that text against the
- *      *actual* clients / ports / survey_types already loaded for this form,
- *      so a field is only ever pre-filled with a real, existing option — an
- *      unmatched value is surfaced as "found this text, please pick
- *      manually" instead of being silently invented or left unexplained.
+ * Two extraction paths, chosen automatically by ajax/email_autofill.php
+ * based on whether an Anthropic API key is configured:
  *
- * Nothing here is called from the page itself — see ajax/email_autofill.php
- * for the endpoint that wires this into the form.
+ *   - AI path (extractSurveyInfoFromEmail + matchExtractedInfoToFormOptions):
+ *     asks Claude to pull plain TEXT values out of the email (it never sees
+ *     or guesses at database IDs), then fuzzy-matches that text against the
+ *     real clients/ports/survey_types for this form. Handles free-form prose
+ *     well; costs a small per-call API fee.
+ *   - Rule-based path (extractSurveyInfoRuleBased): no API, no cost, no
+ *     setup. Scans the email directly for occurrences of your *actual*
+ *     client/port/survey-type names (so a match is only ever a real,
+ *     existing option — nothing to "unmatch" afterward) plus label-based
+ *     regexes ("Vessel: ...", "MV ..." etc.) for the free-text fields
+ *     (Vessel Name, Agent Name) that have no fixed list to scan against.
+ *     Reliable for clearly labelled emails and for prose that names a
+ *     vessel/port/client already known to the system; less reliable for
+ *     heavily paraphrased free text than the AI path.
+ *
+ * Both paths return the same shape (see matchExtractedInfoToFormOptions's
+ * docblock) so ajax/email_autofill.php and the frontend don't need to know
+ * which one ran. Nothing here is called from the page itself.
  */
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -341,5 +350,183 @@ function matchExtractedInfoToFormOptions(array $extracted, array $clients, array
         'port_name_candidates' => $extracted['port_name_candidates'],
         'survey_types' => $matchedTypes,
         'survey_types_unmatched' => $unmatchedTypes,
+    ];
+}
+
+/**
+ * Finds the value following the first matching label at the start of a
+ * line — "Vessel: MV ABC", "Vessel Name - MV ABC", case-insensitive — for
+ * free-text fields that have no fixed list to scan against. Tries labels in
+ * the given order and returns the first hit, so callers should list more
+ * specific labels (e.g. "husbanding agent") before generic ones ("agent").
+ */
+function ymrExtractByLabel(string $text, array $labels): ?string
+{
+    foreach ($labels as $label) {
+        $pattern = '/^[ \t]*\b' . preg_quote($label, '/') . '\b[ \t]*[:\-][ \t]*(.+)$/mi';
+        if (preg_match($pattern, $text, $m)) {
+            $val = trim($m[1], " \t\n\r\0\x0B.,;");
+            if ($val !== '') {
+                return $val;
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * Catches a vessel name written inline in prose rather than as a labelled
+ * field — "...survey for MV ABC at..." — by matching an MV/M.V./M-V/Ship
+ * prefix followed by 1-5 capitalized words, keeping the prefix as written
+ * (the app's own normalizeVesselName() reconciles the exact prefix form at
+ * submit time, so this doesn't need to).
+ */
+function ymrExtractVesselFromProse(string $text): ?string
+{
+    if (preg_match('/\b(?:M\.?\s?\/?\s?V\.?|Ship)\s+([A-Z][A-Za-z0-9]*(?:[\s\-][A-Z][A-Za-z0-9]*){0,4})/u', $text, $m)) {
+        return trim($m[0]);
+    }
+    return null;
+}
+
+/**
+ * Scans $text for any occurrence of $rows[*][$field] (normalized the same
+ * way as ymrFuzzyMatchOne, whole-word/phrase match only) and returns every
+ * distinct row found, longest name first — so "Mundra Port" is preferred
+ * over a shorter row that happens to be a substring of it. This is the core
+ * of the no-API extraction path: since $rows is the real, closed list of
+ * clients/ports/survey_types, a hit here is always a genuinely valid
+ * option, with nothing left to fuzzy-match afterward.
+ */
+function ymrScanTextForEntities(string $text, array $rows, string $field): array
+{
+    $textNorm = ' ' . ymrNormalizeForMatch($text) . ' ';
+    $candidates = [];
+    foreach ($rows as $row) {
+        $name = (string)($row[$field] ?? '');
+        $nameNorm = ymrNormalizeForMatch($name);
+        // Skip names too short to match reliably (avoids e.g. a 2-letter
+        // port code matching almost anything).
+        if (mb_strlen($nameNorm) < 3) {
+            continue;
+        }
+        if (preg_match('/(?<=\s)' . preg_quote($nameNorm, '/') . '(?=\s)/u', $textNorm)) {
+            $candidates[] = ['row' => $row, 'len' => mb_strlen($nameNorm)];
+        }
+    }
+    usort($candidates, fn($a, $b) => $b['len'] <=> $a['len']);
+    return array_map(fn($c) => $c['row'], $candidates);
+}
+
+/**
+ * Same idea as ymrScanTextForEntities but for a single best match (client,
+ * port) — returns null if nothing in the real list appears in the text.
+ */
+function ymrScanTextForEntity(string $text, array $rows, string $field): ?array
+{
+    $matches = ymrScanTextForEntities($text, $rows, $field);
+    return $matches[0] ?? null;
+}
+
+/**
+ * No-API-key extraction path — pure PHP, no external call, no cost. See the
+ * file-level docblock for how this differs from the AI path. Returns the
+ * same shape as matchExtractedInfoToFormOptions().
+ */
+function extractSurveyInfoRuleBased(string $emailText, array $clients, array $ports, array $surveyTypes): array
+{
+    $vesselName = ymrExtractByLabel($emailText, ['vessel name', 'vessel', 'ship name', 'ship'])
+        ?? ymrExtractVesselFromProse($emailText);
+    $agentName = ymrExtractByLabel($emailText, ['husbanding agent', 'husband agent', 'port agent', 'local agent', 'agent name', 'agent']);
+
+    $portRows = ymrScanTextForEntities($emailText, $ports, 'port_name');
+    $portDistinct = [];
+    foreach ($portRows as $r) {
+        if (!in_array($r['port_name'], $portDistinct, true)) $portDistinct[] = $r['port_name'];
+    }
+    $port = null;
+    $portCandidates = [];
+    if (count($portDistinct) === 1) {
+        $port = ['id' => (int)$portRows[0]['id'], 'name' => $portRows[0]['port_name'], 'raw' => $portRows[0]['port_name'], 'score' => 1.0];
+    } elseif (count($portDistinct) > 1) {
+        $portCandidates = $portDistinct;
+    }
+    $portRawUnmatched = null;
+    if (!$port && !$portCandidates) {
+        // The DB-scan above only catches the port's full name written out
+        // (e.g. "Mundra Port"); a labelled but abbreviated value ("Port:
+        // Mundra") needs the same fuzzy match the AI path uses.
+        $portLabelRaw = ymrExtractByLabel($emailText, ['port name', 'port', 'place', 'location']);
+        $fuzzyPort = ymrFuzzyMatchOne($portLabelRaw, $ports, 'port_name');
+        if ($fuzzyPort !== null) {
+            $port = ['id' => (int)$fuzzyPort['row']['id'], 'name' => $fuzzyPort['row']['port_name'], 'raw' => $portLabelRaw, 'score' => $fuzzyPort['score']];
+        } else {
+            $portRawUnmatched = $portLabelRaw;
+        }
+    }
+
+    $clientRows = !empty($clients) ? ymrScanTextForEntities($emailText, $clients, 'company_name') : [];
+    $client = $clientRows ? ['id' => (int)$clientRows[0]['id'], 'name' => $clientRows[0]['company_name'], 'raw' => $clientRows[0]['company_name'], 'score' => 1.0] : null;
+    $clientRawUnmatched = null;
+    if (!$client) {
+        $clientLabelRaw = ymrExtractByLabel($emailText, ['client name', 'client', 'owner', 'charterer', 'principal']);
+        $fuzzyClient = ymrFuzzyMatchOne($clientLabelRaw, $clients, 'company_name');
+        if ($fuzzyClient !== null) {
+            $client = ['id' => (int)$fuzzyClient['row']['id'], 'name' => $fuzzyClient['row']['company_name'], 'raw' => $clientLabelRaw, 'score' => $fuzzyClient['score']];
+        } else {
+            $clientRawUnmatched = $clientLabelRaw;
+        }
+    }
+
+    $surveyRows = ymrScanTextForEntities($emailText, $surveyTypes, 'type_name');
+    $matchedTypes = [];
+    $seenIds = [];
+    foreach ($surveyRows as $row) {
+        $id = (int)$row['id'];
+        if (!in_array($id, $seenIds, true)) {
+            $seenIds[] = $id;
+            $matchedTypes[] = ['id' => $id, 'name' => $row['type_name'], 'raw' => $row['type_name'], 'score' => 1.0];
+        }
+    }
+    // Same abbreviated-label gap as port/client above — "Survey: On-Hire
+    // Bunker" (without the word "Survey") won't phrase-match the DB scan,
+    // so fuzzy-match each comma/"+"/"and"-separated piece of a labelled
+    // value as a fallback when the scan found nothing at all.
+    if (empty($matchedTypes)) {
+        $surveyLabelRaw = ymrExtractByLabel($emailText, ['survey type', 'type of survey', 'required survey', 'survey']);
+        if ($surveyLabelRaw !== null) {
+            foreach (preg_split('/\s*(?:\+|,|&|\band\b)\s*/i', $surveyLabelRaw) as $piece) {
+                $piece = trim($piece);
+                if ($piece === '') continue;
+                $fuzzyType = ymrFuzzyMatchOne($piece, $surveyTypes, 'type_name');
+                if ($fuzzyType !== null) {
+                    $id = (int)$fuzzyType['row']['id'];
+                    if (!in_array($id, $seenIds, true)) {
+                        $seenIds[] = $id;
+                        $matchedTypes[] = ['id' => $id, 'name' => $fuzzyType['row']['type_name'], 'raw' => $piece, 'score' => $fuzzyType['score']];
+                    }
+                }
+            }
+        }
+    }
+
+    $notes = [];
+    if (count($portDistinct) > 1) {
+        $notes[] = 'Multiple ports mentioned (' . implode(', ', $portDistinct) . ') — unclear which one this request is for.';
+    }
+
+    return [
+        'vessel_name' => $vesselName,
+        'vessel_name_candidates' => $vesselName ? [$vesselName] : [],
+        'agent_name' => $agentName,
+        'remarks' => null, // free-text remarks aren't reliably extractable without an LLM — left blank rather than guessed
+        'unclear_or_conflicting' => $notes,
+        'client' => $client,
+        'client_raw_unmatched' => $clientRawUnmatched,
+        'port' => $port,
+        'port_raw_unmatched' => $portRawUnmatched,
+        'port_name_candidates' => $portCandidates,
+        'survey_types' => $matchedTypes,
+        'survey_types_unmatched' => [],
     ];
 }
