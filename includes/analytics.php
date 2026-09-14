@@ -3,13 +3,77 @@
  * Lightweight, dependency-free visit tracking for the public site, feeding
  * the admin-only Analytics dashboard (admin/analytics.php).
  *
- * Country relies on a CDN/proxy passing a country header (Cloudflare's
- * CF-IPCountry, or Google App Engine's equivalent) — without one of those in
- * front of the domain, country stays "Unknown" for every visit. There is no
- * outbound GeoIP API call here on purpose: this runs on every single
- * pageview, and a per-request external HTTP call would add latency and a
- * new failure mode to every page load.
+ * Country is resolved two ways, in order:
+ *  1. A CDN/proxy country header (Cloudflare's CF-IPCountry, or Google App
+ *     Engine's equivalent), if the domain sits behind one.
+ *  2. A bundled, offline IPv4-only country database (data/geoip/country-ipv4.bin
+ *     — built from DB-IP's free "Country Lite" dataset, CC BY 4.0, see
+ *     https://db-ip.com/db/lite.php), looked up by binary search directly
+ *     against the file (no DB import, no load into memory). IPv6 visitors
+ *     are not resolved by step 2 (that would need a much larger database and
+ *     128-bit range handling) and fall back to "Unknown" unless step 1
+ *     already caught them.
+ * There is deliberately no outbound GeoIP API call here: this runs on every
+ * single pageview, and a per-request external HTTP call would add latency
+ * and a new failure mode to every page load.
  */
+
+/**
+ * Binary search against the bundled IPv4 country-range file. Each record is
+ * 10 bytes (4-byte start, 4-byte end, 2-byte country code), sorted ascending
+ * by start — so a lookup is ~19 small seeks/reads for ~357k ranges, never a
+ * full file read. Returns 'Unknown' for IPv6, unparsable input, or an IP
+ * that falls in a gap the dataset doesn't cover (e.g. private ranges).
+ */
+function ymrLookupCountryByIp(string $ip): string
+{
+    static $fh = null;
+    static $recordCount = null;
+
+    if ($ip === '' || strpos($ip, ':') !== false) {
+        return 'Unknown'; // IPv6 — not covered by this dataset
+    }
+    $long = ip2long($ip);
+    if ($long === false) {
+        return 'Unknown';
+    }
+    $target = (float)sprintf('%u', $long); // treat as unsigned for comparison
+
+    if ($fh === null) {
+        $file = __DIR__ . '/../data/geoip/country-ipv4.bin';
+        if (!is_file($file)) {
+            $fh = false;
+        } else {
+            $fh = fopen($file, 'rb');
+            $recordCount = $fh ? intdiv(filesize($file), 10) : 0;
+        }
+    }
+    if ($fh === false || !$recordCount) {
+        return 'Unknown';
+    }
+
+    $lo = 0;
+    $hi = $recordCount - 1;
+    while ($lo <= $hi) {
+        $mid = intdiv($lo + $hi, 2);
+        fseek($fh, $mid * 10);
+        $data = fread($fh, 10);
+        if ($data === false || strlen($data) < 10) {
+            break;
+        }
+        $rec = unpack('Nstart/Nend/a2cc', $data);
+        $start = (float)sprintf('%u', $rec['start']);
+        $end = (float)sprintf('%u', $rec['end']);
+        if ($target < $start) {
+            $hi = $mid - 1;
+        } elseif ($target > $end) {
+            $lo = $mid + 1;
+        } else {
+            return strtoupper($rec['cc']);
+        }
+    }
+    return 'Unknown';
+}
 
 function ensureSiteVisitsTable(PDO $pdo): void
 {
@@ -147,6 +211,11 @@ function trackVisit(PDO $pdo): void
             $ip = trim(explode(',', $ip)[0]);
         }
 
+        $country = ymrDetectCountry();
+        if ($country === 'Unknown') {
+            $country = ymrLookupCountryByIp($ip);
+        }
+
         date_default_timezone_set('Asia/Kolkata');
         $stmt = $pdo->prepare(
             "INSERT INTO site_visits
@@ -160,7 +229,7 @@ function trackVisit(PDO $pdo): void
             substr($ip, 0, 64),
             substr($ua, 0, 512),
             ymrDetectDeviceType($ua),
-            ymrDetectCountry(),
+            $country,
             $vid,
             substr((string)($_SERVER['HTTP_REFERER'] ?? ''), 0, 255),
         ]);

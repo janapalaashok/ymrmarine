@@ -137,11 +137,18 @@ function rangeUrl(string $r): string { return 'analytics.php?range=' . urlencode
     <?php endforeach; endif; ?>
     <?php if ($onlyUnknownCountry): ?>
     <div class="an-note">
-      Country shows as "Unknown" for every visit — this needs a CDN/proxy in front of ymrmarine.in
-      (e.g. Cloudflare) that passes a country header. Ask if you'd like help setting that up.
+      Country shows as "Unknown" for every visit in this period — likely because these are all
+      IPv6 visitors (the bundled offline lookup only covers IPv4) or there's simply no data yet
+      for this period.
     </div>
     <?php endif; ?>
   </div>
+</div>
+
+<div class="an-note" style="margin-top:1.5rem;">
+  Country data — where not provided by a CDN header — comes from a bundled, offline IPv4 lookup
+  based on the DB-IP "Country Lite" dataset, © <a href="https://db-ip.com" target="_blank" rel="noopener">DB-IP.com</a>,
+  licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.
 </div>
 
 <?php require_once __DIR__ . '/includes/admin_footer.php'; ?>

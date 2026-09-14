@@ -1,0 +1,17 @@
+country-ipv4.bin is derived from the DB-IP "Country Lite" IPv4 dataset:
+https://db-ip.com/db/lite.php
+
+Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0):
+https://creativecommons.org/licenses/by/4.0/
+
+Source distribution used: https://github.com/sapics/ip-location-db
+(dbip-country-ipv4-num.csv), which re-packages the same DB-IP Lite data.
+
+Format: fixed-length binary records, 10 bytes each, sorted ascending by
+range start — 4-byte big-endian range start (unsigned), 4-byte big-endian
+range end (unsigned), 2-byte ASCII ISO 3166-1 alpha-2 country code.
+Regenerate by downloading a fresh CSV from the source above and converting
+each line "start,end,CC" into pack('NNa2', $start, $end, $cc).
+
+Attribution is also shown in the app itself, on the Analytics dashboard
+(admin/analytics.php), as required by the license.
