@@ -359,11 +359,16 @@ function matchExtractedInfoToFormOptions(array $extracted, array $clients, array
  * free-text fields that have no fixed list to scan against. Tries labels in
  * the given order and returns the first hit, so callers should list more
  * specific labels (e.g. "husbanding agent") before generic ones ("agent").
+ *
+ * Each label also matches its plural form ("Agents:", "Owners:",
+ * "Charterers:") — maritime correspondence conventionally pluralizes these
+ * role labels even for a single named party, so a singular-only match would
+ * miss most real emails.
  */
 function ymrExtractByLabel(string $text, array $labels): ?string
 {
     foreach ($labels as $label) {
-        $pattern = '/^[ \t]*\b' . preg_quote($label, '/') . '\b[ \t]*[:\-][ \t]*(.+)$/mi';
+        $pattern = '/^[ \t]*\b' . preg_quote($label, '/') . 's?\b[ \t]*[:\-][ \t]*(.+)$/mi';
         if (preg_match($pattern, $text, $m)) {
             $val = trim($m[1], " \t\n\r\0\x0B.,;");
             if ($val !== '') {
@@ -374,17 +379,57 @@ function ymrExtractByLabel(string $text, array $labels): ?string
     return null;
 }
 
+/** Words that signal a run-on legal/boilerplate sentence rather than a
+ * continuation of a vessel or agent name — used to stop a prose match
+ * before it swallows surrounding text like "AS DESCRIBED IN MAIN TERMS
+ * UNDER..." (common in charter-party-style emails, often written in the
+ * same all-caps/title-case style as an actual name, so capitalization
+ * alone can't tell them apart). */
+const YMR_NAME_STOPWORDS = [
+    'AS', 'DESCRIBED', 'UNDER', 'PURSUANT', 'HEREIN', 'HEREINAFTER', 'HEREOF',
+    'AGREEMENT', 'CHARTER', 'CHARTERPARTY', 'PARTY', 'TERMS', 'MAIN', 'CLAUSE',
+    'THE', 'WITH', 'FOR', 'FROM', 'THIS', 'THAT', 'AND', 'OR', 'BUT', 'WHICH',
+    'WHO', 'WHOM', 'PLEASE', 'KINDLY', 'REGARDS', 'THANKS', 'SINCERELY',
+];
+
+/**
+ * Truncates a run of words at the first stopword, keeping only what comes
+ * before it — the shared guard against ymrExtract*FromProse() swallowing
+ * boilerplate into a "name".
+ */
+function ymrTrimAtStopword(array $words): array
+{
+    $kept = [];
+    foreach ($words as $w) {
+        if (in_array(strtoupper($w), YMR_NAME_STOPWORDS, true)) {
+            break;
+        }
+        $kept[] = $w;
+    }
+    return $kept;
+}
+
 /**
  * Catches a vessel name written inline in prose rather than as a labelled
  * field — "...survey for MV ABC at..." — by matching an MV/M.V./M-V/Ship
- * prefix followed by 1-5 capitalized words, keeping the prefix as written
- * (the app's own normalizeVesselName() reconciles the exact prefix form at
- * submit time, so this doesn't need to).
+ * prefix, preferring a quoted name right after it (very common in charter-
+ * party/fixture emails, e.g. M/V "OCEAN STAR") and otherwise capturing at
+ * most 3 capitalized words, stopped early at the first boilerplate word so
+ * a run-on ALL-CAPS clause doesn't get captured as part of the name. Keeps
+ * the MV/Ship prefix as written — normalizeVesselName() reconciles the
+ * exact prefix form at submit time, so this doesn't need to.
  */
 function ymrExtractVesselFromProse(string $text): ?string
 {
-    if (preg_match('/\b(?:M\.?\s?\/?\s?V\.?|Ship)\s+([A-Z][A-Za-z0-9]*(?:[\s\-][A-Z][A-Za-z0-9]*){0,4})/u', $text, $m)) {
-        return trim($m[0]);
+    if (preg_match('/\b(?:M\.?\s?\/?\s?V\.?|Ship)\s*["\'\x{201C}\x{2018}]([^"\'\x{201D}\x{2019}]{2,60})["\'\x{201D}\x{2019}]/u', $text, $m)) {
+        return 'MV ' . trim($m[1]);
+    }
+    if (preg_match('/\b(M\.?\s?\/?\s?V\.?|Ship)\s+([A-Z][A-Za-z0-9]*(?:[\s\-][A-Z][A-Za-z0-9]*){0,2})/u', $text, $m)) {
+        $words = preg_split('/[\s\-]+/', trim($m[2]));
+        $kept = ymrTrimAtStopword($words);
+        if (!empty($kept)) {
+            return trim($m[1]) . ' ' . implode(' ', $kept);
+        }
     }
     return null;
 }
