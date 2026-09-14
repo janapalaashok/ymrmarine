@@ -410,14 +410,35 @@ function ymrTrimAtStopword(array $words): array
 }
 
 /**
+ * Cleans up any raw vessel-name text — whether it came from a labelled line
+ * ("VESSEL : MV Vishva Vinay as described in main terms as under") or a
+ * prose match — by stripping surrounding quotes and stopping at the first
+ * boilerplate word, so a run-on legal clause after the real name never
+ * rides along. Also caps the result at 6 words as a defensive backstop even
+ * when no stopword fires. Returns null if nothing meaningful is left.
+ */
+function ymrCleanVesselNameValue(string $raw): ?string
+{
+    $raw = trim($raw, " \t\"'\u{201C}\u{201D}\u{2018}\u{2019}");
+    if ($raw === '') {
+        return null;
+    }
+    $words = preg_split('/\s+/', $raw);
+    $kept = array_slice(ymrTrimAtStopword($words), 0, 6);
+    if (empty($kept)) {
+        return null;
+    }
+    return implode(' ', $kept);
+}
+
+/**
  * Catches a vessel name written inline in prose rather than as a labelled
  * field — "...survey for MV ABC at..." — by matching an MV/M.V./M-V/Ship
  * prefix, preferring a quoted name right after it (very common in charter-
  * party/fixture emails, e.g. M/V "OCEAN STAR") and otherwise capturing at
- * most 3 capitalized words, stopped early at the first boilerplate word so
- * a run-on ALL-CAPS clause doesn't get captured as part of the name. Keeps
- * the MV/Ship prefix as written — normalizeVesselName() reconciles the
- * exact prefix form at submit time, so this doesn't need to.
+ * most 3 capitalized words before handing off to ymrCleanVesselNameValue().
+ * Keeps the MV/Ship prefix as written — normalizeVesselName() reconciles
+ * the exact prefix form at submit time, so this doesn't need to.
  */
 function ymrExtractVesselFromProse(string $text): ?string
 {
@@ -425,10 +446,52 @@ function ymrExtractVesselFromProse(string $text): ?string
         return 'MV ' . trim($m[1]);
     }
     if (preg_match('/\b(M\.?\s?\/?\s?V\.?|Ship)\s+([A-Z][A-Za-z0-9]*(?:[\s\-][A-Z][A-Za-z0-9]*){0,2})/u', $text, $m)) {
-        $words = preg_split('/[\s\-]+/', trim($m[2]));
-        $kept = ymrTrimAtStopword($words);
-        if (!empty($kept)) {
-            return trim($m[1]) . ' ' . implode(' ', $kept);
+        $cleaned = ymrCleanVesselNameValue($m[2]);
+        if ($cleaned !== null) {
+            return trim($m[1]) . ' ' . $cleaned;
+        }
+    }
+    return null;
+}
+
+/**
+ * Agent name has no fixed list to scan against, and real emails name it two
+ * different ways: (1) a same-line label ("Agent: ABC Marine Services"), or
+ * (2) a header line mentioning "agent(s)" that ends in ":"/":-" with the
+ * actual company name on the NEXT non-blank line ("Agents at Gangavaram
+ * are :-\n\nGlory Faith Shipping Agencies") — very common in shipping
+ * correspondence and not something a single-line regex can catch. Tries (1)
+ * first, then (2); returns null (never guesses) if neither pans out.
+ */
+function ymrExtractAgentName(string $text): ?string
+{
+    $sameLine = ymrExtractByLabel($text, [
+        'husbanding agent', 'husband agent', 'port agent', 'local agent', 'appointed agent', 'agent name', 'agent',
+    ]);
+    if ($sameLine !== null) {
+        return $sameLine;
+    }
+
+    $lines = preg_split('/\r\n|\r|\n/', $text);
+    foreach ($lines as $i => $line) {
+        if (!preg_match('/\bagents?\b/i', $line)) {
+            continue;
+        }
+        if (!preg_match('/[:\-]\s*$/', rtrim($line))) {
+            continue; // not a "header" line — e.g. "please liaise with the agents" mid-sentence
+        }
+        for ($j = $i + 1; $j < count($lines); $j++) {
+            $next = trim($lines[$j]);
+            if ($next === '') {
+                continue; // skip blank lines between the header and the name
+            }
+            // Only accept a line that plausibly *is* a company name on its
+            // own — not an address/phone/email line that happens to be the
+            // next non-blank line in a longer signature block.
+            $looksLikeName = mb_strlen($next) >= 3 && mb_strlen($next) <= 80
+                && strpos($next, '@') === false
+                && !preg_match('/^[\d\s+()\-\/]+$/', $next);
+            return $looksLikeName ? $next : null;
         }
     }
     return null;
@@ -473,6 +536,90 @@ function ymrScanTextForEntity(string $text, array $rows, string $field): ?array
     return $matches[0] ?? null;
 }
 
+/** Phrases that mark a sentence as describing something already done —
+ * "a prior on-hire survey was conducted at a different port last week" —
+ * rather than the current request, so ymrScanTextForEntitiesLenient()
+ * excludes any sentence containing one of these from matching. */
+const YMR_HISTORICAL_MARKERS = [
+    'was conducted', 'were conducted', 'has been conducted', 'have been conducted',
+    'previous survey', 'earlier survey', 'last survey', 'prior survey',
+    'already conducted', 'survey report attached', 'survey reports attached',
+];
+
+/** Words dropped from a name before lenient bag-of-words matching — a
+ * short, explicit list rather than a length cutoff, because a length
+ * cutoff would drop "on"/"off" (2-3 letters) right when they matter most:
+ * "On-Hire Survey" vs "Off-Hire Survey" differ *only* by that one short
+ * word, so both must stay significant. */
+const YMR_GENERIC_WORDS = ['of', 'the', 'a', 'an', 'and', 'for', 'to'];
+
+/**
+ * Looser fallback for when ymrScanTextForEntities finds nothing: instead of
+ * requiring the row's full name as one contiguous phrase, requires only
+ * that every significant word in the row's name (see YMR_GENERIC_WORDS)
+ * appears within the SAME sentence/line — catches a real name that got an
+ * extra word inserted in the email (e.g. survey type "Off-Hire Survey"
+ * against email text "221B Off-Hire Bunker Survey", where the inserted
+ * "Bunker" breaks an exact-phrase scan but not this one) while still
+ * refusing to combine two words that just happen to appear in unrelated
+ * parts of a long email. Sentences that read as describing a *past,
+ * already-completed* survey are skipped entirely, so a historical mention
+ * elsewhere in the email ("a prior on-hire survey was conducted at the
+ * load port") doesn't get treated as part of the current request.
+ */
+function ymrScanTextForEntitiesLenient(string $text, array $rows, string $field): array
+{
+    $chunks = preg_split('/[\r\n]+|(?<=[.!?])\s+/u', $text) ?: [];
+    $bestWordCount = []; // row id => most significant words matched in one chunk
+    $rowsById = [];
+    foreach ($rows as $row) {
+        $rowsById[$row['id']] = $row;
+    }
+
+    foreach ($chunks as $chunk) {
+        $chunkLower = mb_strtolower($chunk);
+        foreach (YMR_HISTORICAL_MARKERS as $marker) {
+            if (strpos($chunkLower, $marker) !== false) {
+                continue 2; // this sentence describes something already done — skip it
+            }
+        }
+        $chunkNorm = ' ' . ymrNormalizeForMatch($chunk) . ' ';
+        if (trim($chunkNorm) === '') {
+            continue;
+        }
+        foreach ($rows as $row) {
+            $name = (string)($row[$field] ?? '');
+            $words = array_values(array_filter(
+                explode(' ', ymrNormalizeForMatch($name)),
+                fn($w) => $w !== '' && !in_array($w, YMR_GENERIC_WORDS, true)
+            ));
+            if (empty($words)) {
+                continue;
+            }
+            $allFound = true;
+            foreach ($words as $w) {
+                if (!preg_match('/(?<=\s)' . preg_quote($w, '/') . '(?=\s)/u', $chunkNorm)) {
+                    $allFound = false;
+                    break;
+                }
+            }
+            if ($allFound) {
+                $id = $row['id'];
+                if (!isset($bestWordCount[$id]) || count($words) > $bestWordCount[$id]) {
+                    $bestWordCount[$id] = count($words);
+                }
+            }
+        }
+    }
+
+    $candidates = [];
+    foreach ($bestWordCount as $id => $len) {
+        $candidates[] = ['row' => $rowsById[$id], 'len' => $len];
+    }
+    usort($candidates, fn($a, $b) => $b['len'] <=> $a['len']);
+    return array_map(fn($c) => $c['row'], $candidates);
+}
+
 /**
  * No-API-key extraction path — pure PHP, no external call, no cost. See the
  * file-level docblock for how this differs from the AI path. Returns the
@@ -480,11 +627,22 @@ function ymrScanTextForEntity(string $text, array $rows, string $field): ?array
  */
 function extractSurveyInfoRuleBased(string $emailText, array $clients, array $ports, array $surveyTypes): array
 {
-    $vesselName = ymrExtractByLabel($emailText, ['vessel name', 'vessel', 'ship name', 'ship'])
+    $vesselLabelRaw = ymrExtractByLabel($emailText, ['vessel name', 'vessel', 'ship name', 'ship']);
+    $vesselName = ($vesselLabelRaw !== null ? ymrCleanVesselNameValue($vesselLabelRaw) : null)
         ?? ymrExtractVesselFromProse($emailText);
-    $agentName = ymrExtractByLabel($emailText, ['husbanding agent', 'husband agent', 'port agent', 'local agent', 'agent name', 'agent']);
+    $agentName = ymrExtractAgentName($emailText);
 
     $portRows = ymrScanTextForEntities($emailText, $ports, 'port_name');
+    if (empty($portRows)) {
+        // Strict scan needs the port's generic suffix word too ("Port",
+        // "Anchorage") right next to the place name — but that word is
+        // extremely common elsewhere in a shipping email unrelated to this
+        // specific port ("last load port", "PORT/ANCHORAGE CONSUMPTION"),
+        // so it's only tried as a fallback when the exact phrase (with the
+        // suffix adjacent) isn't found at all, e.g. "at Gangavaram, INDIA"
+        // with no "Port" word next to it.
+        $portRows = ymrScanTextForEntitiesLenient($emailText, $ports, 'port_name');
+    }
     $portDistinct = [];
     foreach ($portRows as $r) {
         if (!in_array($r['port_name'], $portDistinct, true)) $portDistinct[] = $r['port_name'];
@@ -523,7 +681,21 @@ function extractSurveyInfoRuleBased(string $emailText, array $clients, array $po
         }
     }
 
-    $surveyRows = ymrScanTextForEntities($emailText, $surveyTypes, 'type_name');
+    // Union of strict + lenient, not "lenient only when strict found
+    // nothing" — a real request can combine several survey types in one
+    // sentence ("221B Off-Hire Bunker Survey" = Off-Hire + Bunker), where
+    // strict phrase-matching already finds one of them ("Bunker Survey" is
+    // a contiguous phrase there) but needs the lenient pass to also catch
+    // "Off-Hire Survey" (broken up by the inserted "Bunker"/"221B").
+    $surveyRowsStrict = ymrScanTextForEntities($emailText, $surveyTypes, 'type_name');
+    $surveyRowsLenient = ymrScanTextForEntitiesLenient($emailText, $surveyTypes, 'type_name');
+    $strictIds = array_map(fn($r) => (int)$r['id'], $surveyRowsStrict);
+    $surveyRows = $surveyRowsStrict;
+    foreach ($surveyRowsLenient as $r) {
+        if (!in_array((int)$r['id'], $strictIds, true)) {
+            $surveyRows[] = $r;
+        }
+    }
     $matchedTypes = [];
     $seenIds = [];
     foreach ($surveyRows as $row) {
