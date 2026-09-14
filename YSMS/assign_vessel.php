@@ -659,6 +659,17 @@ include 'includes/header.php';
         border-color: #3b32b3;
         background: white;
     }
+    /* Email Auto-Fill */
+    #emailAutoFillText { text-transform: none; min-height: 130px; }
+    .eaf-status-box { border-radius: 10px; padding: 10px 12px; }
+    .eaf-status-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .eaf-status-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .eaf-status-warn { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; margin-top: 6px; }
+    .eaf-candidate-picker { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 10px; margin-top: 6px; font-size: 12px; }
+    .eaf-candidate-btn { display: inline-block; margin: 3px 4px 0 0; padding: 4px 10px; border-radius: 999px; border: 1px solid #d97706; background: #fff; color: #92400e; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+    .eaf-candidate-btn:hover { background: #fde68a; }
+    /* Auto-filled field highlight — clears itself the moment the user edits the field */
+    .eaf-filled { background: #eef2ff !important; border-color: #6366f1 !important; }
     /* Searchable dropdown */
     .searchable-select { position: relative; }
     .searchable-select .ss-trigger {
@@ -944,6 +955,24 @@ include 'includes/top_app_bar.php';
     }
     $edit_type_ids = $edit_mode ? array_values(array_unique(array_filter(array_map('intval', explode(',', (string)($edit_survey['survey_type_ids'] ?? '')))))) : [];
     ?>
+
+    <!-- 🌟 Email Auto-Fill — optional convenience layer above the existing
+         form. Purely client-side driven (JS below populates the same fields
+         a person would fill manually via the same searchable-select APIs
+         the widgets already expose); nothing here changes what gets
+         submitted or how, and the section can be deleted without touching
+         the form itself. -->
+    <div class="form-box-custom shadow-sm" id="emailAutoFillBox">
+        <div class="form-group-custom" style="margin-bottom:10px;">
+            <label style="font-size:13px;color:var(--text-dark);"><i class="fa-solid fa-envelope-open-text text-primary me-1"></i> Paste Email Content <span class="text-muted fw-normal" style="text-transform:none;">(optional — auto-fills the fields below)</span></label>
+            <textarea id="emailAutoFillText" rows="7" placeholder="Paste the entire email here — subject, from, body, everything…" style="text-transform:none;font-size:13px;"></textarea>
+        </div>
+        <button type="button" class="blue-action-btn" id="emailAutoFillBtn" style="background:#3b32b3;">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Fill
+        </button>
+        <div id="emailAutoFillStatus" style="margin-top:10px;font-size:12.5px;display:none;"></div>
+    </div>
+
     <!-- Assignment Form -->
     <form action="assign_vessel.php<?= $edit_mode ? '?edit_id=' . (int)$edit_id : '' ?>" method="POST" id="assignVesselForm" enctype="multipart/form-data"><?= csrf_field() ?>
         <?php if ($edit_mode): ?><input type="hidden" name="edit_id" value="<?= (int)$edit_id ?>"><?php endif; ?>
@@ -1586,6 +1615,220 @@ include 'includes/top_app_bar.php';
 
             return false;
         });
+
+        // ---- Email Auto-Fill ----
+        (function() {
+            const $btn = $('#emailAutoFillBtn');
+            const $text = $('#emailAutoFillText');
+            const $status = $('#emailAutoFillStatus');
+            const csrfToken = $('#assignVesselForm input[name="csrf_token"]').val() || '';
+            const isClientRole = $('#clientSelect').is('input[type=hidden]');
+            let inFlight = false;
+
+            function markFilled($el) {
+                $el.addClass('eaf-filled');
+                // Text inputs/textareas signal edits via input/change; the
+                // searchable-select trigger is a <button> that never fires
+                // those, so clear on its own click (opening the dropdown)
+                // instead — still "clears once the user engages with it".
+                const evt = $el.is('input, textarea, select') ? 'input change' : 'click';
+                $el.one(evt, function() { $(this).removeClass('eaf-filled'); });
+            }
+
+            function showStatus(html, cls) {
+                $status.attr('class', 'eaf-status-box ' + cls).html(html).show();
+            }
+
+            function currentVal(selector) {
+                return String($(selector).val() || '').trim();
+            }
+
+            // Fills a single searchable-select (client/port) via its exposed ssApi,
+            // the same public method the widget itself provides for adding+
+            // selecting an option — no changes to the widget were needed.
+            // Client/Port/Survey Type are always selected from options that
+            // already exist in the list (every real client/port/survey-type
+            // is pre-rendered on page load) — so instead of the widgets'
+            // own addAndSelect() helper (which assumes a "+ Other" element
+            // this form doesn't have, and silently fails to register the
+            // selection without it), find the matching existing <li> and
+            // trigger a real click on it — the exact same code path a user
+            // clicking it would take, so it can't drift from normal behavior.
+            function clickExistingOption($root, id) {
+                const $li = $root.find('.ss-options .ss-option[data-value="' + id + '"]').first();
+                if (!$li.length) return false;
+                $li.trigger('click');
+                return true;
+            }
+
+            function fillSingleSelect(rootSelector, id) {
+                const $root = $(rootSelector);
+                if (!$root.length) return;
+                if (clickExistingOption($root, id)) {
+                    markFilled($root.find('.ss-trigger'));
+                }
+            }
+
+            // Survey Type: clear current selection state first (so a "replace"
+            // pass doesn't accumulate on top of stale selections), then click
+            // each matched option — toggleOption() flips it back on and keeps
+            // the hidden input in sync exactly like a real click would.
+            function fillSurveyTypes(matches) {
+                const $root = $('.searchable-select[data-ss-root="surveyType"]');
+                if (!$root.length) return;
+                $root.find('.ss-option.ss-selected').each(function() { $(this).trigger('click'); });
+                let any = false;
+                matches.forEach(function(m) { if (clickExistingOption($root, m.id)) any = true; });
+                if (any) markFilled($root.find('.ss-trigger'));
+            }
+
+            function fillText(selector, value) {
+                if (!value) return;
+                $(selector).val(value);
+                markFilled($(selector));
+            }
+
+            function showCandidatePicker($afterEl, candidates, onPick, label) {
+                if (!candidates || candidates.length < 2) return;
+                const $picker = $('<div class="eaf-candidate-picker"></div>');
+                $picker.append($('<div></div>').text('Multiple ' + label + ' mentioned — which one is this for?'));
+                candidates.forEach(function(c) {
+                    const $b = $('<button type="button" class="eaf-candidate-btn"></button>').text(c);
+                    $b.on('click', function() { onPick(c); $picker.remove(); });
+                    $picker.append($b);
+                });
+                $afterEl.after($picker);
+            }
+
+            function applyExtractedData(data, replaceExisting) {
+                // Vessel name
+                if (data.vessel_name && (replaceExisting || !currentVal('input[name="vessel_name"]'))) {
+                    fillText('input[name="vessel_name"]', data.vessel_name);
+                }
+                if (!data.vessel_name) {
+                    showCandidatePicker($('#vesselNameField'), data.vessel_name_candidates, function(chosen) {
+                        fillText('input[name="vessel_name"]', chosen);
+                    }, 'vessel names');
+                }
+
+                // Client (Admin/staff only — Client role's own company is locked)
+                if (!isClientRole && data.client && (replaceExisting || !currentVal('#clientSelect'))) {
+                    fillSingleSelect('.searchable-select[data-ss-root="client"]', data.client.id);
+                }
+
+                // Agent name
+                if (data.agent_name && (replaceExisting || !currentVal('input[name="agent_name"]'))) {
+                    fillText('input[name="agent_name"]', data.agent_name);
+                }
+
+                // Port
+                if (data.port && (replaceExisting || !currentVal('#portSelect'))) {
+                    fillSingleSelect('.searchable-select[data-ss-root="port"]', data.port.id);
+                }
+                if (!data.port) {
+                    showCandidatePicker($('.searchable-select[data-ss-root="port"]').closest('.form-group-custom'), data.port_name_candidates, function(chosen) {
+                        // User picked a raw port name we couldn't confidently match —
+                        // they still need to pick the real dropdown option themselves,
+                        // so just surface it rather than guessing an ID.
+                        showStatus('Selected port text: "' + chosen + '" — please pick the matching Port from the dropdown above.', 'eaf-status-warn');
+                    }, 'ports');
+                }
+
+                // Survey type(s)
+                if (data.survey_types && data.survey_types.length && (replaceExisting || !currentVal('#surveyTypeIdsInput'))) {
+                    fillSurveyTypes(data.survey_types);
+                }
+
+                // Remarks — never silently overwritten even on "replace", since it's
+                // free text staff may already be mid-way through writing; still fills
+                // if blank.
+                if (data.remarks && !currentVal('textarea[name="remarks"]')) {
+                    fillText('textarea[name="remarks"]', data.remarks);
+                }
+
+                // Build the "here's what happened" summary
+                const filled = [];
+                const needsAttention = [];
+                if (data.vessel_name) filled.push('Vessel Name'); else if (!data.vessel_name_candidates.length) needsAttention.push('Vessel Name (not found)');
+                if (!isClientRole) {
+                    if (data.client) filled.push('Client'); else if (data.client_raw_unmatched) needsAttention.push('Client (found "' + data.client_raw_unmatched + '", no matching option)'); else needsAttention.push('Client (not found)');
+                }
+                if (data.agent_name) filled.push('Agent Name'); else needsAttention.push('Agent Name (not found)');
+                if (data.port) filled.push('Port'); else if (data.port_raw_unmatched) needsAttention.push('Port (found "' + data.port_raw_unmatched + '", no matching option)'); else if (!data.port_name_candidates.length) needsAttention.push('Port (not found)');
+                if (data.survey_types && data.survey_types.length) filled.push('Survey Type'); else needsAttention.push('Survey Type (not found)');
+                if (data.survey_types_unmatched && data.survey_types_unmatched.length) {
+                    needsAttention.push('Survey Type — found "' + data.survey_types_unmatched.join('", "') + '" but no matching option');
+                }
+
+                let html = '<div><i class="fa-solid fa-circle-check text-success me-1"></i><strong>Auto-filled:</strong> ' + (filled.length ? filled.join(', ') : 'nothing confidently identified') + '</div>';
+                if (needsAttention.length) {
+                    html += '<div class="mt-1"><i class="fa-solid fa-circle-exclamation text-warning me-1"></i><strong>Please check manually:</strong> ' + needsAttention.join('; ') + '</div>';
+                }
+                if (data.unclear_or_conflicting && data.unclear_or_conflicting.length) {
+                    html += '<div class="mt-1"><i class="fa-solid fa-triangle-exclamation text-warning me-1"></i>' + data.unclear_or_conflicting.join('<br>') + '</div>';
+                }
+                showStatus(html, 'eaf-status-success');
+            }
+
+            function hasExistingValues() {
+                if (currentVal('input[name="vessel_name"]')) return true;
+                if (!isClientRole && currentVal('#clientSelect')) return true;
+                if (currentVal('input[name="agent_name"]')) return true;
+                if (currentVal('#portSelect')) return true;
+                if (currentVal('#surveyTypeIdsInput')) return true;
+                return false;
+            }
+
+            $btn.on('click', function() {
+                if (inFlight) return; // guards against double/rapid clicks
+                const emailText = String($text.val() || '').trim();
+
+                if (!emailText) {
+                    showStatus('Please paste the email content first.', 'eaf-status-error');
+                    return;
+                }
+                if (emailText.length < 20) {
+                    showStatus('That doesn\'t look like enough text to extract information from. Please paste the full email.', 'eaf-status-error');
+                    return;
+                }
+
+                inFlight = true;
+                $btn.prop('disabled', true).css('opacity', '0.7').html('<i class="fa-solid fa-spinner fa-spin"></i> Analyzing email…');
+                showStatus('<i class="fa-solid fa-spinner fa-spin me-1"></i> Analyzing email…', 'eaf-status-warn');
+
+                $.ajax({
+                    url: 'ajax/email_autofill.php',
+                    method: 'POST',
+                    dataType: 'json',
+                    timeout: 30000,
+                    data: { email_text: emailText, csrf_token: csrfToken }
+                }).done(function(resp) {
+                    if (!resp || !resp.success) {
+                        // Pasted email text is left exactly as-is — never lost on failure.
+                        showStatus((resp && resp.message) ? resp.message : 'Could not analyze the email. Please try again.', 'eaf-status-error');
+                        return;
+                    }
+                    const data = resp.data;
+                    if (hasExistingValues()) {
+                        if (confirm('Some fields already contain values. Replace them with the extracted values?\n\n(Cancel keeps your existing entries and only fills in blank fields.)')) {
+                            applyExtractedData(data, true);
+                        } else {
+                            applyExtractedData(data, false);
+                        }
+                    } else {
+                        applyExtractedData(data, false);
+                    }
+                }).fail(function(jqXHR, textStatus) {
+                    const msg = (textStatus === 'timeout')
+                        ? 'The email analysis took too long. Please try again.'
+                        : 'Could not reach the Auto-Fill service. Please check your connection and try again.';
+                    showStatus(msg, 'eaf-status-error');
+                }).always(function() {
+                    inFlight = false;
+                    $btn.prop('disabled', false).css('opacity', '1').html('<i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Fill');
+                });
+            });
+        })();
     });
 </script>
 
