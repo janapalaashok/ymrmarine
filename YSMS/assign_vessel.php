@@ -1646,26 +1646,40 @@ include 'includes/top_app_bar.php';
             // Fills a single searchable-select (client/port) via its exposed ssApi,
             // the same public method the widget itself provides for adding+
             // selecting an option — no changes to the widget were needed.
-            function fillSingleSelect(rootSelector, id, name) {
+            // Client/Port/Survey Type are always selected from options that
+            // already exist in the list (every real client/port/survey-type
+            // is pre-rendered on page load) — so instead of the widgets'
+            // own addAndSelect() helper (which assumes a "+ Other" element
+            // this form doesn't have, and silently fails to register the
+            // selection without it), find the matching existing <li> and
+            // trigger a real click on it — the exact same code path a user
+            // clicking it would take, so it can't drift from normal behavior.
+            function clickExistingOption($root, id) {
+                const $li = $root.find('.ss-options .ss-option[data-value="' + id + '"]').first();
+                if (!$li.length) return false;
+                $li.trigger('click');
+                return true;
+            }
+
+            function fillSingleSelect(rootSelector, id) {
                 const $root = $(rootSelector);
                 if (!$root.length) return;
-                const api = $root.data('ssApi');
-                if (!api) return;
-                api.addAndSelect(id, name);
-                markFilled($root.find('.ss-trigger'));
+                if (clickExistingOption($root, id)) {
+                    markFilled($root.find('.ss-trigger'));
+                }
             }
 
             // Survey Type: clear current selection state first (so a "replace"
-            // pass doesn't accumulate on top of stale selections), then select
-            // each matched option the same way.
+            // pass doesn't accumulate on top of stale selections), then click
+            // each matched option — toggleOption() flips it back on and keeps
+            // the hidden input in sync exactly like a real click would.
             function fillSurveyTypes(matches) {
                 const $root = $('.searchable-select[data-ss-root="surveyType"]');
                 if (!$root.length) return;
-                $root.find('.ss-option.ss-selected').removeClass('ss-selected').find('.ss-option-checkbox').prop('checked', false);
-                const api = $root.data('ssApi');
-                if (!api) return;
-                matches.forEach(function(m) { api.addAndSelect(String(m.id), m.name); });
-                if (matches.length) markFilled($root.find('.ss-trigger'));
+                $root.find('.ss-option.ss-selected').each(function() { $(this).trigger('click'); });
+                let any = false;
+                matches.forEach(function(m) { if (clickExistingOption($root, m.id)) any = true; });
+                if (any) markFilled($root.find('.ss-trigger'));
             }
 
             function fillText(selector, value) {
@@ -1699,7 +1713,7 @@ include 'includes/top_app_bar.php';
 
                 // Client (Admin/staff only — Client role's own company is locked)
                 if (!isClientRole && data.client && (replaceExisting || !currentVal('#clientSelect'))) {
-                    fillSingleSelect('.searchable-select[data-ss-root="client"]', data.client.id, data.client.name);
+                    fillSingleSelect('.searchable-select[data-ss-root="client"]', data.client.id);
                 }
 
                 // Agent name
@@ -1709,7 +1723,7 @@ include 'includes/top_app_bar.php';
 
                 // Port
                 if (data.port && (replaceExisting || !currentVal('#portSelect'))) {
-                    fillSingleSelect('.searchable-select[data-ss-root="port"]', data.port.id, data.port.name);
+                    fillSingleSelect('.searchable-select[data-ss-root="port"]', data.port.id);
                 }
                 if (!data.port) {
                     showCandidatePicker($('.searchable-select[data-ss-root="port"]').closest('.form-group-custom'), data.port_name_candidates, function(chosen) {
