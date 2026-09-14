@@ -6,51 +6,94 @@ namespace Composer\Autoload;
 
 class ComposerStaticInit62e10e6c8df9afc192311b196c75bb33
 {
+    public static $files = array (
+        '4b3d45d99f6e4eb65ea80c00519736e4' => __DIR__ . '/..' . '/anthropic-ai/sdk/src/Version.php',
+    );
+
     public static $prefixLengthsPsr4 = array (
-        'Z' =>
+        'Z' => 
         array (
             'ZipStream\\' => 10,
         ),
-        'P' =>
+        'S' => 
+        array (
+            'StandardWebhooks\\' => 17,
+        ),
+        'P' => 
         array (
             'Psr\\SimpleCache\\' => 16,
+            'Psr\\Http\\Message\\' => 17,
+            'Psr\\Http\\Client\\' => 16,
             'PhpOffice\\PhpSpreadsheet\\' => 25,
+            'PHPMailer\\PHPMailer\\' => 20,
         ),
-        'M' =>
+        'M' => 
         array (
             'Matrix\\' => 7,
         ),
-        'C' =>
+        'H' => 
+        array (
+            'Http\\Discovery\\' => 15,
+        ),
+        'C' => 
         array (
             'Composer\\Pcre\\' => 14,
             'Complex\\' => 8,
         ),
+        'A' => 
+        array (
+            'Anthropic\\' => 10,
+        ),
     );
 
     public static $prefixDirsPsr4 = array (
-        'ZipStream\\' =>
+        'ZipStream\\' => 
         array (
             0 => __DIR__ . '/..' . '/maennchen/zipstream-php/src',
         ),
-        'Psr\\SimpleCache\\' =>
+        'StandardWebhooks\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/standard-webhooks/standard-webhooks/libraries/php/src',
+        ),
+        'Psr\\SimpleCache\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/simple-cache/src',
         ),
-        'PhpOffice\\PhpSpreadsheet\\' =>
+        'Psr\\Http\\Message\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/psr/http-message/src',
+        ),
+        'Psr\\Http\\Client\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/psr/http-client/src',
+        ),
+        'PhpOffice\\PhpSpreadsheet\\' => 
         array (
             0 => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet',
         ),
-        'Matrix\\' =>
+        'PHPMailer\\PHPMailer\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/phpmailer/phpmailer/src',
+        ),
+        'Matrix\\' => 
         array (
             0 => __DIR__ . '/..' . '/markbaker/matrix/classes/src',
         ),
-        'Composer\\Pcre\\' =>
+        'Http\\Discovery\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/php-http/discovery/src',
+        ),
+        'Composer\\Pcre\\' => 
         array (
             0 => __DIR__ . '/..' . '/composer/pcre/src',
         ),
-        'Complex\\' =>
+        'Complex\\' => 
         array (
             0 => __DIR__ . '/..' . '/markbaker/complex/classes/src',
+        ),
+        'Anthropic\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/anthropic-ai/sdk/src',
         ),
     );
 
