@@ -506,6 +506,21 @@ text-align:justify;
 }
 .astat-label { font-size: 0.8rem; color: var(--ink-soft); font-weight: 500; }
 
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-top: 3rem;
+}
+.ach-card {
+  text-align: center;
+  padding: 2rem 1.25rem;
+}
+.ach-card .why-icon { margin-left: auto; margin-right: auto; }
+.ach-card .astat-val { font-size: 2.25rem; }
+@media (max-width: 900px) { .achievements-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 576px) { .achievements-grid { grid-template-columns: 1fr; } }
+
 /* ─────────────────────────────────────────
    SERVICES
 ───────────────────────────────────────── */

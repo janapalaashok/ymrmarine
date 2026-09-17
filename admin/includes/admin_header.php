@@ -72,6 +72,7 @@ $flash = getFlash();
       <a href="services.php" class="<?= $current==='services'?'active':'' ?>"><i class="fas fa-ship"></i> Services</a>
       <a href="pages.php" class="<?= $current==='pages'?'active':'' ?>"><i class="fas fa-file-alt"></i> Static Pages</a>
       <a href="whyus.php" class="<?= $current==='whyus'?'active':'' ?>"><i class="fas fa-star"></i> Why Us</a>
+      <a href="achievements.php" class="<?= $current==='achievements'?'active':'' ?>"><i class="fas fa-award"></i> Achievements</a>
       <a href="team.php" class="<?= $current==='team'?'active':'' ?>"><i class="fas fa-users"></i> Team</a>
       <a href="ports.php" class="<?= $current==='ports'?'active':'' ?>"><i class="fas fa-anchor"></i> Ports</a>
       <a href="testimonials.php" class="<?= $current==='testimonials'?'active':'' ?>"><i class="fas fa-quote-left"></i> Testimonials</a>

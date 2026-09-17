@@ -3,6 +3,7 @@ require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/service_helpers.php';
 ensureServicePageColumns(getDB());
 seedServicePagesIfNeeded(getDB());
+ensureAchievementsTable(getDB());
 
 $pdo = getDB();
 
@@ -14,6 +15,7 @@ $whyUs = $pdo->query('SELECT * FROM why_us WHERE is_active = 1 ORDER BY sort_ord
 $team = $pdo->query('SELECT * FROM team WHERE is_active = 1 ORDER BY sort_order')->fetchAll();
 $ports = $pdo->query('SELECT * FROM ports WHERE is_active = 1 ORDER BY sort_order')->fetchAll();
 $testimonials = $pdo->query('SELECT * FROM testimonials WHERE is_active = 1 ORDER BY sort_order')->fetchAll();
+$achievements = $pdo->query('SELECT * FROM achievements WHERE is_active = 1 ORDER BY sort_order')->fetchAll();
 
 $address = getSetting('address');
 $mapEmbed = getSetting('map_embed');
@@ -163,6 +165,27 @@ $copyright = getSetting('copyright');
     </div>
   </div>
 </section>
+
+<!-- ════════ ACHIEVEMENTS ════════ -->
+<?php if (!empty($achievements)): ?>
+<section id="achievements">
+  <div class="section">
+    <div class="reveal">
+      <div class="tag">Track Record</div>
+      <h2 class="sec-h2">Our Achievements</h2>
+    </div>
+    <div class="achievements-grid">
+      <?php foreach ($achievements as $i => $a): ?>
+      <div class="astat ach-card reveal reveal-delay-<?= ($i % 4) + 1 ?>">
+        <div class="why-icon" style="margin-bottom:0.9rem;"><i class="fas <?= e($a['icon']) ?>"></i></div>
+        <div class="astat-val"><?= e($a['value']) ?></div>
+        <div class="astat-label"><?= e($a['label']) ?></div>
+      </div>
+      <?php endforeach; ?>
+    </div>
+  </div>
+</section>
+<?php endif; ?>
 
 <!-- ════════ TEAM ════════ -->
 <section id="team">
