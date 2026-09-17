@@ -139,6 +139,38 @@ if (!$has_full_access && !isSurveyorAssignedToSurvey($db, $survey['id'], $curren
 }
 $is_client_viewer = ($role === 'Client');
 
+// 🌟 Vessel History — earlier surveys for this same vessel (by exact vessel
+// name match), so a surveyor opening this vessel can see whether it has been
+// surveyed before and what was filed then, without having to search vessels.php.
+// Client viewers don't get this (it can surface other clients' survey activity
+// for the same vessel), everyone else who could reach this page does.
+$vessel_history = [];
+if (!$is_client_viewer && !empty($survey['vessel_name'])) {
+    try {
+        $hist_stmt = $db->prepare("
+            SELECT s.id, s.assign_date, s.status, s.report_number, p.port_name, t.type_name, c.company_name
+            FROM surveys s
+            JOIN ports p ON s.port_id = p.id
+            JOIN survey_types t ON s.survey_type_id = t.id
+            JOIN clients c ON s.client_id = c.id
+            WHERE s.vessel_name = ? AND s.id != ?
+            ORDER BY s.assign_date DESC
+            LIMIT 10
+        ");
+        $hist_stmt->execute([$survey['vessel_name'], $survey['id']]);
+        $vessel_history = $hist_stmt->fetchAll();
+        foreach ($vessel_history as &$h) {
+            $h['files'] = $db->prepare("SELECT file_name, file_type, file_path FROM uploads WHERE survey_id = ? ORDER BY uploaded_at ASC");
+            $h['files']->execute([$h['id']]);
+            $h['files'] = $h['files']->fetchAll();
+        }
+        unset($h);
+    } catch (Throwable $e) {
+        error_log('vessel_detail.php vessel_history: ' . $e->getMessage());
+        $vessel_history = [];
+    }
+}
+
 // డేట్ వాలిడేషన్ చెక్
 $display_date = '--/--/----';
 if (!empty($survey['assign_date']) && $survey['assign_date'] != '0000-00-00 00:00:00' && $survey['assign_date'] != '0000-00-00') {
@@ -307,6 +339,37 @@ include 'includes/header.php';
                 ?>
             </span></div>
         </div>
+
+    <?php if (!empty($vessel_history)): ?>
+    <div class="form-box mx-3 p-3 bg-white rounded-3 border shadow-sm mt-2" data-testid="vessel-history-card">
+        <div class="fw-bold text-dark mb-2" style="font-size: 14px;"><i class="fa-solid fa-clock-rotate-left text-primary"></i> Vessel History (<?= count($vessel_history) ?> earlier survey<?= count($vessel_history) === 1 ? '' : 's' ?>)</div>
+        <div class="text-muted mb-2" style="font-size:11px;">Previous surveys found for this vessel — check before you start, files from prior visits are attached below.</div>
+        <?php foreach ($vessel_history as $h): ?>
+        <div class="border rounded-3 p-2 mb-2" style="font-size:12px;" data-testid="vessel-history-item-<?= (int)$h['id'] ?>">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="fw-bold text-dark"><?= !empty($h['assign_date']) && $h['assign_date'] !== '0000-00-00' ? date('d M Y', strtotime($h['assign_date'])) : '—' ?></span>
+                    · <?= sanitize($h['type_name']) ?> · <?= sanitize($h['port_name']) ?>
+                    <div class="text-muted"><?= sanitize($h['company_name']) ?><?= !empty($h['report_number']) ? ' · Report #' . sanitize($h['report_number']) : '' ?></div>
+                </div>
+                <span class="badge bg-light text-dark border"><?= sanitize($h['status']) ?></span>
+            </div>
+            <?php if (!empty($h['files'])): ?>
+            <div class="mt-2 d-flex flex-wrap gap-2">
+                <?php foreach ($h['files'] as $hf): if (!is_file($hf['file_path'])) continue; ?>
+                <a href="<?= sanitize($hf['file_path']) ?>" download class="btn btn-sm btn-light border text-primary" style="font-size:11px;padding:3px 9px;" data-testid="vessel-history-file-<?= (int)$h['id'] ?>">
+                    <i class="fa-solid fa-file-arrow-down"></i> <?= sanitize($hf['file_type']) ?>
+                </a>
+                <?php endforeach; ?>
+            </div>
+            <?php else: ?>
+            <div class="text-muted mt-1" style="font-size:11px;">No report files were uploaded for this one.</div>
+            <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
     <?php if (!$is_client_viewer && !$is_super_admin): ?>
     <div class="form-box mx-3 p-3 bg-white rounded-3 border shadow-sm mt-2">
         <div class="fw-bold text-dark mb-3" style="font-size: 14px;"><i class="fa-solid fa-cloud-arrow-up text-primary"></i> Upload Required Reports</div>
