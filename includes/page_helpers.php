@@ -135,11 +135,47 @@ function seedPageContentIfNeeded(PDO $pdo): void {
     }
 }
 
+/**
+ * "Our Achievements" stat cards on the homepage (icon + big number + label).
+ * Seeded with clearly-marked placeholder values on first run — replace them
+ * from Admin > Achievements once the real figures are available.
+ */
+function ensureAchievementsTable(PDO $pdo): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS achievements (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            icon VARCHAR(50) DEFAULT 'fa-award',
+            value VARCHAR(50) NOT NULL,
+            label VARCHAR(150) NOT NULL,
+            sort_order INT DEFAULT 0,
+            is_active TINYINT(1) DEFAULT 1
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $count = (int)$pdo->query('SELECT COUNT(*) FROM achievements')->fetchColumn();
+        if ($count === 0) {
+            $stmt = $pdo->prepare('INSERT INTO achievements (icon, value, label, sort_order) VALUES (?,?,?,?)');
+            $placeholders = [
+                ['fa-calendar-check', 'XX+', 'Years of Experience (placeholder)'],
+                ['fa-ship', 'XXX+', 'Vessels Surveyed (placeholder)'],
+                ['fa-anchor', 'XX+', 'Ports Covered (placeholder)'],
+                ['fa-certificate', 'XX+', 'Certifications & Approvals (placeholder)'],
+            ];
+            foreach ($placeholders as $i => $p) $stmt->execute([$p[0], $p[1], $p[2], $i]);
+        }
+    } catch (Exception $e) {
+        error_log('ensureAchievementsTable: ' . $e->getMessage());
+    }
+}
+
 /** Shared site chrome values */
 function loadSiteChrome(): array {
     return [
         'siteName'   => getSetting('site_name', 'YMR Marine Solutions LLP'),
         'phone'      => getSetting('phone', '+91 982 048 2713'),
+        'whatsapp'   => getSetting('whatsapp', getSetting('phone', '+91 982 048 2713')),
         'email'      => getSetting('email', 'ops@ymrmarine.com'),
         'logo'       => getSetting('logo', 'ymr_logo.png'),
         'empLogin'   => getSetting('employee_login_url', '#'),

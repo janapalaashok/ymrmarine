@@ -2,6 +2,12 @@
 /** Expects $chrome, optional $services for footer */
 $c = $chrome;
 $services = $services ?? [];
+
+// wa.me needs digits only, with country code; assume a bare 10-digit
+// number (no country code entered) is Indian and prefix 91.
+$waDigits = preg_replace('/\D+/', '', $c['whatsapp'] ?? '');
+if (strlen($waDigits) === 10) $waDigits = '91' . $waDigits;
+$waText = rawurlencode('Hi YMR Marine, I would like to enquire about a survey.');
 ?>
 <footer>
   <div class="footer-inner">
@@ -55,6 +61,23 @@ $services = $services ?? [];
     </div>
   </div>
 </footer>
+<?php if ($waDigits !== ''): ?>
+<a href="https://wa.me/<?= e($waDigits) ?>?text=<?= e($waText) ?>"
+   class="wa-float-btn" target="_blank" rel="noopener" aria-label="Chat with us on WhatsApp">
+  <i class="fab fa-whatsapp"></i>
+</a>
+<style>
+.wa-float-btn {
+  position: fixed; right: 20px; bottom: 20px; z-index: 1000;
+  width: 58px; height: 58px; border-radius: 50%;
+  background: #25d366; color: #fff; display: flex; align-items: center; justify-content: center;
+  font-size: 30px; box-shadow: 0 8px 22px rgba(0,0,0,.28);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.wa-float-btn:hover { transform: scale(1.08); box-shadow: 0 10px 28px rgba(0,0,0,.35); color: #fff; }
+@media (max-width: 576px) { .wa-float-btn { right: 14px; bottom: 14px; width: 52px; height: 52px; font-size: 26px; } }
+</style>
+<?php endif; ?>
 <script>
 const nav = document.getElementById('mainNav');
 window.addEventListener('scroll', () => nav.classList.toggle('scrolled', window.scrollY > 40), { passive: true });

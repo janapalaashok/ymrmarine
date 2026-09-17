@@ -3,7 +3,7 @@ require_once __DIR__ . '/includes/admin_header.php';
 $pdo = getDB();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $keys = ['site_name','site_tagline','phone','email','address','map_embed','employee_login_url','footer_text','copyright','primary_color'];
+    $keys = ['site_name','site_tagline','phone','whatsapp','email','address','map_embed','employee_login_url','footer_text','copyright','primary_color'];
     foreach ($keys as $k) {
         if (isset($_POST[$k])) setSetting($k, trim($_POST[$k]));
     }
@@ -35,6 +35,11 @@ foreach ($stmt->fetchAll() as $row) $s[$row['setting_key']] = $row['setting_valu
       <div class="form-group">
         <label>Phone</label>
         <input type="text" name="phone" value="<?= e($s['phone'] ?? '') ?>">
+      </div>
+      <div class="form-group">
+        <label>WhatsApp Number</label>
+        <input type="text" name="whatsapp" value="<?= e($s['whatsapp'] ?? '') ?>" placeholder="+91 98204 82713">
+        <small class="text-muted">Used by the floating WhatsApp chat button on the website. Leave blank to use the Phone number above.</small>
       </div>
       <div class="form-group">
         <label>Email</label>
