@@ -980,7 +980,8 @@ include 'includes/top_app_bar.php';
 
             <div class="form-group-custom" id="vesselNameField">
                 <label for="vessel_name">Vessel Name *</label>
-                <input type="text" name="vessel_name" id="vessel_name" value="<?= $edit_mode ? sanitize($edit_survey['vessel_name']) : '' ?>" placeholder="e.g. MV Pacific Dawn" required autocomplete="off" inputmode="text" style="font-size:16px;min-height:48px;">
+                <input type="text" name="vessel_name" id="vessel_name" value="<?= $edit_mode ? sanitize($edit_survey['vessel_name']) : '' ?>" placeholder="e.g. MV Pacific Dawn" required autocomplete="off" inputmode="text" style="font-size:16px;min-height:48px;" list="vesselNameSuggestions">
+                <datalist id="vesselNameSuggestions"></datalist>
             </div>
 
                         <?php if ($is_client_role): ?>
@@ -1204,6 +1205,28 @@ include 'includes/top_app_bar.php';
 <script>
     $(document).ready(function() {
         var EDIT_MODE = <?= $edit_mode ? 'true' : 'false' ?>; // editing an existing assignment, not creating a new one
+
+        // ---- Vessel Name autocomplete (previously-used vessel names) ----
+        (function() {
+            var $vesselInput = $('#vessel_name');
+            var $vesselList = $('#vesselNameSuggestions');
+            var debounceTimer = null;
+            $vesselInput.on('input', function() {
+                var q = $(this).val().trim();
+                clearTimeout(debounceTimer);
+                if (q.length < 2) { $vesselList.empty(); return; }
+                debounceTimer = setTimeout(function() {
+                    $.getJSON('ajax/vessel_autocomplete.php', { q: q })
+                        .done(function(res) {
+                            $vesselList.empty();
+                            (res.names || []).forEach(function(name) {
+                                $('<option>').val(name).appendTo($vesselList);
+                            });
+                        })
+                        .fail(function() { /* silent — autocomplete is a convenience, not required */ });
+                }, 250);
+            });
+        })();
 
         // ---- Single searchable select (Client / Port) ----
         function initSearchableSelect(rootEl) {
