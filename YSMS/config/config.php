@@ -35,6 +35,15 @@ define('WHATSAPP_NUMBER', getenv('YSMS_WHATSAPP_NUMBER') ?: '');
 define('ANTHROPIC_API_KEY', getenv('YSMS_ANTHROPIC_API_KEY') ?: '');
 define('ANTHROPIC_MODEL', getenv('YSMS_ANTHROPIC_MODEL') ?: 'claude-opus-5');
 
+// 🌟 Web Push (PWA notifications) — VAPID key pair identifies this app to the
+// browser's push service; it isn't a billable API credential, so (unlike the
+// Anthropic key) a working default pair ships here directly and push "just
+// works" without any Secret Manager setup. Override via env vars if the key
+// pair is ever rotated.
+define('VAPID_PUBLIC_KEY', getenv('YSMS_VAPID_PUBLIC_KEY') ?: 'BB2wDSAzQuMo4lX6jWi5oRcz0pE4_7WUVw83dgX-Pm4avSm0Vl98ZsXL1ELWUnBuqdL8aYsFwv-HgnKOUD71ERM');
+define('VAPID_PRIVATE_KEY', getenv('YSMS_VAPID_PRIVATE_KEY') ?: 'rQILTfSxJ5yotqjA7IvQ6GF5LGi9PnGsBun2dP6xynQ');
+define('VAPID_SUBJECT', getenv('YSMS_VAPID_SUBJECT') ?: 'mailto:ops@ymrmarine.com');
+
 function getDB() {
     try {
         // Cloud Run + Cloud SQL connects via Unix socket (path starts with /cloudsql/);
@@ -272,6 +281,58 @@ function isSurveyorAssignedToSurvey($db, $surveyId, $userId): bool {
         return (bool)$stmt->fetchColumn();
     } catch (Throwable $e) {
         return false;
+    }
+}
+
+// 🌟 Login activity log (Admin / Super Admin only view, see login_activity.php).
+// Lazy-created the same way as survey_attachments above.
+function ensureLoginLogsTable(PDO $db): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+        $db->exec("CREATE TABLE IF NOT EXISTS `login_logs` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `user_id` int(11) NOT NULL,
+            `username` varchar(100) NOT NULL,
+            `role_name` varchar(50) DEFAULT NULL,
+            `ip_address` varchar(45) DEFAULT NULL,
+            `user_agent` varchar(255) DEFAULT NULL,
+            `logged_in_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `idx_login_logs_user` (`user_id`),
+            KEY `idx_login_logs_time` (`logged_in_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } catch (Throwable $e) {
+        error_log('ensureLoginLogsTable: ' . $e->getMessage());
+    }
+}
+
+/** Best-effort client IP behind Cloud Run's load balancer (falls back through the usual headers). */
+function getClientIp(): string {
+    foreach (['HTTP_X_FORWARDED_FOR', 'HTTP_CLIENT_IP', 'REMOTE_ADDR'] as $key) {
+        if (!empty($_SERVER[$key])) {
+            $ip = trim(explode(',', $_SERVER[$key])[0]);
+            if ($ip !== '') return $ip;
+        }
+    }
+    return '';
+}
+
+/** Called right after a successful login.php auth — never throws, login must never fail because of this. */
+function logLoginActivity(PDO $db, int $userId, string $username, string $roleName): void {
+    try {
+        ensureLoginLogsTable($db);
+        $stmt = $db->prepare("INSERT INTO login_logs (user_id, username, role_name, ip_address, user_agent) VALUES (?,?,?,?,?)");
+        $stmt->execute([
+            $userId,
+            $username,
+            $roleName,
+            getClientIp(),
+            mb_substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255),
+        ]);
+    } catch (Throwable $e) {
+        error_log('logLoginActivity: ' . $e->getMessage());
     }
 }
 

@@ -28,6 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['full_name'] = $user['full_name'];
         $_SESSION['avatar'] = !empty($user['avatar']) ? $user['avatar'] : (!empty($user['profile_pic']) ? $user['profile_pic'] : null);
 
+        logLoginActivity($db, (int)$user['id'], $user['username'], $user['role_name']);
+
         // 🌟 New-format popup: if Admin uploaded/replaced a format in the last 7 days,
         // show a one-time "please use these formats" popup to the surveyor on this login.
         if ($user['role_name'] === 'Surveyor') {

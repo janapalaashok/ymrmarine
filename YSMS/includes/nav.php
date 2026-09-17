@@ -55,6 +55,10 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
             <i class="fa-solid fa-house"></i>
             <span>Home</span>
         </a>
+        <a href="calendar.php" class="nav-item-btn desktop-only-nav <?= ($current_page == 'calendar.php') ? 'active' : '' ?>" data-testid="navigation-calendar-link">
+            <i class="fa-solid fa-calendar-days"></i>
+            <span>Calendar</span>
+        </a>
         <a href="vessels.php" class="nav-item-btn <?= ($current_page == 'vessels.php') ? 'active' : '' ?>" data-testid="navigation-vessels-link">
             <i class="fa-solid fa-ship"></i>
             <span>Pending Vessels</span>
@@ -120,6 +124,10 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
         <i class="fa-solid fa-file-contract"></i>
         <span>Manage Templates</span>
     </a>
+        <a href="login_activity.php" class="nav-item-btn desktop-only-nav <?= ($current_page == 'login_activity.php') ? 'active' : '' ?>" data-testid="sidebar-login-activity-link">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>Login Activity</span>
+        </a>
 
         <?php elseif ($user_role === 'Super Admin'): ?>
         <!-- Desktop only: Super Admin Quick Actions — Add Client + Add Admin only
@@ -133,6 +141,10 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
         <a href="add_admin.php" class="nav-item-btn desktop-only-nav <?= ($current_page == 'add_admin.php') ? 'active' : '' ?>" data-testid="sidebar-add-admin-link">
             <i class="fa-solid fa-user-shield"></i>
             <span>Add Admin</span>
+        </a>
+        <a href="login_activity.php" class="nav-item-btn desktop-only-nav <?= ($current_page == 'login_activity.php') ? 'active' : '' ?>" data-testid="sidebar-login-activity-link">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>Login Activity</span>
         </a>
         <!-- 🌟 TEMPORARY — remove this link (and super_admin_controls.php) once
              go-live test-data cleanup is done. -->
