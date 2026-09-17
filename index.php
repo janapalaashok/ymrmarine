@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/service_helpers.php';
+require_once __DIR__ . '/includes/page_helpers.php';
 ensureServicePageColumns(getDB());
 seedServicePagesIfNeeded(getDB());
 ensureAchievementsTable(getDB());
