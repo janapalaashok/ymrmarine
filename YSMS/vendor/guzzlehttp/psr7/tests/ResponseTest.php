@@ -1,0 +1,442 @@
+<?php
+
+declare(strict_types=1);
+
+namespace GuzzleHttp\Tests\Psr7;
+
+use GuzzleHttp\Psr7;
+use GuzzleHttp\Psr7\Response;
+use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\StreamInterface;
+
+/**
+ * @covers \GuzzleHttp\Psr7\MessageTrait
+ * @covers \GuzzleHttp\Psr7\Response
+ */
+class ResponseTest extends TestCase
+{
+    public function testDefaultConstructor(): void
+    {
+        $r = new Response();
+        self::assertSame(200, $r->getStatusCode());
+        self::assertSame('1.1', $r->getProtocolVersion());
+        self::assertSame('OK', $r->getReasonPhrase());
+        self::assertSame([], $r->getHeaders());
+        self::assertInstanceOf(StreamInterface::class, $r->getBody());
+        self::assertSame('', (string) $r->getBody());
+    }
+
+    public function testCanConstructWithStatusCode(): void
+    {
+        $r = new Response(404);
+        self::assertSame(404, $r->getStatusCode());
+        self::assertSame('Not Found', $r->getReasonPhrase());
+    }
+
+    public function testConstructorDoesNotReadStreamBody(): void
+    {
+        $streamIsRead = false;
+        $body = Psr7\FnStream::decorate(Psr7\Utils::streamFor(''), [
+            '__toString' => function () use (&$streamIsRead) {
+                $streamIsRead = true;
+
+                return '';
+            },
+        ]);
+
+        $r = new Response(200, [], $body);
+        self::assertFalse($streamIsRead);
+        self::assertSame($body, $r->getBody());
+    }
+
+    public function testCanConstructWithHeaders(): void
+    {
+        $r = new Response(200, ['Foo' => 'Bar']);
+        self::assertSame(['Foo' => ['Bar']], $r->getHeaders());
+        self::assertSame('Bar', $r->getHeaderLine('Foo'));
+        self::assertSame(['Bar'], $r->getHeader('Foo'));
+    }
+
+    public function testCanConstructWithHeadersAsArray(): void
+    {
+        $r = new Response(200, [
+            'Foo' => ['baz', 'bar'],
+        ]);
+        self::assertSame(['Foo' => ['baz', 'bar']], $r->getHeaders());
+        self::assertSame('baz, bar', $r->getHeaderLine('Foo'));
+        self::assertSame(['baz', 'bar'], $r->getHeader('Foo'));
+    }
+
+    public function testCanConstructWithBody(): void
+    {
+        $r = new Response(200, [], 'baz');
+        self::assertInstanceOf(StreamInterface::class, $r->getBody());
+        self::assertSame('baz', (string) $r->getBody());
+    }
+
+    public function testNullBody(): void
+    {
+        $r = new Response(200, [], null);
+        self::assertInstanceOf(StreamInterface::class, $r->getBody());
+        self::assertSame('', (string) $r->getBody());
+    }
+
+    public function testFalseyBody(): void
+    {
+        $r = new Response(200, [], '0');
+        self::assertInstanceOf(StreamInterface::class, $r->getBody());
+        self::assertSame('0', (string) $r->getBody());
+    }
+
+    public function testCanConstructWithReason(): void
+    {
+        $r = new Response(200, [], null, '1.1', 'bar');
+        self::assertSame('bar', $r->getReasonPhrase());
+
+        $r = new Response(200, [], null, '1.1', '0');
+        self::assertSame('0', $r->getReasonPhrase(), 'Falsey reason works');
+
+        $r = new Response(200, [], null, '1.1', "OK\tFine\x80");
+        self::assertSame("OK\tFine\x80", $r->getReasonPhrase());
+    }
+
+    public function testCanConstructWithProtocolVersion(): void
+    {
+        $r = new Response(200, [], null, '1000');
+        self::assertSame('1000', $r->getProtocolVersion());
+    }
+
+    /**
+     * @dataProvider invalidProtocolVersionProvider
+     */
+    public function testConstructorRejectsInvalidProtocolVersion(string $version): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new Response(200, [], null, $version);
+    }
+
+    /**
+     * @dataProvider invalidReasonPhraseProvider
+     */
+    public function testConstructorRejectsInvalidReasonPhrase(string $reasonPhrase): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new Response(200, [], null, '1.1', $reasonPhrase);
+    }
+
+    public function testWithStatusCodeAndNoReason(): void
+    {
+        $r = (new Response())->withStatus(201);
+        self::assertSame(201, $r->getStatusCode());
+        self::assertSame('Created', $r->getReasonPhrase());
+    }
+
+    public function testWithStatusCodeAndReason(): void
+    {
+        $r = (new Response())->withStatus(201, 'Foo');
+        self::assertSame(201, $r->getStatusCode());
+        self::assertSame('Foo', $r->getReasonPhrase());
+
+        $r = (new Response())->withStatus(201, '0');
+        self::assertSame(201, $r->getStatusCode());
+        self::assertSame('0', $r->getReasonPhrase(), 'Falsey reason works');
+
+        $r = (new Response())->withStatus(201, "Fine\t\x80");
+        self::assertSame(201, $r->getStatusCode());
+        self::assertSame("Fine\t\x80", $r->getReasonPhrase());
+    }
+
+    public function testWithProtocolVersion(): void
+    {
+        $r = (new Response())->withProtocolVersion('1000');
+        self::assertSame('1000', $r->getProtocolVersion());
+    }
+
+    /**
+     * @dataProvider invalidProtocolVersionProvider
+     */
+    public function testWithProtocolVersionRejectsInvalidVersion(string $version): void
+    {
+        $response = new Response();
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $response->withProtocolVersion($version);
+    }
+
+    /**
+     * @dataProvider invalidReasonPhraseProvider
+     */
+    public function testWithStatusRejectsInvalidReasonPhrase(string $reasonPhrase): void
+    {
+        $response = new Response();
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $response->withStatus(200, $reasonPhrase);
+    }
+
+    public static function invalidProtocolVersionProvider(): iterable
+    {
+        yield 'empty' => [''];
+        yield 'with prefix' => ['HTTP/1.1'];
+        yield 'trailing space' => ['1.1 '];
+        yield 'text suffix' => ['1.1foo'];
+        yield 'line feed' => ["1.1\nX-Injected: yes"];
+        yield 'carriage return' => ["1.1\rX-Injected: yes"];
+        yield 'newline' => ["1.1\r\nX-Injected: yes"];
+        yield 'missing minor' => ['1.'];
+        yield 'missing major' => ['.1'];
+        yield 'too many segments' => ['1.1.1'];
+        yield 'leading plus' => ['+1.1'];
+    }
+
+    public static function invalidReasonPhraseProvider(): iterable
+    {
+        yield 'newline' => ["OK\r\nX-Injected: yes"];
+        yield 'line feed' => ["OK\nX-Injected: yes"];
+        yield 'carriage return' => ["OK\rX-Injected: yes"];
+        yield 'nul' => ["OK\0"];
+        yield 'delete' => ["OK\x7F"];
+    }
+
+    public function testSameInstanceWhenSameProtocol(): void
+    {
+        $r = new Response();
+        self::assertSame($r, $r->withProtocolVersion('1.1'));
+    }
+
+    public function testWithBody(): void
+    {
+        $b = Psr7\Utils::streamFor('0');
+        $r = (new Response())->withBody($b);
+        self::assertInstanceOf(StreamInterface::class, $r->getBody());
+        self::assertSame('0', (string) $r->getBody());
+    }
+
+    public function testSameInstanceWhenSameBody(): void
+    {
+        $r = new Response();
+        $b = $r->getBody();
+        self::assertSame($r, $r->withBody($b));
+    }
+
+    public function testWithHeader(): void
+    {
+        $r = new Response(200, ['Foo' => 'Bar']);
+        $r2 = $r->withHeader('baZ', 'Bam');
+        self::assertSame(['Foo' => ['Bar']], $r->getHeaders());
+        self::assertSame(['Foo' => ['Bar'], 'baZ' => ['Bam']], $r2->getHeaders());
+        self::assertSame('Bam', $r2->getHeaderLine('baz'));
+        self::assertSame(['Bam'], $r2->getHeader('baz'));
+    }
+
+    public function testWithHeaderAsArray(): void
+    {
+        $r = new Response(200, ['Foo' => 'Bar']);
+        $r2 = $r->withHeader('baZ', ['Bam', 'Bar']);
+        self::assertSame(['Foo' => ['Bar']], $r->getHeaders());
+        self::assertSame(['Foo' => ['Bar'], 'baZ' => ['Bam', 'Bar']], $r2->getHeaders());
+        self::assertSame('Bam, Bar', $r2->getHeaderLine('baz'));
+        self::assertSame(['Bam', 'Bar'], $r2->getHeader('baz'));
+    }
+
+    public function testWithHeaderReplacesDifferentCase(): void
+    {
+        $r = new Response(200, ['Foo' => 'Bar']);
+        $r2 = $r->withHeader('foO', 'Bam');
+        self::assertSame(['Foo' => ['Bar']], $r->getHeaders());
+        self::assertSame(['foO' => ['Bam']], $r2->getHeaders());
+        self::assertSame('Bam', $r2->getHeaderLine('foo'));
+        self::assertSame(['Bam'], $r2->getHeader('foo'));
+    }
+
+    public function testWithAddedHeader(): void
+    {
+        $r = new Response(200, ['Foo' => 'Bar']);
+        $r2 = $r->withAddedHeader('foO', 'Baz');
+        self::assertSame(['Foo' => ['Bar']], $r->getHeaders());
+        self::assertSame(['Foo' => ['Bar', 'Baz']], $r2->getHeaders());
+        self::assertSame('Bar, Baz', $r2->getHeaderLine('foo'));
+        self::assertSame(['Bar', 'Baz'], $r2->getHeader('foo'));
+    }
+
+    public function testWithAddedHeaderAsArray(): void
+    {
+        $r = new Response(200, ['Foo' => 'Bar']);
+        $r2 = $r->withAddedHeader('foO', ['Baz', 'Bam']);
+        self::assertSame(['Foo' => ['Bar']], $r->getHeaders());
+        self::assertSame(['Foo' => ['Bar', 'Baz', 'Bam']], $r2->getHeaders());
+        self::assertSame('Bar, Baz, Bam', $r2->getHeaderLine('foo'));
+        self::assertSame(['Bar', 'Baz', 'Bam'], $r2->getHeader('foo'));
+    }
+
+    public function testWithAddedHeaderThatDoesNotExist(): void
+    {
+        $r = new Response(200, ['Foo' => 'Bar']);
+        $r2 = $r->withAddedHeader('nEw', 'Baz');
+        self::assertSame(['Foo' => ['Bar']], $r->getHeaders());
+        self::assertSame(['Foo' => ['Bar'], 'nEw' => ['Baz']], $r2->getHeaders());
+        self::assertSame('Baz', $r2->getHeaderLine('new'));
+        self::assertSame(['Baz'], $r2->getHeader('new'));
+    }
+
+    public function testWithoutHeaderThatExists(): void
+    {
+        $r = new Response(200, ['Foo' => 'Bar', 'Baz' => 'Bam']);
+        $r2 = $r->withoutHeader('foO');
+        self::assertTrue($r->hasHeader('foo'));
+        self::assertSame(['Foo' => ['Bar'], 'Baz' => ['Bam']], $r->getHeaders());
+        self::assertFalse($r2->hasHeader('foo'));
+        self::assertSame(['Baz' => ['Bam']], $r2->getHeaders());
+    }
+
+    public function testWithoutHeaderThatDoesNotExist(): void
+    {
+        $r = new Response(200, ['Baz' => 'Bam']);
+        $r2 = $r->withoutHeader('foO');
+        self::assertSame($r, $r2);
+        self::assertFalse($r2->hasHeader('foo'));
+        self::assertSame(['Baz' => ['Bam']], $r2->getHeaders());
+    }
+
+    public function testSameInstanceWhenRemovingMissingHeader(): void
+    {
+        $r = new Response();
+        self::assertSame($r, $r->withoutHeader('foo'));
+    }
+
+    public function testPassNumericHeaderNameInConstructor(): void
+    {
+        $r = new Response(200, ['Location' => 'foo', '123' => 'bar']);
+        self::assertSame('bar', $r->getHeaderLine('123'));
+    }
+
+    public function testConstructResponseEmptyListHeaderValueIsRejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Header value must be a non-empty array or string.');
+
+        new Response(200, ['Foo' => []]);
+    }
+
+    /**
+     * @dataProvider invalidHeaderProvider
+     *
+     * @param mixed $headerValue
+     */
+    public function testConstructResponseInvalidHeader(string $header, $headerValue, string $expectedMessage): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage($expectedMessage);
+        new Response(200, [$header => $headerValue]);
+    }
+
+    public static function invalidHeaderProvider(): iterable
+    {
+        return [
+            ['', '', 'Invalid header name: '],
+            ['foo', [], 'Header value must be a non-empty array or string.'],
+            ['foo', false, 'Header value must be a string or array of strings but bool provided.'],
+            ['foo', new \stdClass(),  'Header value must be a string or array of strings but stdClass provided.'],
+            ['foo', 1, 'Header value must be a string or array of strings but int provided.'],
+            ['foo', null, 'Header value must be a string or array of strings but null provided.'],
+            ['foo', [1], 'Header value must be a string or array of strings but int provided.'],
+        ];
+    }
+
+    /**
+     * @dataProvider invalidWithHeaderProvider
+     *
+     * @param mixed $headerValue
+     */
+    public function testWithInvalidHeader(string $header, $headerValue, string $expectedMessage): void
+    {
+        $r = new Response();
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage($expectedMessage);
+        $r->withHeader($header, $headerValue);
+    }
+
+    public static function invalidWithHeaderProvider(): iterable
+    {
+        yield from self::invalidHeaderProvider();
+        yield ['', 'foo', 'Invalid header name: '];
+        yield ["Content-Type\r\n\r\n", 'foo', 'Invalid header name: Content-Type\\x0D\\x0A\\x0D\\x0A'];
+        yield ["Content-Type\r\n", 'foo', 'Invalid header name: Content-Type\\x0D\\x0A'];
+        yield ["Content-Type\n", 'foo', 'Invalid header name: Content-Type\\x0A'];
+        yield ["\r\nContent-Type", 'foo', 'Invalid header name: \\x0D\\x0AContent-Type'];
+        yield ["\nContent-Type", 'foo', 'Invalid header name: \\x0AContent-Type'];
+        yield ["\n", 'foo', 'Invalid header name: \\x0A'];
+        yield ["\r\n", 'foo', 'Invalid header name: \\x0D\\x0A'];
+        yield ["\t", 'foo', 'Invalid header name: \\x09'];
+        yield ["\xC2\x9B", 'foo', 'Invalid header name: \\x9B'];
+        yield ["\xFF", 'foo', 'Invalid header name: \\xFF'];
+    }
+
+    /**
+     * @dataProvider invalidWithHeaderProvider
+     *
+     * @param mixed $headerValue
+     */
+    public function testWithInvalidAddedHeader(string $header, $headerValue, string $expectedMessage): void
+    {
+        $r = new Response();
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage($expectedMessage);
+        $r->withAddedHeader($header, $headerValue);
+    }
+
+    public function testHeaderValuesAreTrimmed(): void
+    {
+        $r1 = new Response(200, ['OWS' => " \t \tFoo\t \t "]);
+        $r2 = (new Response())->withHeader('OWS', " \t \tFoo\t \t ");
+        $r3 = (new Response())->withAddedHeader('OWS', " \t \tFoo\t \t ");
+
+        foreach ([$r1, $r2, $r3] as $r) {
+            self::assertSame(['OWS' => ['Foo']], $r->getHeaders());
+            self::assertSame('Foo', $r->getHeaderLine('OWS'));
+            self::assertSame(['Foo'], $r->getHeader('OWS'));
+        }
+    }
+
+    public function testWithAddedHeaderArrayValueAndKeys(): void
+    {
+        $message = (new Response())->withAddedHeader('list', ['foo' => 'one']);
+        $message = $message->withAddedHeader('list', ['foo' => 'two', 'bar' => 'three']);
+
+        $headerLine = $message->getHeaderLine('list');
+        self::assertSame('one, two, three', $headerLine);
+    }
+
+    /**
+     * @dataProvider invalidStatusCodeRangeProvider
+     */
+    public function testConstructResponseWithInvalidRangeStatusCode(int $invalidValues): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Status code must be an integer value between 1xx and 5xx.');
+        new Response($invalidValues);
+    }
+
+    /**
+     * @dataProvider invalidStatusCodeRangeProvider
+     */
+    public function testResponseChangeStatusCodeWithWithInvalidRange(int $invalidValues): void
+    {
+        $response = new Response();
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Status code must be an integer value between 1xx and 5xx.');
+        $response->withStatus($invalidValues);
+    }
+
+    public static function invalidStatusCodeRangeProvider(): iterable
+    {
+        return [
+            [600],
+            [99],
+        ];
+    }
+}

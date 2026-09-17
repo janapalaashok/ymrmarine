@@ -1,0 +1,1755 @@
+<?php
+
+declare(strict_types=1);
+
+namespace GuzzleHttp\Tests\Psr7;
+
+use GuzzleHttp\Psr7\Exception\MalformedUriException;
+use GuzzleHttp\Psr7\Uri;
+use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\UriInterface;
+
+/**
+ * @covers \GuzzleHttp\Psr7\Uri
+ * @covers \GuzzleHttp\Psr7\UriParser
+ */
+class UriTest extends TestCase
+{
+    public function testParsesProvidedUri(): void
+    {
+        $uri = new Uri('https://user:pass@example.com:8080/path/123?q=abc#test');
+
+        self::assertSame('https', $uri->getScheme());
+        self::assertSame('user:pass@example.com:8080', $uri->getAuthority());
+        self::assertSame('user:pass', $uri->getUserInfo());
+        self::assertSame('example.com', $uri->getHost());
+        self::assertSame(8080, $uri->getPort());
+        self::assertSame('/path/123', $uri->getPath());
+        self::assertSame('q=abc', $uri->getQuery());
+        self::assertSame('test', $uri->getFragment());
+        self::assertSame('https://user:pass@example.com:8080/path/123?q=abc#test', (string) $uri);
+    }
+
+    public function testCanTransformAndRetrievePartsIndividually(): void
+    {
+        $uri = (new Uri())
+            ->withScheme('https')
+            ->withUserInfo('user', 'pass')
+            ->withHost('example.com')
+            ->withPort(8080)
+            ->withPath('/path/123')
+            ->withQuery('q=abc')
+            ->withFragment('test');
+
+        self::assertSame('https', $uri->getScheme());
+        self::assertSame('user:pass@example.com:8080', $uri->getAuthority());
+        self::assertSame('user:pass', $uri->getUserInfo());
+        self::assertSame('example.com', $uri->getHost());
+        self::assertSame(8080, $uri->getPort());
+        self::assertSame('/path/123', $uri->getPath());
+        self::assertSame('q=abc', $uri->getQuery());
+        self::assertSame('test', $uri->getFragment());
+        self::assertSame('https://user:pass@example.com:8080/path/123?q=abc#test', (string) $uri);
+    }
+
+    /**
+     * @dataProvider getValidUris
+     */
+    public function testValidUrisStayValid(string $input): void
+    {
+        $uri = new Uri($input);
+
+        self::assertSame($input, (string) $uri);
+    }
+
+    /**
+     * @dataProvider getValidUris
+     */
+    public function testFromParts(string $input): void
+    {
+        $uri = Uri::fromParts(parse_url($input));
+
+        self::assertSame($input, (string) $uri);
+    }
+
+    public static function getValidUris(): iterable
+    {
+        return [
+            ['urn:path-rootless'],
+            ['urn:path:with:colon'],
+            ['urn:/path-absolute'],
+            ['urn:/'],
+            // only scheme with empty path
+            ['urn:'],
+            // only path
+            ['/'],
+            ['relative/'],
+            ['0'],
+            // same document reference
+            [''],
+            // network path without scheme
+            ['//example.org'],
+            ['//example.org/'],
+            ['//example.org?q#h'],
+            // only query
+            ['?q'],
+            ['?q=abc&foo=bar'],
+            // only fragment
+            ['#fragment'],
+            // dot segments are not removed automatically
+            ['./foo/../bar'],
+        ];
+    }
+
+    /**
+     * @dataProvider getHostlessHttpLikeConstructorUris
+     */
+    public function testConstructorPreservesHostlessHttpLikeUrisWithoutFinalStateValidation(
+        string $input,
+        string $scheme,
+        string $path,
+        string $query
+    ): void {
+        $uri = new Uri($input);
+
+        self::assertSame($scheme, $uri->getScheme());
+        self::assertSame('', $uri->getHost());
+        self::assertSame('', $uri->getAuthority());
+        self::assertSame($path, $uri->getPath());
+        self::assertSame($query, $uri->getQuery());
+        self::assertSame($input, (string) $uri);
+    }
+
+    public static function getHostlessHttpLikeConstructorUris(): iterable
+    {
+        yield 'http scheme only' => ['http:', 'http', '', ''];
+        yield 'https scheme only' => ['https:', 'https', '', ''];
+        yield 'http absolute path' => ['http:/path', 'http', '/path', ''];
+        yield 'https query only' => ['https:?q', 'https', '', 'q'];
+    }
+
+    public function testFromPartsAppliesFinalStateValidationToHostlessHttpUris(): void
+    {
+        $uri = Uri::fromParts(['scheme' => 'http']);
+
+        self::assertSame('http', $uri->getScheme());
+        self::assertSame('localhost', $uri->getHost());
+        self::assertSame('localhost', $uri->getAuthority());
+        self::assertSame('http://localhost', (string) $uri);
+
+        $uri = Uri::fromParts(['scheme' => 'https', 'query' => 'q']);
+
+        self::assertSame('https', $uri->getScheme());
+        self::assertSame('localhost', $uri->getHost());
+        self::assertSame('localhost', $uri->getAuthority());
+        self::assertSame('q', $uri->getQuery());
+        self::assertSame('https://localhost?q', (string) $uri);
+    }
+
+    /**
+     * @dataProvider getInvalidUris
+     */
+    public function testInvalidUrisThrowException(string $invalidUri): void
+    {
+        $this->expectException(MalformedUriException::class);
+        new Uri($invalidUri);
+    }
+
+    public static function getInvalidUris(): iterable
+    {
+        return [
+            // parse_url() requires the host component which makes sense for http(s)
+            // but not when the scheme is not known or different. So '//' or '///' is
+            // currently invalid as well but should not according to RFC 3986.
+            ['http://'],
+            ['urn://host:with:colon'], // host cannot contain ":"
+            ['http://example.com'."\n".'.evil/'],
+            ['http://example.com:80:90/'],
+            ['http://user@example.com:80:90/path'],
+            ['http://[::1]:80:90/'],
+            ['http://[::1'],
+            [' http://a.b/p?q#f'],
+            ['ht tp://example.com'],
+            ['//example.com:80:90'],
+            ['//example.com'."\n".':80'],
+            ['//[::1]:80:90'],
+            ['http://example.com/'."\xC3"],
+            ['//example.com/'."\xC3"],
+            ['/'."\xC3"],
+            ['?q='."\xC3"],
+            ['#f'."\xC3"],
+            ['urn:path'."\xC3"],
+            ['http://[::1]/'."\xC3"],
+            ['http://[::ffff:192.0.2.128]/'."\xC3"],
+            ['http://example.com/'."\xC3".'://[::ffff:127.0.0.1]/'],
+            ['foo:'."\xC3".'://[::ffff:127.0.0.1]/'],
+        ];
+    }
+
+    public function testPathNoSchemeReferenceWithMalformedUtf8ByteIsPercentEncoded(): void
+    {
+        $uri = new Uri("relative/\xC3");
+
+        self::assertSame('relative/%C3', (string) $uri);
+    }
+
+    public function testRejectsIpv6UriWithTrailingNewline(): void
+    {
+        $this->expectException(MalformedUriException::class);
+        $this->expectExceptionMessage('Unable to parse URI: http://[::1]\\x0A');
+
+        new Uri("http://[::1]\n");
+    }
+
+    public function testMalformedUriDiagnosticOmitsSensitiveComponents(): void
+    {
+        $this->expectException(MalformedUriException::class);
+        $this->expectExceptionMessage('Unable to parse URI: https://***@example.com:bad/path');
+
+        new Uri('https://user:pass@example.com:bad/path?token=secret#private');
+    }
+
+    public function testRejectsIpv6UriWithInvalidSuffix(): void
+    {
+        $this->expectException(MalformedUriException::class);
+
+        new Uri('http://[::1]x');
+    }
+
+    public function testEncodesNewlineAfterIpv6LiteralPathSeparator(): void
+    {
+        self::assertSame('http://[::1]/x%0A', (string) new Uri("http://[::1]/x\n"));
+    }
+
+    /**
+     * @dataProvider getPathNoSchemeReferencesWithColonInLaterSegment
+     */
+    public function testParsesPathNoSchemeReferenceWithColonInLaterSegment(string $input, string $path, string $query = '', string $fragment = '', ?string $expectedString = null): void
+    {
+        $uri = new Uri($input);
+
+        self::assertSame('', $uri->getScheme());
+        self::assertSame('', $uri->getAuthority());
+        self::assertSame('', $uri->getHost());
+        self::assertNull($uri->getPort());
+        self::assertSame($path, $uri->getPath());
+        self::assertSame($query, $uri->getQuery());
+        self::assertSame($fragment, $uri->getFragment());
+        self::assertSame($expectedString ?? $input, (string) $uri);
+        self::assertTrue(Uri::isRelativePathReference($uri));
+    }
+
+    public static function getPathNoSchemeReferencesWithColonInLaterSegment(): iterable
+    {
+        return [
+            ['model/amazon.titan-image-generator-v2:0/invoke', 'model/amazon.titan-image-generator-v2:0/invoke'],
+            ['foo/bar:0', 'foo/bar:0'],
+            ['foo/bar:0?x=1#frag', 'foo/bar:0', 'x=1', 'frag'],
+            ['foo/bar:baz?x=y:z#frag:ment', 'foo/bar:baz', 'x=y:z', 'frag:ment'],
+            ['./foo:0', './foo:0'],
+            ['foo/bar:0/baz?q=a:b&r=c#h:i', 'foo/bar:0/baz', 'q=a:b&r=c', 'h:i'],
+            ['caf%C3%A9/foo:1', 'caf%C3%A9/foo:1'],
+            ['café/foo:1', 'caf%C3%A9/foo:1', '', '', 'caf%C3%A9/foo:1'],
+        ];
+    }
+
+    /**
+     * @dataProvider getNonPathNoSchemeReferencesWithColon
+     */
+    public function testNonPathNoSchemeReferencesWithColonKeepExistingParsing(string $input, string $scheme, string $authority, string $host, ?int $port, string $path, string $query, string $fragment): void
+    {
+        $uri = new Uri($input);
+
+        self::assertSame($scheme, $uri->getScheme());
+        self::assertSame($authority, $uri->getAuthority());
+        self::assertSame($host, $uri->getHost());
+        self::assertSame($port, $uri->getPort());
+        self::assertSame($path, $uri->getPath());
+        self::assertSame($query, $uri->getQuery());
+        self::assertSame($fragment, $uri->getFragment());
+        self::assertSame($input, (string) $uri);
+    }
+
+    public static function getNonPathNoSchemeReferencesWithColon(): iterable
+    {
+        return [
+            ['foo:bar/baz', 'foo', '', '', null, 'bar/baz', '', ''],
+            ['//host:123/foo:0', '', 'host:123', 'host', 123, '/foo:0', '', ''],
+            ['?q=foo:0', '', '', '', null, '', 'q=foo:0', ''],
+            ['#foo:0', '', '', '', null, '', '', 'foo:0'],
+            ['https://example.com/foo:0', 'https', 'example.com', 'example.com', null, '/foo:0', '', ''],
+            ['//host/foo:bar', '', 'host', 'host', null, '/foo:bar', '', ''],
+        ];
+    }
+
+    public function testPortMustBeValid(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid port: 100000. Must be between 0 and 65535');
+        (new Uri())->withPort(100000);
+    }
+
+    public function testWithPortCannotBeNegative(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid port: -1. Must be between 0 and 65535');
+        (new Uri())->withPort(-1);
+    }
+
+    public function testFromPartsAcceptsDecimalDigitStringPort(): void
+    {
+        $uri = Uri::fromParts([
+            'scheme' => 'http',
+            'host' => 'example.com',
+            'port' => '8080',
+        ]);
+
+        self::assertSame(8080, $uri->getPort());
+    }
+
+    /**
+     * @dataProvider zeroStringPortProvider
+     */
+    public function testFromPartsAcceptsZeroStringPort(string $port): void
+    {
+        $uri = Uri::fromParts([
+            'scheme' => 'http',
+            'host' => 'example.com',
+            'port' => $port,
+        ]);
+
+        self::assertSame(0, $uri->getPort());
+    }
+
+    /**
+     * @return iterable<string, array{0: string}>
+     */
+    public static function zeroStringPortProvider(): iterable
+    {
+        yield 'zero' => ['0'];
+        yield 'zeros' => ['00'];
+        yield 'leading zeros' => ['0000'];
+    }
+
+    public function testZeroPortAppearsInAuthorityAndString(): void
+    {
+        $uri = Uri::fromParts([
+            'scheme' => 'http',
+            'host' => 'example.com',
+            'port' => '0',
+        ]);
+
+        self::assertSame(0, $uri->getPort());
+        self::assertSame('example.com:0', $uri->getAuthority());
+        self::assertSame('http://example.com:0', (string) $uri);
+    }
+
+    public function testLeadingZeroDefaultPortIsNormalizedAway(): void
+    {
+        $uri = Uri::fromParts([
+            'scheme' => 'http',
+            'host' => 'example.com',
+            'port' => '0080',
+        ]);
+
+        self::assertNull($uri->getPort());
+        self::assertSame('example.com', $uri->getAuthority());
+    }
+
+    /**
+     * @dataProvider invalidFromPartsPorts
+     *
+     * @param mixed $port
+     */
+    public function testFromPartsRejectsInvalidPortBeforeCasting($port): void
+    {
+        $this->expectException(MalformedUriException::class);
+        $this->expectExceptionMessage('Invalid port');
+
+        Uri::fromParts([
+            'scheme' => 'http',
+            'host' => 'example.com',
+            'port' => $port,
+        ]);
+    }
+
+    public static function invalidFromPartsPorts(): iterable
+    {
+        yield 'string with trailing text' => ['8080abc'];
+        yield 'out of range' => ['65536'];
+        yield 'leading zero, out of range after trimming' => ['065536'];
+        yield 'decimal float' => [1.9];
+        yield 'true' => [true];
+        yield 'false' => [false];
+        yield 'empty string' => [''];
+        yield 'infinity' => [\INF];
+        yield 'negative infinity' => [-\INF];
+        yield 'not a number' => [\NAN];
+        yield 'int max float boundary' => [(float) \PHP_INT_MAX];
+        yield 'huge finite float' => [1.0e100];
+    }
+
+    public function testParseUriPortCannotBeNegative(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unable to parse URI');
+        new Uri('//example.com:-1');
+    }
+
+    /**
+     * @dataProvider getValidSchemes
+     */
+    public function testSchemeMayBeValid(string $scheme, string $expected): void
+    {
+        $uri = (new Uri())->withScheme($scheme);
+
+        self::assertSame($expected, $uri->getScheme());
+    }
+
+    public static function getValidSchemes(): iterable
+    {
+        yield 'single letter' => ['a', 'a'];
+        yield 'mixed case normalized' => ['HtTpS', 'https'];
+        yield 'plus dot dash digit' => ['a+b.c-1', 'a+b.c-1'];
+    }
+
+    /**
+     * @dataProvider getInvalidSchemes
+     */
+    public function testSchemeMustBeValid(string $scheme): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        (new Uri())->withScheme($scheme);
+    }
+
+    public static function getInvalidSchemes(): iterable
+    {
+        for ($i = 0; $i <= 0x20; ++$i) {
+            yield 'ascii 0x'.strtoupper(dechex($i)) => ['ht'.chr($i).'tp'];
+        }
+
+        yield 'ascii 0x7F' => ['ht'.chr(0x7F).'tp'];
+        yield 'starts with digit' => ['0'];
+        yield 'starts with plus' => ['+http'];
+        yield 'starts with dot' => ['.http'];
+        yield 'starts with dash' => ['-http'];
+        yield 'contains underscore' => ['ht_tp'];
+    }
+
+    public function testFromPartsRejectsSchemeWithControlCharacter(): void
+    {
+        $this->expectException(MalformedUriException::class);
+
+        Uri::fromParts(['scheme' => "ht\ntp", 'host' => 'example.com']);
+    }
+
+    public function testInvalidSchemeDiagnosticEscapesControlBytes(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid scheme: ht\\x0Atp');
+
+        (new Uri())->withScheme("ht\ntp");
+    }
+
+    /**
+     * @dataProvider getInvalidHostsWithControlCharacters
+     */
+    public function testHostMustRejectControlCharacters(string $host): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        (new Uri())->withHost($host);
+    }
+
+    public function testInvalidHostDiagnosticEscapesControlBytes(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid host: example.com\\x0D\\x0Ax-injected: yes');
+
+        (new Uri())->withHost("example.com\r\nX-Injected: yes");
+    }
+
+    public function testInvalidStringPortDiagnosticEscapesControlBytes(): void
+    {
+        $this->expectException(MalformedUriException::class);
+        $this->expectExceptionMessage('Invalid port: 80\\x0A. Must be between 0 and 65535');
+
+        Uri::fromParts(['port' => "80\n"]);
+    }
+
+    public static function getInvalidHostsWithControlCharacters(): iterable
+    {
+        for ($i = 0; $i <= 0x20; ++$i) {
+            yield 'ascii 0x'.strtoupper(dechex($i)) => ['example'.chr($i).'com'];
+        }
+
+        yield 'ascii 0x7F' => ['example'.chr(0x7F).'com'];
+    }
+
+    public function testParseUriRejectsHostWithControlCharacter(): void
+    {
+        $this->expectException(MalformedUriException::class);
+
+        new Uri("http://example.com\r\nX-Injected:%20yes/");
+    }
+
+    public function testFromPartsRejectsHostWithControlCharacter(): void
+    {
+        $this->expectException(MalformedUriException::class);
+
+        Uri::fromParts([
+            'scheme' => 'http',
+            'host' => "example.com\r\nX-Injected: yes",
+            'path' => '/x',
+        ]);
+    }
+
+    /**
+     * @dataProvider getValidHosts
+     */
+    public function testHostMayBeValid(string $host, string $expectedHost): void
+    {
+        $uri = (new Uri())->withHost($host);
+
+        self::assertSame($expectedHost, $uri->getHost());
+    }
+
+    public static function getValidHosts(): iterable
+    {
+        yield 'empty' => ['', ''];
+        yield 'mixed case' => ['Example.COM', 'example.com'];
+        yield 'underscore' => ['foo_bar.example', 'foo_bar.example'];
+        yield 'sub-delims' => ['foo!$&\'()*+,;=.example', 'foo!$&\'()*+,;=.example'];
+        yield 'ipv6 literal' => ['[::1]', '[::1]'];
+        yield 'ipv6 uncompressed' => ['[2001:db8:0:0:0:0:0:1]', '[2001:db8::1]'];
+        yield 'ipvfuture literal' => ['[v7.a:b]', '[v7.a:b]'];
+    }
+
+    /**
+     * @dataProvider getIpv4HostSpellings
+     */
+    public function testIpv4HostSpellingIsPreserved(string $host): void
+    {
+        $uri = (new Uri())->withHost($host);
+
+        self::assertSame($host, $uri->getHost());
+        self::assertSame($host, $uri->getAuthority());
+        self::assertSame('//'.$host, (string) $uri);
+    }
+
+    /**
+     * @dataProvider getIpv4HostSpellings
+     */
+    public function testParsedIpv4HostSpellingIsPreserved(string $host): void
+    {
+        $uri = new Uri('http://'.$host.'/path');
+
+        self::assertSame($host, $uri->getHost());
+        self::assertSame($host, $uri->getAuthority());
+        self::assertSame('http://'.$host.'/path', (string) $uri);
+    }
+
+    public static function getIpv4HostSpellings(): iterable
+    {
+        yield 'dotted quad' => ['127.0.0.1'];
+        yield 'two part' => ['127.1'];
+        yield 'decimal' => ['2130706433'];
+        yield 'hexadecimal' => ['0x7f000001'];
+        yield 'octal' => ['0177.0.0.1'];
+        yield 'zero padded octets' => ['127.000.000.001'];
+        yield 'zero padded final octet' => ['127.0.0.01'];
+    }
+
+    /**
+     * @dataProvider getInvalidHosts
+     */
+    public function testHostMustBeValid(string $host): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        (new Uri())->withHost($host);
+    }
+
+    public static function getInvalidHosts(): iterable
+    {
+        for ($i = 0; $i <= 0x20; ++$i) {
+            yield 'ascii 0x'.strtoupper(dechex($i)) => ['example'.chr($i).'com'];
+        }
+
+        yield 'ascii 0x7F' => ['example'.chr(0x7F).'com'];
+        yield 'colon' => ['example.com:80'];
+        yield 'path delimiter' => ['example.com/path'];
+        yield 'query delimiter' => ['example.com?query'];
+        yield 'fragment delimiter' => ['example.com#fragment'];
+        yield 'userinfo delimiter' => ['user@example.com'];
+        yield 'backslash' => ['example\\com'];
+        yield 'unbracketed IPv6' => ['::1'];
+        yield 'bracketed IPv6 with port' => ['[::1]:80'];
+        yield 'unterminated bracketed IPv6' => ['[::1'];
+        yield 'unexpected bracket suffix' => ['[::1]x'];
+        yield 'empty ip literal' => ['[]'];
+        yield 'invalid ip literal' => ['[bad]'];
+        yield 'empty ipvfuture address' => ['[v7.]'];
+        yield 'invalid ipvfuture version' => ['[vg.foo]'];
+        yield 'unbalanced opening bracket' => ['example[com'];
+        yield 'unbalanced closing bracket' => ['example]com'];
+    }
+
+    /**
+     * @dataProvider getInvalidHostParts
+     */
+    public function testFromPartsRejectsInvalidHost(string $host): void
+    {
+        $this->expectException(MalformedUriException::class);
+
+        Uri::fromParts(['scheme' => 'http', 'host' => $host]);
+    }
+
+    public static function getInvalidHostParts(): iterable
+    {
+        yield 'path delimiter' => ['example.com/path'];
+        yield 'query delimiter' => ['example.com?query'];
+        yield 'fragment delimiter' => ['example.com#fragment'];
+        yield 'userinfo delimiter' => ['user@example.com'];
+        yield 'backslash' => ['example\\com'];
+        yield 'invalid ip literal' => ['[bad]'];
+    }
+
+    public function testCanParseFalseyUriPartsExceptScheme(): void
+    {
+        $uri = new Uri('x://0:0@0/0?0#0');
+
+        self::assertSame('x', $uri->getScheme());
+        self::assertSame('0:0@0', $uri->getAuthority());
+        self::assertSame('0:0', $uri->getUserInfo());
+        self::assertSame('0', $uri->getHost());
+        self::assertSame('/0', $uri->getPath());
+        self::assertSame('0', $uri->getQuery());
+        self::assertSame('0', $uri->getFragment());
+        self::assertSame('x://0:0@0/0?0#0', (string) $uri);
+    }
+
+    public function testCanConstructFalseyUriPartsExceptScheme(): void
+    {
+        $uri = (new Uri())
+            ->withScheme('x')
+            ->withUserInfo('0', '0')
+            ->withHost('0')
+            ->withPath('/0')
+            ->withQuery('0')
+            ->withFragment('0');
+
+        self::assertSame('x', $uri->getScheme());
+        self::assertSame('0:0@0', $uri->getAuthority());
+        self::assertSame('0:0', $uri->getUserInfo());
+        self::assertSame('0', $uri->getHost());
+        self::assertSame('/0', $uri->getPath());
+        self::assertSame('0', $uri->getQuery());
+        self::assertSame('0', $uri->getFragment());
+        self::assertSame('x://0:0@0/0?0#0', (string) $uri);
+    }
+
+    /**
+     * @dataProvider getPortTestCases
+     */
+    public function testIsDefaultPort(string $scheme, ?int $port, bool $isDefaultPort): void
+    {
+        $uri = $this->createMock(UriInterface::class);
+        $uri->expects(self::any())->method('getScheme')->willReturn($scheme);
+        $uri->expects(self::any())->method('getPort')->willReturn($port);
+
+        self::assertSame($isDefaultPort, Uri::isDefaultPort($uri));
+    }
+
+    public static function getPortTestCases(): iterable
+    {
+        return [
+            ['http', null, true],
+            ['http', 80, true],
+            ['http', 8080, false],
+            ['https', null, true],
+            ['https', 443, true],
+            ['https', 444, false],
+            ['ftp', 21, true],
+            ['gopher', 70, true],
+            ['nntp', 119, true],
+            ['news', 119, true],
+            ['telnet', 23, true],
+            ['tn3270', 23, true],
+            ['imap', 143, true],
+            ['pop', 110, true],
+            ['ldap', 389, true],
+            ['ws', 80, true],
+            ['ws', 8080, false],
+            ['wss', 443, true],
+        ];
+    }
+
+    public function testIsAbsolute(): void
+    {
+        self::assertTrue(Uri::isAbsolute(new Uri('http://example.org')));
+        self::assertFalse(Uri::isAbsolute(new Uri('//example.org')));
+        self::assertFalse(Uri::isAbsolute(new Uri('/abs-path')));
+        self::assertFalse(Uri::isAbsolute(new Uri('rel-path')));
+    }
+
+    public function testIsNetworkPathReference(): void
+    {
+        self::assertFalse(Uri::isNetworkPathReference(new Uri('http://example.org')));
+        self::assertTrue(Uri::isNetworkPathReference(new Uri('//example.org')));
+        self::assertFalse(Uri::isNetworkPathReference(new Uri('/abs-path')));
+        self::assertFalse(Uri::isNetworkPathReference(new Uri('rel-path')));
+    }
+
+    public function testIsAbsolutePathReference(): void
+    {
+        self::assertFalse(Uri::isAbsolutePathReference(new Uri('http://example.org')));
+        self::assertFalse(Uri::isAbsolutePathReference(new Uri('//example.org')));
+        self::assertTrue(Uri::isAbsolutePathReference(new Uri('/abs-path')));
+        self::assertTrue(Uri::isAbsolutePathReference(new Uri('/')));
+        self::assertFalse(Uri::isAbsolutePathReference(new Uri('rel-path')));
+    }
+
+    public function testIsRelativePathReference(): void
+    {
+        self::assertFalse(Uri::isRelativePathReference(new Uri('http://example.org')));
+        self::assertFalse(Uri::isRelativePathReference(new Uri('//example.org')));
+        self::assertFalse(Uri::isRelativePathReference(new Uri('/abs-path')));
+        self::assertTrue(Uri::isRelativePathReference(new Uri('rel-path')));
+        self::assertTrue(Uri::isRelativePathReference(new Uri('')));
+    }
+
+    public function testIsSameDocumentReference(): void
+    {
+        self::assertFalse(Uri::isSameDocumentReference(new Uri('http://example.org')));
+        self::assertFalse(Uri::isSameDocumentReference(new Uri('//example.org')));
+        self::assertFalse(Uri::isSameDocumentReference(new Uri('/abs-path')));
+        self::assertFalse(Uri::isSameDocumentReference(new Uri('rel-path')));
+        self::assertFalse(Uri::isSameDocumentReference(new Uri('?query')));
+        self::assertTrue(Uri::isSameDocumentReference(new Uri('')));
+        self::assertTrue(Uri::isSameDocumentReference(new Uri('#fragment')));
+
+        $baseUri = new Uri('http://example.org/path?foo=bar');
+
+        self::assertTrue(Uri::isSameDocumentReference(new Uri('#fragment'), $baseUri));
+        self::assertTrue(Uri::isSameDocumentReference(new Uri('?foo=bar#fragment'), $baseUri));
+        self::assertTrue(Uri::isSameDocumentReference(new Uri('/path?foo=bar#fragment'), $baseUri));
+        self::assertTrue(Uri::isSameDocumentReference(new Uri('path?foo=bar#fragment'), $baseUri));
+        self::assertTrue(Uri::isSameDocumentReference(new Uri('//example.org/path?foo=bar#fragment'), $baseUri));
+        self::assertTrue(Uri::isSameDocumentReference(new Uri('http://example.org/path?foo=bar#fragment'), $baseUri));
+
+        self::assertFalse(Uri::isSameDocumentReference(new Uri('https://example.org/path?foo=bar'), $baseUri));
+        self::assertFalse(Uri::isSameDocumentReference(new Uri('http://example.com/path?foo=bar'), $baseUri));
+        self::assertFalse(Uri::isSameDocumentReference(new Uri('http://example.org/'), $baseUri));
+        self::assertFalse(Uri::isSameDocumentReference(new Uri('http://example.org'), $baseUri));
+
+        self::assertFalse(Uri::isSameDocumentReference(new Uri('urn:/path'), new Uri('urn://example.com/path')));
+
+        $multiSlashBaseUri = new Uri('http://example.org//path?foo=bar');
+
+        self::assertTrue(Uri::isSameDocumentReference(new Uri('#fragment'), $multiSlashBaseUri));
+        self::assertTrue(Uri::isSameDocumentReference(new Uri('http://example.org//path?foo=bar#fragment'), $multiSlashBaseUri));
+        self::assertFalse(Uri::isSameDocumentReference(new Uri('http://example.org/path?foo=bar'), $multiSlashBaseUri));
+        self::assertFalse(Uri::isSameDocumentReference(new Uri('http://example.org//path?foo=bar'), $baseUri));
+
+        $rootlessBaseUri = (new Uri('http://example.org?foo=bar'))->withPath('path');
+
+        self::assertTrue(Uri::isSameDocumentReference(new Uri('http://example.org/path?foo=bar'), $rootlessBaseUri));
+    }
+
+    public function testRawPathIsDerivedFromUriStringForm(): void
+    {
+        self::assertSame('//stored/path', Uri::rawPath(new Uri('http://example.org//stored/path')));
+
+        $extendedUri = new class('http://example.org/stored/path') extends Uri {
+            public function __toString(): string
+            {
+                return 'http://example.org//custom/form';
+            }
+        };
+
+        self::assertSame('//custom/form', Uri::rawPath($extendedUri));
+
+        // The split must not validate unrelated components: this host is
+        // accepted by the withers but rejected by the parser.
+        $plainSubclassUri = (new class extends Uri {
+        })->withScheme('http')->withHost('[v1.fe80::a+en1]')->withPath('/');
+
+        self::assertSame('/', Uri::rawPath($plainSubclassUri));
+
+        // A rootless path gains a leading slash in the string form when an
+        // authority is present; identical string forms must yield identical
+        // paths regardless of how the instance was constructed.
+        $rootlessUri = (new Uri())->withHost('example.com')->withPath('foo');
+
+        self::assertSame('//example.com/foo', (string) $rootlessUri);
+        self::assertSame('/foo', Uri::rawPath($rootlessUri));
+        self::assertSame(Uri::rawPath(new Uri('//example.com/foo')), Uri::rawPath($rootlessUri));
+    }
+
+    public function testRawPathKeepsColonInFirstSegmentOfSchemeLessExtendedInstances(): void
+    {
+        $extendedUri = new class('git@example.com:user/repo') extends Uri {
+        };
+
+        self::assertSame('', $extendedUri->getScheme());
+        // the RFC 3986 Appendix B expression alone would read "git@example.com" as the scheme
+        self::assertSame('git@example.com:user/repo', Uri::rawPath($extendedUri));
+        self::assertSame(Uri::rawPath(new Uri('git@example.com:user/repo')), Uri::rawPath($extendedUri));
+    }
+
+    public function testAddAndRemoveQueryValues(): void
+    {
+        $uri = new Uri();
+        $uri = Uri::withQueryValue($uri, 'a', 'b');
+        $uri = Uri::withQueryValue($uri, 'c', 'd');
+        $uri = Uri::withQueryValue($uri, 'e', null);
+        self::assertSame('a=b&c=d&e', $uri->getQuery());
+
+        $uri = Uri::withoutQueryValue($uri, 'c');
+        self::assertSame('a=b&e', $uri->getQuery());
+        $uri = Uri::withoutQueryValue($uri, 'e');
+        self::assertSame('a=b', $uri->getQuery());
+        $uri = Uri::withoutQueryValue($uri, 'a');
+        self::assertSame('', $uri->getQuery());
+    }
+
+    public function testWithQueryValues(): void
+    {
+        $uri = new Uri();
+        $uri = Uri::withQueryValues($uri, [
+            'key1' => 'value1',
+            'key2' => 'value2',
+        ]);
+
+        self::assertSame('key1=value1&key2=value2', $uri->getQuery());
+    }
+
+    public function testWithQueryValuesAcceptsNull(): void
+    {
+        $uri = Uri::withQueryValues(new Uri(), ['key1' => 'value1', 'key2' => null]);
+
+        self::assertSame('key1=value1&key2', $uri->getQuery());
+    }
+
+    /**
+     * @dataProvider nonStringQueryValueProvider
+     *
+     * @param mixed $value
+     */
+    public function testWithQueryValuesRejectsNonStringValue($value): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Query string values must be a string or null');
+
+        Uri::withQueryValues(new Uri(), ['key' => $value]);
+    }
+
+    public static function nonStringQueryValueProvider(): array
+    {
+        return [
+            'int' => [2],
+            'bool' => [true],
+            'float' => [3.1],
+            'NAN' => [\NAN],
+            'INF' => [\INF],
+        ];
+    }
+
+    public function testWithQueryValuesReplacesSameKeys(): void
+    {
+        $uri = new Uri();
+
+        $uri = Uri::withQueryValues($uri, [
+            'key1' => 'value1',
+            'key2' => 'value2',
+        ]);
+
+        $uri = Uri::withQueryValues($uri, [
+            'key2' => 'newvalue',
+        ]);
+
+        self::assertSame('key1=value1&key2=newvalue', $uri->getQuery());
+    }
+
+    public function testWithQueryValueReplacesSameKeys(): void
+    {
+        $uri = new Uri();
+        $uri = Uri::withQueryValue($uri, 'a', 'b');
+        $uri = Uri::withQueryValue($uri, 'c', 'd');
+        $uri = Uri::withQueryValue($uri, 'a', 'e');
+        self::assertSame('c=d&a=e', $uri->getQuery());
+    }
+
+    public function testWithoutQueryValueRemovesAllSameKeys(): void
+    {
+        $uri = (new Uri())->withQuery('a=b&c=d&a=e');
+        $uri = Uri::withoutQueryValue($uri, 'a');
+        self::assertSame('c=d', $uri->getQuery());
+    }
+
+    public function testRemoveNonExistingQueryValue(): void
+    {
+        $uri = new Uri();
+        $uri = Uri::withQueryValue($uri, 'a', 'b');
+        $uri = Uri::withoutQueryValue($uri, 'c');
+        self::assertSame('a=b', $uri->getQuery());
+    }
+
+    public function testWithQueryValueHandlesEncoding(): void
+    {
+        $uri = new Uri();
+        $uri = Uri::withQueryValue($uri, 'E=mc^2', 'ein&stein');
+        self::assertSame('E%3Dmc%5E2=ein%26stein', $uri->getQuery(), 'Decoded key/value get encoded');
+
+        $uri = new Uri();
+        $uri = Uri::withQueryValue($uri, 'E%3Dmc%5e2', 'ein%26stein');
+        self::assertSame('E%3Dmc%5e2=ein%26stein', $uri->getQuery(), 'Encoded key/value do not get double-encoded');
+    }
+
+    public function testWithQueryValueEncodesPlusSign(): void
+    {
+        $uri = new Uri();
+        $uri = Uri::withQueryValue($uri, 'a+b', 'c+d');
+        self::assertSame('a%2Bb=c%2Bd', $uri->getQuery(), 'Plus signs in key and value get encoded to %2B');
+
+        $uri = new Uri();
+        $uri = Uri::withQueryValue($uri, 'query', 'a+b c');
+        self::assertSame('query=a%2Bb%20c', $uri->getQuery(), 'Plus sign is encoded distinctly from space');
+    }
+
+    public function testWithoutQueryValueHandlesEncoding(): void
+    {
+        // It also tests that the case of the percent-encoding does not matter,
+        // i.e. both lowercase "%3d" and uppercase "%5E" can be removed.
+        $uri = (new Uri())->withQuery('E%3dmc%5E2=einstein&foo=bar');
+        $uri = Uri::withoutQueryValue($uri, 'E=mc^2');
+        self::assertSame('foo=bar', $uri->getQuery(), 'Handles key in decoded form');
+
+        $uri = (new Uri())->withQuery('E%3dmc%5E2=einstein&foo=bar');
+        $uri = Uri::withoutQueryValue($uri, 'E%3Dmc%5e2');
+        self::assertSame('foo=bar', $uri->getQuery(), 'Handles key in encoded form');
+    }
+
+    public function testSchemeIsNormalizedToLowercase(): void
+    {
+        $uri = new Uri('HTTP://example.com');
+
+        self::assertSame('http', $uri->getScheme());
+        self::assertSame('http://example.com', (string) $uri);
+
+        $uri = (new Uri('//example.com'))->withScheme('HTTP');
+
+        self::assertSame('http', $uri->getScheme());
+        self::assertSame('http://example.com', (string) $uri);
+    }
+
+    public function testHostIsNormalizedToLowercase(): void
+    {
+        $uri = new Uri('//eXaMpLe.CoM');
+
+        self::assertSame('example.com', $uri->getHost());
+        self::assertSame('//example.com', (string) $uri);
+
+        $uri = (new Uri())->withHost('eXaMpLe.CoM');
+
+        self::assertSame('example.com', $uri->getHost());
+        self::assertSame('//example.com', (string) $uri);
+    }
+
+    public function testHostPercentEncodingIsNormalizedToUppercaseHex(): void
+    {
+        $uri = new Uri('http://a%c3%a9b/');
+        self::assertSame('a%C3%A9b', $uri->getHost());
+        self::assertSame('http://a%C3%A9b/', (string) $uri);
+
+        $uri = (new Uri())->withHost('A%c3%a9B');
+        self::assertSame('a%C3%A9b', $uri->getHost());
+    }
+
+    /**
+     * @dataProvider getHostsWithInvalidPercentEncoding
+     */
+    public function testParseRejectsHostsWithInvalidPercentEncoding(string $host): void
+    {
+        $this->expectException(MalformedUriException::class);
+
+        new Uri("http://{$host}/");
+    }
+
+    /**
+     * @dataProvider getHostsWithInvalidPercentEncoding
+     */
+    public function testWithHostRejectsInvalidPercentEncoding(string $host): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        (new Uri())->withHost($host);
+    }
+
+    public static function getHostsWithInvalidPercentEncoding(): iterable
+    {
+        yield 'malformed percent-encoding' => ['ex%zz'];
+        yield 'bare percent sign' => ['ex%ample.com'];
+        yield 'percent-encoded NUL' => ['ex%00ample.com'];
+        yield 'percent-encoded slash' => ['ex%2Fample.com'];
+        yield 'percent-encoded percent' => ['ex%25ample.com'];
+    }
+
+    public function testPercentEncodedNonDelimiterOctetsInHostStayAccepted(): void
+    {
+        $uri = new Uri('http://ex%61mple%FFcom/');
+        self::assertSame('ex%61mple%FFcom', $uri->getHost());
+    }
+
+    public function testCommonNonDnsHostsStayValid(): void
+    {
+        $uri = (new Uri())->withHost('foo_bar');
+        self::assertSame('foo_bar', $uri->getHost());
+        self::assertSame('//foo_bar', (string) $uri);
+
+        $uri = (new Uri())->withHost('localhost');
+        self::assertSame('localhost', $uri->getHost());
+        self::assertSame('//localhost', (string) $uri);
+
+        $uri = new Uri('http://[v1.fe80]/');
+        self::assertSame('[v1.fe80]', $uri->getHost());
+        self::assertSame('http://[v1.fe80]/', (string) $uri);
+    }
+
+    /**
+     * @dataProvider getBracketedHostsForParseWithHostParity
+     */
+    public function testParseAndWithHostAcceptSameBracketedHosts(string $host, string $expectedHost): void
+    {
+        $parsed = new Uri('http://'.$host.'/');
+        $withHost = (new Uri())->withHost($host);
+
+        self::assertSame($expectedHost, $parsed->getHost());
+        self::assertSame($expectedHost, $withHost->getHost());
+        self::assertSame('http://'.$expectedHost.'/', (string) $parsed);
+    }
+
+    public static function getBracketedHostsForParseWithHostParity(): iterable
+    {
+        yield 'ipv6 loopback' => ['[::1]', '[::1]'];
+        yield 'ipvfuture with colon' => ['[v7.a:b]', '[v7.a:b]'];
+        yield 'ipv6 documentation address' => ['[2001:db8::1]', '[2001:db8::1]'];
+        yield 'ipvfuture with sub-delims' => ['[v1.a!$&()*,;=:]', '[v1.a!$&()*,;=:]'];
+    }
+
+    public function testParseAcceptsBracketedIpLiteralsWithUserinfoAndNetworkPath(): void
+    {
+        $uri = new Uri('http://user@[::1]/');
+        self::assertSame('[::1]', $uri->getHost());
+        self::assertSame('user', $uri->getUserInfo());
+
+        $uri = new Uri('//[::1]/');
+        self::assertSame('[::1]', $uri->getHost());
+
+        $uri = new Uri('//[::1]');
+        self::assertSame('[::1]', $uri->getHost());
+
+        $uri = new Uri('http://user:pw@[::1]:8080/admin');
+        self::assertSame('[::1]', $uri->getHost());
+        self::assertSame('user:pw', $uri->getUserInfo());
+        self::assertSame(8080, $uri->getPort());
+    }
+
+    /**
+     * @dataProvider getBracketedIpLiteralUserinfoEncodingCases
+     */
+    public function testParseEncodesUserinfoBeforeBracketedIpLiteral(string $input, string $expectedUserInfo, string $expectedString): void
+    {
+        $uri = new Uri($input);
+
+        self::assertSame($expectedUserInfo, $uri->getUserInfo());
+        self::assertSame($expectedString, (string) $uri);
+    }
+
+    public static function getBracketedIpLiteralUserinfoEncodingCases(): iterable
+    {
+        yield 'NUL before IPv6' => ["http://u\x00@[::1]/", 'u%00', 'http://u%00@[::1]/'];
+        yield 'space before IPv6' => ['http://u s@[::1]/', 'u%20s', 'http://u%20s@[::1]/'];
+        yield 'DEL before IPvFuture' => ["http://u\x7F@[v1.a]/", 'u%7F', 'http://u%7F@[v1.a]/'];
+        yield 'control in network-path userinfo' => ["//u\x01@[::1]/", 'u%01', '//u%01@[::1]/'];
+        yield 'space in password part' => ['http://user:pa ss@[::1]/', 'user:pa%20ss', 'http://user:pa%20ss@[::1]/'];
+        yield 'percent-sequence preserved' => ['http://u%41@[::1]/', 'u%41', 'http://u%41@[::1]/'];
+        yield 'double-encoded percent preserved' => ['http://%2561@[::1]/', '%2561', 'http://%2561@[::1]/'];
+        yield 'plus preserved before IPv6' => ['http://user+name@[::1]/', 'user+name', 'http://user+name@[::1]/'];
+        yield 'plus preserved in password part' => ['http://user:p+ass@[::1]/', 'user:p+ass', 'http://user:p+ass@[::1]/'];
+    }
+
+    public function testParseRejectsInvalidUtf8UserinfoBeforeBracketedIpLiteral(): void
+    {
+        $this->expectException(MalformedUriException::class);
+
+        new Uri("http://us\xFFer@[::1]/");
+    }
+
+    public function testParseRejectsDelInBracketedIpLiteralHost(): void
+    {
+        $this->expectException(MalformedUriException::class);
+
+        new Uri("http://[v1.a\x7Fb]/");
+    }
+
+    public function testParseRejectsUnsupportedIpv6ZoneIdentifierHost(): void
+    {
+        $this->expectException(MalformedUriException::class);
+
+        new Uri('http://[fe80::1%25eth0]/');
+    }
+
+    /**
+     * @dataProvider getBracketedHostsWithPercentEncoding
+     */
+    public function testParseRejectsPercentEncodingInBracketedHost(string $uri): void
+    {
+        $this->expectException(MalformedUriException::class);
+
+        new Uri($uri);
+    }
+
+    public static function getBracketedHostsWithPercentEncoding(): iterable
+    {
+        // RFC 3986 IP-literals contain no percent-encoding. Parsing must not
+        // urldecode these into valid literals that the component API rejects.
+        yield 'encoded colons decode to IPv6' => ['http://[%3A%3A1]/'];
+        yield 'encoded colon in IPvFuture' => ['http://[v1.a%3Ab]/'];
+        yield 'encoded plus in IPvFuture' => ['http://[v1.fe80::a%2Ben1]/'];
+        yield 'encoded unreserved in IPvFuture' => ['http://[v1.a%61b]/'];
+    }
+
+    /**
+     * @dataProvider getInvalidBracketedIpLiteralSuffixes
+     */
+    public function testParseRejectsInvalidBracketedIpLiteralSuffix(string $input): void
+    {
+        $this->expectException(MalformedUriException::class);
+
+        new Uri($input);
+    }
+
+    public static function getInvalidBracketedIpLiteralSuffixes(): iterable
+    {
+        yield 'userinfo after port' => ['http://[::1]:80@evil/'];
+        yield 'userinfo after port with leading userinfo' => ['http://user@[::1]:80@evil/'];
+        yield 'userinfo after port on network path' => ['//[::1]:80@evil/'];
+        yield 'userinfo after empty port' => ['http://[::1]:@evil/'];
+        yield 'non-numeric port' => ['http://[::1]:80x/'];
+        yield 'trailing bytes without delimiter' => ['http://[::1]foo/'];
+    }
+
+    /**
+     * @dataProvider getValidBracketedIpLiteralSuffixes
+     */
+    public function testParsePreservesHostForValidBracketedIpLiteralSuffix(string $input): void
+    {
+        self::assertSame('[::1]', (new Uri($input))->getHost());
+    }
+
+    public static function getValidBracketedIpLiteralSuffixes(): iterable
+    {
+        yield 'no suffix' => ['x://[::1]'];
+        yield 'port' => ['x://[::1]:80'];
+        yield 'empty port' => ['x://[::1]:'];
+        yield 'path' => ['x://[::1]/path'];
+        yield 'query' => ['x://[::1]?q'];
+        yield 'fragment' => ['x://[::1]#f'];
+        yield 'port and path' => ['x://[::1]:80/path'];
+        yield 'port and query' => ['x://[::1]:80?q'];
+        yield 'port and fragment' => ['x://[::1]:80#f'];
+        yield 'port and path containing at sign' => ['x://[::1]:80/@evil'];
+    }
+
+    /**
+     * @dataProvider getBracketedHostsWithDelimiters
+     */
+    public function testParseRejectsBracketedHostsWithDelimiters(string $uri): void
+    {
+        $this->expectException(MalformedUriException::class);
+
+        new Uri($uri);
+    }
+
+    public static function getBracketedHostsWithDelimiters(): iterable
+    {
+        yield 'userinfo delimiter' => ['http://[a@b]/'];
+        yield 'path delimiter' => ['http://[v1.a/b]/'];
+    }
+
+    /**
+     * @dataProvider getInvalidDelimiterFreeBracketedHosts
+     */
+    public function testParseRejectsInvalidBracketedHostsWithIntactHostMessage(string $uri): void
+    {
+        try {
+            new Uri($uri);
+            self::fail('Expected malformed URI exception.');
+        } catch (MalformedUriException $e) {
+            self::assertStringContainsString('[gggg::1]', $e->getMessage());
+        }
+    }
+
+    public static function getInvalidDelimiterFreeBracketedHosts(): iterable
+    {
+        yield 'scheme authority' => ['http://[gggg::1]/'];
+        yield 'network path' => ['//[gggg::1]/'];
+        yield 'userinfo authority' => ['http://user@[gggg::1]/'];
+    }
+
+    public function testWithHostRejectsInvalidBracketedHostWithPlainInvalidArgumentException(): void
+    {
+        try {
+            (new Uri())->withHost('[gggg::1]');
+            self::fail('Expected invalid argument exception.');
+        } catch (\InvalidArgumentException $e) {
+            self::assertNotInstanceOf(MalformedUriException::class, $e);
+            self::assertStringContainsString('[gggg::1]', $e->getMessage());
+        }
+    }
+
+    public function testPlusBearingIpvFutureRemainsParseWithHostDivergence(): void
+    {
+        $this->expectException(MalformedUriException::class);
+
+        new Uri('http://[v1.fe80::a+en1]/');
+    }
+
+    public function testWithHostAcceptsPlusBearingIpvFuture(): void
+    {
+        $uri = (new Uri())->withHost('[v1.fe80::a+en1]');
+
+        self::assertSame('[v1.fe80::a+en1]', $uri->getHost());
+    }
+
+    public function testPortIsNullIfStandardPortForScheme(): void
+    {
+        // HTTPS standard port
+        $uri = new Uri('https://example.com:443');
+        self::assertNull($uri->getPort());
+        self::assertSame('example.com', $uri->getAuthority());
+
+        $uri = (new Uri('https://example.com'))->withPort(443);
+        self::assertNull($uri->getPort());
+        self::assertSame('example.com', $uri->getAuthority());
+
+        // HTTP standard port
+        $uri = new Uri('http://example.com:80');
+        self::assertNull($uri->getPort());
+        self::assertSame('example.com', $uri->getAuthority());
+
+        $uri = (new Uri('http://example.com'))->withPort(80);
+        self::assertNull($uri->getPort());
+        self::assertSame('example.com', $uri->getAuthority());
+    }
+
+    public function testPortIsNullIfStandardPortForWebSocketScheme(): void
+    {
+        // WSS standard port
+        $uri = new Uri('wss://example.com:443/chat');
+        self::assertNull($uri->getPort());
+        self::assertSame('example.com', $uri->getAuthority());
+        self::assertSame('wss://example.com/chat', (string) $uri);
+
+        $uri = (new Uri('wss://example.com'))->withPort(443);
+        self::assertNull($uri->getPort());
+        self::assertSame('example.com', $uri->getAuthority());
+
+        // WS standard port
+        $uri = new Uri('ws://example.com:80/chat');
+        self::assertNull($uri->getPort());
+        self::assertSame('example.com', $uri->getAuthority());
+        self::assertSame('ws://example.com/chat', (string) $uri);
+
+        $uri = (new Uri('ws://example.com'))->withPort(80);
+        self::assertNull($uri->getPort());
+        self::assertSame('example.com', $uri->getAuthority());
+    }
+
+    public function testPortIsReturnedIfSchemeUnknown(): void
+    {
+        $uri = (new Uri('//example.com'))->withPort(80);
+
+        self::assertSame(80, $uri->getPort());
+        self::assertSame('example.com:80', $uri->getAuthority());
+    }
+
+    public function testStandardPortIsNullIfSchemeChanges(): void
+    {
+        $uri = new Uri('http://example.com:443');
+        self::assertSame('http', $uri->getScheme());
+        self::assertSame(443, $uri->getPort());
+
+        $uri = $uri->withScheme('https');
+        self::assertNull($uri->getPort());
+    }
+
+    public function testPortCanBeRemoved(): void
+    {
+        $uri = (new Uri('http://example.com:8080'))->withPort(null);
+
+        self::assertNull($uri->getPort());
+        self::assertSame('http://example.com', (string) $uri);
+    }
+
+    /**
+     * In RFC 8986 the host is optional and the authority can only
+     * consist of the user info and port.
+     */
+    public function testAuthorityWithUserInfoOrPortButWithoutHost(): void
+    {
+        $uri = (new Uri())->withUserInfo('user', 'pass');
+
+        self::assertSame('user:pass', $uri->getUserInfo());
+        self::assertSame('user:pass@', $uri->getAuthority());
+
+        $uri = $uri->withPort(8080);
+        self::assertSame(8080, $uri->getPort());
+        self::assertSame('user:pass@:8080', $uri->getAuthority());
+        self::assertSame('//user:pass@:8080', (string) $uri);
+
+        $uri = $uri->withUserInfo('');
+        self::assertSame(':8080', $uri->getAuthority());
+    }
+
+    public function testHostInHttpUriDefaultsToLocalhost(): void
+    {
+        $uri = (new Uri())->withScheme('http');
+
+        self::assertSame('localhost', $uri->getHost());
+        self::assertSame('localhost', $uri->getAuthority());
+        self::assertSame('http://localhost', (string) $uri);
+    }
+
+    public function testHostInHttpsUriDefaultsToLocalhost(): void
+    {
+        $uri = (new Uri())->withScheme('https');
+
+        self::assertSame('localhost', $uri->getHost());
+        self::assertSame('localhost', $uri->getAuthority());
+        self::assertSame('https://localhost', (string) $uri);
+    }
+
+    public function testFileSchemeWithEmptyHostReconstruction(): void
+    {
+        $uri = new Uri('file:///tmp/filename.ext');
+
+        self::assertSame('', $uri->getHost());
+        self::assertSame('', $uri->getAuthority());
+        self::assertSame('file:///tmp/filename.ext', (string) $uri);
+    }
+
+    public function testFileUriWithoutAuthorityKeepsRootlessPath(): void
+    {
+        $uri = new Uri('file:foo/bar');
+
+        self::assertSame('foo/bar', $uri->getPath());
+        self::assertSame('file:foo/bar', (string) $uri);
+        self::assertSame('file:foo/bar', (string) new Uri((string) $uri));
+        self::assertSame('file:///foo', (string) new Uri('file:/foo'));
+        self::assertSame('file:////tmp', (string) new Uri('file:////tmp'));
+    }
+
+    public function testFileUriWithoutAuthorityAndPathSerializesWithoutSeparator(): void
+    {
+        $uri = new Uri('file:');
+
+        self::assertSame('', $uri->getPath());
+        self::assertSame('file:', (string) $uri);
+        self::assertSame('file:', (string) new Uri((string) $uri));
+        self::assertSame('file:', (string) Uri::fromParts(['scheme' => 'file']));
+        self::assertSame('file:', (string) (new Uri('file:///x'))->withPath(''));
+    }
+
+    public function testFileUriWithoutAuthorityAndPathKeepsQueryAndFragment(): void
+    {
+        self::assertSame('file:?q', (string) new Uri('file:?q'));
+        self::assertSame('file:?q', (string) new Uri((string) new Uri('file:?q')));
+        self::assertSame('file:#f', (string) new Uri('file:#f'));
+        self::assertSame('file:#f', (string) new Uri((string) new Uri('file:#f')));
+        self::assertSame('file:?q#f', (string) new Uri('file:?q#f'));
+        self::assertSame('file:?q#f', (string) new Uri((string) new Uri('file:?q#f')));
+    }
+
+    /**
+     * @dataProvider composeComponentsProvider
+     */
+    public function testComposeComponents(?string $scheme, ?string $authority, string $path, ?string $query, ?string $fragment, string $expected): void
+    {
+        self::assertSame($expected, Uri::composeComponents($scheme, $authority, $path, $query, $fragment));
+    }
+
+    /**
+     * @return iterable<string, array{0: ?string, 1: ?string, 2: string, 3: ?string, 4: ?string, 5: string}>
+     */
+    public static function composeComponentsProvider(): iterable
+    {
+        yield 'all components' => ['http', 'user:pass@example.com:8080', '/path', 'query', 'fragment', 'http://user:pass@example.com:8080/path?query#fragment'];
+        yield 'null components compose like empty strings' => [null, null, '', null, null, ''];
+        yield 'relative path only' => ['', '', 'foo', '', '', 'foo'];
+        yield 'rootless path is rooted under an authority' => ['http', 'example.com', 'foo', '', '', 'http://example.com/foo'];
+        yield 'file with authority' => ['file', 'localhost', '/myfile', '', '', 'file://localhost/myfile'];
+        yield 'file separator added for authority-less rooted path' => ['file', '', '/myfile', '', '', 'file:///myfile'];
+        yield 'file separator omitted for authority-less rootless path' => ['file', '', 'foo/bar', '', '', 'file:foo/bar'];
+        yield 'file separator omitted for authority-less empty path' => ['file', '', '', '', '', 'file:'];
+        yield 'file separator omitted for null authority and empty path' => ['file', null, '', null, null, 'file:'];
+        yield 'file separator omitted for authority-less empty path with query' => ['file', '', '', 'q', '', 'file:?q'];
+        yield 'file separator omitted for authority-less empty path with fragment' => ['file', '', '', '', 'f', 'file:#f'];
+        yield 'file separator omitted for authority-less empty path with query and fragment' => ['file', '', '', 'q', 'f', 'file:?q#f'];
+    }
+
+    public static function uriComponentsEncodingProvider(): iterable
+    {
+        $unreserved = 'a-zA-Z0-9.-_~!$&\'()*+,;=:@';
+
+        return [
+            // Percent encode spaces
+            ['/pa th?q=va lue#frag ment', '/pa%20th', 'q=va%20lue', 'frag%20ment', '/pa%20th?q=va%20lue#frag%20ment'],
+            // Percent encode multibyte
+            ['/€?€#€', '/%E2%82%AC', '%E2%82%AC', '%E2%82%AC', '/%E2%82%AC?%E2%82%AC#%E2%82%AC'],
+            // Don't encode something that's already encoded
+            ['/pa%20th?q=va%20lue#frag%20ment', '/pa%20th', 'q=va%20lue', 'frag%20ment', '/pa%20th?q=va%20lue#frag%20ment'],
+            // Percent encode invalid percent encodings
+            ['/pa%2-th?q=va%2-lue#frag%2-ment', '/pa%252-th', 'q=va%252-lue', 'frag%252-ment', '/pa%252-th?q=va%252-lue#frag%252-ment'],
+            // Don't encode path segments
+            ['/pa/th//two?q=va/lue#frag/ment', '/pa/th//two', 'q=va/lue', 'frag/ment', '/pa/th//two?q=va/lue#frag/ment'],
+            // Don't encode unreserved chars or sub-delimiters
+            ["/$unreserved?$unreserved#$unreserved", "/$unreserved", $unreserved, $unreserved, "/$unreserved?$unreserved#$unreserved"],
+            // Encoded unreserved chars are not decoded
+            ['/p%61th?q=v%61lue#fr%61gment', '/p%61th', 'q=v%61lue', 'fr%61gment', '/p%61th?q=v%61lue#fr%61gment'],
+        ];
+    }
+
+    /**
+     * @dataProvider uriComponentsEncodingProvider
+     */
+    public function testUriComponentsGetEncodedProperly(string $input, string $path, string $query, string $fragment, string $output): void
+    {
+        $uri = new Uri($input);
+        self::assertSame($path, $uri->getPath());
+        self::assertSame($query, $uri->getQuery());
+        self::assertSame($fragment, $uri->getFragment());
+        self::assertSame($output, (string) $uri);
+    }
+
+    public function testWithPathEncodesProperly(): void
+    {
+        $uri = (new Uri())->withPath('/baz?#€/b%61r');
+        // Query and fragment delimiters and multibyte chars are encoded.
+        self::assertSame('/baz%3F%23%E2%82%AC/b%61r', $uri->getPath());
+        self::assertSame('/baz%3F%23%E2%82%AC/b%61r', (string) $uri);
+    }
+
+    public function testWithQueryEncodesProperly(): void
+    {
+        $uri = (new Uri())->withQuery('?=#&€=/&b%61r');
+        // A query starting with a "?" is valid and must not be magically removed. Otherwise it would be impossible to
+        // construct such an URI. Also the "?" and "/" does not need to be encoded in the query.
+        self::assertSame('?=%23&%E2%82%AC=/&b%61r', $uri->getQuery());
+        self::assertSame('??=%23&%E2%82%AC=/&b%61r', (string) $uri);
+    }
+
+    public function testWithFragmentEncodesProperly(): void
+    {
+        $uri = (new Uri())->withFragment('#€?/b%61r');
+        // A fragment starting with a "#" is valid and must not be magically removed. Otherwise it would be impossible to
+        // construct such an URI. Also the "?" and "/" does not need to be encoded in the fragment.
+        self::assertSame('%23%E2%82%AC?/b%61r', $uri->getFragment());
+        self::assertSame('#%23%E2%82%AC?/b%61r', (string) $uri);
+    }
+
+    public function testAllowsForRelativeUri(): void
+    {
+        $uri = (new Uri())->withPath('foo');
+        self::assertSame('foo', $uri->getPath());
+        self::assertSame('foo', (string) $uri);
+    }
+
+    public function testRelativePathAndAuthority(): void
+    {
+        $uri = (new Uri())->withHost('example.com')->withPath('foo');
+        self::assertSame('foo', $uri->getPath());
+        self::assertSame('//example.com/foo', $uri->__toString());
+    }
+
+    public function testPathStartingWithTwoSlashesAndNoAuthorityIsInvalid(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The path of a URI without an authority must not start with two slashes "//"');
+        // URI "//foo" would be interpreted as network reference and thus change the original path to the host
+        (new Uri())->withPath('//foo');
+    }
+
+    public function testPathStartingWithTwoSlashes(): void
+    {
+        $uri = new Uri('http://example.org//path-not-host.com');
+        self::assertSame('/path-not-host.com', $uri->getPath());
+        self::assertSame('http://example.org//path-not-host.com', (string) $uri);
+
+        $uri = $uri->withScheme('');
+        self::assertSame('//example.org//path-not-host.com', (string) $uri); // This is still valid
+        $this->expectException(\InvalidArgumentException::class);
+        $uri->withHost(''); // Now it becomes invalid
+    }
+
+    public function testGetPathNormalizesMultipleLeadingSlashes(): void
+    {
+        $uri = new Uri('http://example.org//valid///path');
+
+        self::assertSame('/valid///path', $uri->getPath());
+    }
+
+    public function testStringRepresentationPreservesMultipleLeadingSlashes(): void
+    {
+        $uri = new Uri('http://example.org//valid///path');
+
+        self::assertSame('http://example.org//valid///path', (string) $uri);
+    }
+
+    public function testGetPathPreservesInternalMultipleSlashes(): void
+    {
+        $uri = new Uri('http://example.org/valid///path');
+
+        self::assertSame('/valid///path', $uri->getPath());
+        self::assertSame('http://example.org/valid///path', (string) $uri);
+    }
+
+    public function testRelativeUriWithPathBeginngWithColonSegmentIsInvalid(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('A relative URI must not have a path beginning with a segment containing a colon');
+        (new Uri())->withPath('mailto:foo');
+    }
+
+    public function testRelativeUriWithPathHavingColonSegment(): void
+    {
+        $uri = (new Uri('urn:/mailto:foo'))->withScheme('');
+        self::assertSame('/mailto:foo', $uri->getPath());
+
+        $this->expectException(\InvalidArgumentException::class);
+        (new Uri('urn:mailto:foo'))->withScheme('');
+    }
+
+    public function testDefaultReturnValuesOfGetters(): void
+    {
+        $uri = new Uri();
+
+        self::assertSame('', $uri->getScheme());
+        self::assertSame('', $uri->getAuthority());
+        self::assertSame('', $uri->getUserInfo());
+        self::assertSame('', $uri->getHost());
+        self::assertNull($uri->getPort());
+        self::assertSame('', $uri->getPath());
+        self::assertSame('', $uri->getQuery());
+        self::assertSame('', $uri->getFragment());
+    }
+
+    public function testImmutability(): void
+    {
+        $uri = new Uri();
+
+        self::assertNotSame($uri, $uri->withScheme('https'));
+        self::assertNotSame($uri, $uri->withUserInfo('user', 'pass'));
+        self::assertNotSame($uri, $uri->withHost('example.com'));
+        self::assertNotSame($uri, $uri->withPort(8080));
+        self::assertNotSame($uri, $uri->withPath('/path/123'));
+        self::assertNotSame($uri, $uri->withQuery('q=abc'));
+        self::assertNotSame($uri, $uri->withFragment('test'));
+    }
+
+    public function testToStringDoesNotAffectLooseComparison(): void
+    {
+        $uri1 = new Uri('http://test.com');
+        $uri2 = new Uri('http://test.com');
+
+        self::assertTrue($uri1 == $uri2);
+        self::assertSame('http://test.com', (string) $uri2);
+        self::assertTrue($uri1 == $uri2);
+    }
+
+    public function testExtendingClassesInstantiates(): void
+    {
+        // The non-standard port triggers a cascade of private methods which
+        // should not use late static binding to access private static members.
+        // If they do, this will fatal.
+        self::assertInstanceOf(
+            ExtendedUriTest::class,
+            new ExtendedUriTest('http://h:9/')
+        );
+    }
+
+    public function testSpecialCharsOfUserInfo(): void
+    {
+        // The `userInfo` must always be URL-encoded.
+        $uri = (new Uri())->withUserInfo('foo@bar.com', 'pass#word');
+        self::assertSame('foo%40bar.com:pass%23word', $uri->getUserInfo());
+
+        // The `userInfo` can already be URL-encoded: it should not be encoded twice.
+        $uri = (new Uri())->withUserInfo('foo%40bar.com', 'pass%23word');
+        self::assertSame('foo%40bar.com:pass%23word', $uri->getUserInfo());
+    }
+
+    public function testInternationalizedDomainName(): void
+    {
+        $uri = new Uri('https://яндекс.рф');
+        self::assertSame('яндекс.рф', $uri->getHost());
+
+        $uri = new Uri('https://яндекAс.рф');
+        self::assertSame('яндекaс.рф', $uri->getHost());
+    }
+
+    public function testIPv6Host(): void
+    {
+        $uri = new Uri('https://[2a00:f48:1008::212:183:10]');
+        self::assertSame('[2a00:f48:1008::212:183:10]', $uri->getHost());
+
+        $uri = new Uri('https://[2A00:F48:1008::212:183:10]');
+        self::assertSame('[2a00:f48:1008::212:183:10]', $uri->getHost());
+
+        $uri = new Uri('http://[2a00:f48:1008::212:183:10]:56?foo=bar');
+        self::assertSame('[2a00:f48:1008::212:183:10]', $uri->getHost());
+        self::assertSame(56, $uri->getPort());
+        self::assertSame('foo=bar', $uri->getQuery());
+
+        $uri = new Uri('https://[2a00:F48:1008::212:183:10]/path?foo=bar#frag');
+        self::assertSame('[2a00:f48:1008::212:183:10]', $uri->getHost());
+        self::assertSame('/path', $uri->getPath());
+        self::assertSame('foo=bar', $uri->getQuery());
+        self::assertSame('frag', $uri->getFragment());
+    }
+
+    /**
+     * @dataProvider getUrisWithIpv6EmbeddedIpv4Literals
+     */
+    public function testCanParseIpv6LiteralsWithEmbeddedIpv4(string $uri, string $expectedUri, string $expectedHost, ?int $expectedPort): void
+    {
+        $parsed = new Uri($uri);
+
+        self::assertSame($expectedUri, (string) $parsed);
+        self::assertSame($expectedHost, $parsed->getHost());
+        self::assertSame($expectedPort, $parsed->getPort());
+    }
+
+    public static function getUrisWithIpv6EmbeddedIpv4Literals(): iterable
+    {
+        yield 'ipv4 mapped' => [
+            'http://[::ffff:192.0.2.128]/',
+            'http://[::ffff:192.0.2.128]/',
+            '[::ffff:192.0.2.128]',
+            null,
+        ];
+
+        yield 'ipv4 compatible' => [
+            'http://[::192.0.2.128]/path',
+            'http://[::192.0.2.128]/path',
+            '[::192.0.2.128]',
+            null,
+        ];
+
+        yield 'embedded ipv4 after hextets' => [
+            'http://[2001:db8:3:4::192.0.2.33]/',
+            'http://[2001:db8:3:4::c000:221]/',
+            '[2001:db8:3:4::c000:221]',
+            null,
+        ];
+
+        yield 'uppercase hex is normalized' => [
+            'http://[::FFFF:192.0.2.128]/',
+            'http://[::ffff:192.0.2.128]/',
+            '[::ffff:192.0.2.128]',
+            null,
+        ];
+
+        yield 'non-default port' => [
+            'http://[::ffff:192.0.2.128]:8080/path?x=1',
+            'http://[::ffff:192.0.2.128]:8080/path?x=1',
+            '[::ffff:192.0.2.128]',
+            8080,
+        ];
+
+        yield 'default http port is removed' => [
+            'http://[::ffff:192.0.2.128]:80/path',
+            'http://[::ffff:192.0.2.128]/path',
+            '[::ffff:192.0.2.128]',
+            null,
+        ];
+
+        yield 'default https port is removed' => [
+            'https://[::ffff:192.0.2.128]:443/path',
+            'https://[::ffff:192.0.2.128]/path',
+            '[::ffff:192.0.2.128]',
+            null,
+        ];
+    }
+
+    /**
+     * @dataProvider getIpv6CanonicalizationTestCases
+     */
+    public function testCanonicalizesIpv6Hosts(string $input, string $expectedHost, string $expectedUri): void
+    {
+        $uri = new Uri($input);
+
+        self::assertSame($expectedHost, $uri->getHost());
+        self::assertSame($expectedUri, (string) $uri);
+    }
+
+    public static function getIpv6CanonicalizationTestCases(): iterable
+    {
+        yield 'leading zeros and case' => ['http://[::0:0A]/', '[::a]', 'http://[::a]/'];
+        yield 'full form' => ['http://[0:0:0:0:0:0:0:1]/', '[::1]', 'http://[::1]/'];
+        yield 'longest zero run wins' => ['http://[1:0:0:1:0:0:0:1]/', '[1:0:0:1::1]', 'http://[1:0:0:1::1]/'];
+        yield 'leftmost zero run wins a tie' => ['http://[1:0:0:1:0:0:1:1]/', '[1::1:0:0:1:1]', 'http://[1::1:0:0:1:1]/'];
+        yield 'single zero field is not collapsed' => ['http://[1:0:1:1:1:1:1:1]/', '[1:0:1:1:1:1:1:1]', 'http://[1:0:1:1:1:1:1:1]/'];
+        yield 'unspecified address' => ['http://[::]/', '[::]', 'http://[::]/'];
+        yield 'v4-mapped from pure hex' => ['http://[::FFFF:7F00:1]/', '[::ffff:127.0.0.1]', 'http://[::ffff:127.0.0.1]/'];
+        yield 'v4-mapped stays dotted' => ['http://[::ffff:127.0.0.1]/', '[::ffff:127.0.0.1]', 'http://[::ffff:127.0.0.1]/'];
+        yield 'v4-compatible from pure hex' => ['http://[::102:304]/', '[::1.2.3.4]', 'http://[::1.2.3.4]/'];
+        yield 'embedded v4 after hextets becomes hex' => ['http://[2001:db8:3:4::192.0.2.33]/', '[2001:db8:3:4::c000:221]', 'http://[2001:db8:3:4::c000:221]/'];
+        yield 'ipvfuture untouched' => ['http://[v1.fe]/', '[v1.fe]', 'http://[v1.fe]/'];
+        yield 'with port' => ['http://[::0:1]:8080/', '[::1]', 'http://[::1]:8080/'];
+    }
+
+    public function testCanonicalizesIpv6HostsFromAllConstructionPaths(): void
+    {
+        $uri = new Uri('http://[0:0::1]/');
+        self::assertSame('[::1]', $uri->getHost());
+        self::assertSame('http://[::1]/', (string) $uri);
+        self::assertSame((string) $uri, (string) new Uri((string) $uri));
+
+        $uri = (new Uri())->withHost('[0:0::1]');
+        self::assertSame('[::1]', $uri->getHost());
+
+        $uri = Uri::fromParts(['scheme' => 'http', 'host' => '[0:0::1]']);
+        self::assertSame('[::1]', $uri->getHost());
+    }
+
+    /**
+     * @dataProvider getMalformedIpv6LiteralsWithEmbeddedIpv4
+     */
+    public function testParseUriRejectsMalformedIpv6LiteralsWithEmbeddedIpv4(string $uri): void
+    {
+        $this->expectException(MalformedUriException::class);
+
+        new Uri($uri);
+    }
+
+    public static function getMalformedIpv6LiteralsWithEmbeddedIpv4(): iterable
+    {
+        yield 'out of range ipv4 octet' => ['http://[::ffff:999.0.2.128]/'];
+        yield 'incomplete embedded ipv4 address' => ['http://[1:2.3]/'];
+    }
+
+    public function testJsonSerializable(): void
+    {
+        $uri = new Uri('https://example.com');
+
+        self::assertSame('{"uri":"https:\/\/example.com"}', \json_encode(['uri' => $uri]));
+    }
+}
+
+class ExtendedUriTest extends Uri
+{
+}

@@ -35,7 +35,7 @@ function createNotification(PDO $db, int $userId, string $title, string $message
     try {
         ensureNotificationsTable($db);
         $stmt = $db->prepare("INSERT INTO notifications (user_id, type, title, message, link, created_by) VALUES (?, ?, ?, ?, ?, ?)");
-        return $stmt->execute([
+        $ok = $stmt->execute([
             $userId,
             substr($type, 0, 50),
             substr($title, 0, 255),
@@ -43,6 +43,18 @@ function createNotification(PDO $db, int $userId, string $title, string $message
             $link,
             $createdBy,
         ]);
+        if ($ok) {
+            // 🌟 Every in-app notification also tries a browser push, at no
+            // extra call sites — see includes/push_helpers.php. Best-effort,
+            // never affects the return value of this function.
+            try {
+                require_once __DIR__ . '/push_helpers.php';
+                sendPushToUser($db, $userId, $title, $message, $link);
+            } catch (Throwable $pe) {
+                error_log('createNotification push: ' . $pe->getMessage());
+            }
+        }
+        return $ok;
     } catch (Throwable $e) {
         error_log('createNotification: ' . $e->getMessage());
         return false;

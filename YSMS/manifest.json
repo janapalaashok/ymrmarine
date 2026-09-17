@@ -1,0 +1,14 @@
+{
+  "name": "YMR Survey Management System",
+  "short_name": "YSMS",
+  "description": "YMR Marine Solutions survey management — assign, track and report marine surveys.",
+  "start_url": "index.php",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1e46",
+  "theme_color": "#3b32b3",
+  "icons": [
+    { "src": "assets/images/logo.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/images/logo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

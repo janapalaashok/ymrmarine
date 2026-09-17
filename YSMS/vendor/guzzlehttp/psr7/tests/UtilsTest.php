@@ -1,0 +1,2015 @@
+<?php
+
+declare(strict_types=1);
+
+namespace GuzzleHttp\Tests\Psr7;
+
+use GuzzleHttp\Psr7;
+use GuzzleHttp\Psr7\FnStream;
+use GuzzleHttp\Psr7\NoSeekStream;
+use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\StreamInterface;
+use Psr\Http\Message\UriInterface;
+
+class UtilsTest extends TestCase
+{
+    protected function tearDown(): void
+    {
+        PhpStreamMock::reset();
+    }
+
+    public function testAsciiToLower(): void
+    {
+        self::assertSame('abcdefghijklmnopqrstuvwxyz', Psr7\Utils::asciiToLower('ABCDEFGHIJKLMNOPQRSTUVWXYZ'));
+        self::assertSame('x-checksum', Psr7\Utils::asciiToLower('X-Checksum'));
+        self::assertSame('0123456789 !#$%&*+-.^_`|~', Psr7\Utils::asciiToLower('0123456789 !#$%&*+-.^_`|~'));
+        self::assertSame("\xC4\xB0i", Psr7\Utils::asciiToLower("\xC4\xB0I"));
+        self::assertSame('', Psr7\Utils::asciiToLower(''));
+    }
+
+    public function testAsciiToUpper(): void
+    {
+        self::assertSame('ABCDEFGHIJKLMNOPQRSTUVWXYZ', Psr7\Utils::asciiToUpper('abcdefghijklmnopqrstuvwxyz'));
+        self::assertSame('X-CHECKSUM', Psr7\Utils::asciiToUpper('x-Checksum'));
+        self::assertSame('0123456789 !#$%&*+-.^_`|~', Psr7\Utils::asciiToUpper('0123456789 !#$%&*+-.^_`|~'));
+        self::assertSame("\xC4\xB1I", Psr7\Utils::asciiToUpper("\xC4\xB1i"));
+        self::assertSame('', Psr7\Utils::asciiToUpper(''));
+    }
+
+    public function testAsciiUcFirst(): void
+    {
+        self::assertSame('Index', Psr7\Utils::asciiUcFirst('index'));
+        self::assertSame('Index', Psr7\Utils::asciiUcFirst('Index'));
+        self::assertSame('X-a', Psr7\Utils::asciiUcFirst('x-a'));
+        self::assertSame('0abc', Psr7\Utils::asciiUcFirst('0abc'));
+        self::assertSame("\xC4\xB1i", Psr7\Utils::asciiUcFirst("\xC4\xB1i"));
+        self::assertSame('', Psr7\Utils::asciiUcFirst(''));
+    }
+
+    public function testCaselessContains(): void
+    {
+        self::assertTrue(Psr7\Utils::caselessContains('Connection TIMEOUT after', 'timeout'));
+        self::assertFalse(Psr7\Utils::caselessContains('Connection reset', 'timeout'));
+        self::assertTrue(Psr7\Utils::caselessContains('Connection timeout after', 'timeout'));
+        self::assertTrue(Psr7\Utils::caselessContains('Connection reset', ''));
+    }
+
+    public function testCaselessEquals(): void
+    {
+        self::assertTrue(Psr7\Utils::caselessEquals('HOST', 'host'));
+        self::assertFalse(Psr7\Utils::caselessEquals('host', 'hosts'));
+        self::assertTrue(Psr7\Utils::caselessEquals('', ''));
+        self::assertFalse(Psr7\Utils::caselessEquals("\xC4\xB0", 'i'));
+    }
+
+    public function testCopiesToString(): void
+    {
+        $s = Psr7\Utils::streamFor('foobaz');
+        self::assertSame('foobaz', Psr7\Utils::copyToString($s));
+        $s->seek(0);
+        self::assertSame('foo', Psr7\Utils::copyToString($s, 3));
+        self::assertSame('baz', Psr7\Utils::copyToString($s, 3));
+        self::assertSame('', Psr7\Utils::copyToString($s));
+    }
+
+    public function testCopiesToStringStopsWhenReadFails(): void
+    {
+        $s1 = Psr7\Utils::streamFor('foobaz');
+        $s1 = FnStream::decorate($s1, [
+            'read' => function () {
+                return '';
+            },
+        ]);
+        $result = Psr7\Utils::copyToString($s1);
+        self::assertSame('', $result);
+    }
+
+    public function testCopyToStringThrowsWhenReadTimesOut(): void
+    {
+        $s = new FnStream([
+            'eof' => function (): bool {
+                return false;
+            },
+            'read' => function (): string {
+                return '';
+            },
+            'getMetadata' => function (?string $key = null) {
+                return $key === 'timed_out' ? true : null;
+            },
+        ]);
+
+        $this->expectException(Psr7\Exception\TimeoutException::class);
+        $this->expectExceptionMessage('Unable to read from stream: timed out');
+
+        Psr7\Utils::copyToString($s);
+    }
+
+    public function testCopyToStringIgnoresStaleTimeoutMetadataAfterSuccessfulRead(): void
+    {
+        $read = false;
+        $s = new FnStream([
+            'eof' => function () use (&$read): bool {
+                return $read;
+            },
+            'read' => function () use (&$read): string {
+                $read = true;
+
+                return 'foo';
+            },
+            'getMetadata' => function (?string $key = null) {
+                return $key === 'timed_out' ? true : null;
+            },
+        ]);
+
+        self::assertSame('foo', Psr7\Utils::copyToString($s));
+    }
+
+    public function testCopyToStringIgnoresMetadataProbeFailure(): void
+    {
+        $s = new FnStream([
+            'eof' => function (): bool {
+                return false;
+            },
+            'read' => function (): string {
+                return '';
+            },
+            'getMetadata' => function (): void {
+                throw new \RuntimeException('metadata failed');
+            },
+        ]);
+
+        self::assertSame('', Psr7\Utils::copyToString($s));
+    }
+
+    public function testCopyToStringPreservesReadExceptionWhenMetadataProbeFails(): void
+    {
+        $s = new FnStream([
+            'eof' => function (): bool {
+                return false;
+            },
+            'read' => function (): string {
+                throw new \RuntimeException('read failed');
+            },
+            'getMetadata' => function (): void {
+                throw new \RuntimeException('metadata failed');
+            },
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('read failed');
+
+        Psr7\Utils::copyToString($s);
+    }
+
+    public function testCopyToStringIgnoresEofProbeFailureDuringTimeoutDetection(): void
+    {
+        $eofCalls = 0;
+        $s = new FnStream([
+            'eof' => function () use (&$eofCalls): bool {
+                ++$eofCalls;
+                if ($eofCalls > 1) {
+                    throw new \RuntimeException('eof failed');
+                }
+
+                return false;
+            },
+            'read' => function (): string {
+                return '';
+            },
+            'getMetadata' => function (?string $key = null) {
+                return $key === 'timed_out' ? true : null;
+            },
+        ]);
+
+        self::assertSame('', Psr7\Utils::copyToString($s));
+    }
+
+    public function testCopyToStringIgnoresNonBooleanTimedOutMetadata(): void
+    {
+        $s = new FnStream([
+            'eof' => function (): bool {
+                return false;
+            },
+            'read' => function (): string {
+                return '';
+            },
+            'getMetadata' => function (?string $key = null) {
+                return $key === 'timed_out' ? 1 : null;
+            },
+        ]);
+
+        self::assertSame('', Psr7\Utils::copyToString($s));
+    }
+
+    public function testCopiesToStream(): void
+    {
+        $s1 = Psr7\Utils::streamFor('foobaz');
+        $s2 = Psr7\Utils::streamFor('');
+        self::assertSame(6, Psr7\Utils::copyToStream($s1, $s2));
+        self::assertSame('foobaz', (string) $s2);
+        $s2 = Psr7\Utils::streamFor('');
+        $s1->seek(0);
+        self::assertSame(3, Psr7\Utils::copyToStream($s1, $s2, 3));
+        self::assertSame('foo', (string) $s2);
+        self::assertSame(3, Psr7\Utils::copyToStream($s1, $s2, 3));
+        self::assertSame('foobaz', (string) $s2);
+    }
+
+    public function testCopyToStreamReturnsActualBytesWhenSourceShorterThanMaxLen(): void
+    {
+        $dest = Psr7\Utils::streamFor('');
+
+        self::assertSame(2, Psr7\Utils::copyToStream(Psr7\Utils::streamFor('ab'), $dest, 5));
+        self::assertSame('ab', (string) $dest);
+    }
+
+    public function testCopyToStreamWithZeroMaxLenCopiesNothing(): void
+    {
+        $dest = Psr7\Utils::streamFor('');
+
+        self::assertSame(0, Psr7\Utils::copyToStream(Psr7\Utils::streamFor('abc'), $dest, 0));
+        self::assertSame('', (string) $dest);
+    }
+
+    public function testCopyToStreamWithNegativeMaxLenOtherThanMinusOneCopiesNothing(): void
+    {
+        $dest = Psr7\Utils::streamFor('');
+
+        self::assertSame(0, Psr7\Utils::copyToStream(Psr7\Utils::streamFor('abc'), $dest, -2));
+        self::assertSame('', (string) $dest);
+    }
+
+    public function testCopyToStreamRetriesShortWrites(): void
+    {
+        $s1 = Psr7\Utils::streamFor('foobaz');
+        $sink = Psr7\Utils::streamFor('');
+        $writes = 0;
+
+        $s2 = FnStream::decorate($sink, [
+            'write' => function (string $string) use ($sink, &$writes): int {
+                ++$writes;
+
+                return $sink->write(substr($string, 0, 1));
+            },
+        ]);
+
+        self::assertSame(6, Psr7\Utils::copyToStream($s1, $s2));
+
+        self::assertSame('foobaz', (string) $sink);
+        self::assertSame(6, $writes);
+    }
+
+    public function testCopyToStreamRetriesShortWritesWithMaxLen(): void
+    {
+        $s1 = Psr7\Utils::streamFor('foobaz');
+        $sink = Psr7\Utils::streamFor('');
+        $writes = 0;
+
+        $s2 = FnStream::decorate($sink, [
+            'write' => function (string $string) use ($sink, &$writes): int {
+                ++$writes;
+
+                return $sink->write(substr($string, 0, 1));
+            },
+        ]);
+
+        self::assertSame(3, Psr7\Utils::copyToStream($s1, $s2, 3));
+
+        self::assertSame('foo', (string) $sink);
+        self::assertSame(3, $writes);
+    }
+
+    public function testCopyToStreamThrowsWhenReadTimesOut(): void
+    {
+        $s1 = new FnStream([
+            'eof' => function (): bool {
+                return false;
+            },
+            'read' => function (): string {
+                return '';
+            },
+            'getMetadata' => function (?string $key = null) {
+                return $key === 'timed_out' ? true : null;
+            },
+        ]);
+        $s2 = Psr7\Utils::streamFor('');
+
+        $this->expectException(Psr7\Exception\TimeoutException::class);
+        $this->expectExceptionMessage('Unable to read from stream: timed out');
+
+        Psr7\Utils::copyToStream($s1, $s2);
+    }
+
+    public function testCopyToStreamThrowsWhenReadTimesOutWithMaxLen(): void
+    {
+        $s1 = new FnStream([
+            'eof' => function (): bool {
+                return false;
+            },
+            'read' => function (): string {
+                return '';
+            },
+            'getMetadata' => function (?string $key = null) {
+                return $key === 'timed_out' ? true : null;
+            },
+        ]);
+        $s2 = Psr7\Utils::streamFor('');
+
+        $this->expectException(Psr7\Exception\TimeoutException::class);
+        $this->expectExceptionMessage('Unable to read from stream: timed out');
+
+        Psr7\Utils::copyToStream($s1, $s2, 10);
+    }
+
+    public function testCopyToStreamThrowsWhenWriteTimesOut(): void
+    {
+        $s1 = Psr7\Utils::streamFor('foobaz');
+        $s2 = Psr7\Utils::streamFor('');
+        $s2 = FnStream::decorate($s2, [
+            'write' => function (): int {
+                return 0;
+            },
+            'getMetadata' => function (?string $key = null) {
+                return $key === 'timed_out' ? true : null;
+            },
+        ]);
+
+        $this->expectException(Psr7\Exception\TimeoutException::class);
+        $this->expectExceptionMessage('Unable to write to stream: timed out');
+
+        Psr7\Utils::copyToStream($s1, $s2);
+    }
+
+    public function testCopyToStreamPreservesWriteFailureWhenMetadataProbeFails(): void
+    {
+        $s1 = Psr7\Utils::streamFor('foobaz');
+        $s2 = Psr7\Utils::streamFor('');
+        $s2 = FnStream::decorate($s2, [
+            'write' => function (): int {
+                return 0;
+            },
+            'getMetadata' => function (): void {
+                throw new \RuntimeException('metadata failed');
+            },
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to write to stream');
+
+        Psr7\Utils::copyToStream($s1, $s2);
+    }
+
+    public function testCopyToStreamPreservesThrownWriteExceptionWhenMetadataProbeFails(): void
+    {
+        $s1 = Psr7\Utils::streamFor('foobaz');
+        $s2 = Psr7\Utils::streamFor('');
+        $s2 = FnStream::decorate($s2, [
+            'write' => function (): int {
+                throw new \RuntimeException('write failed');
+            },
+            'getMetadata' => function (): void {
+                throw new \RuntimeException('metadata failed');
+            },
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('write failed');
+
+        Psr7\Utils::copyToStream($s1, $s2);
+    }
+
+    public function testCopyToStreamIgnoresStaleTimeoutMetadataAfterMaxLenIsSatisfied(): void
+    {
+        $s1 = Psr7\Utils::streamFor('foobaz');
+        $s1 = FnStream::decorate($s1, [
+            'getMetadata' => function (?string $key = null) {
+                return $key === 'timed_out' ? true : null;
+            },
+        ]);
+        $s2 = Psr7\Utils::streamFor('');
+
+        self::assertSame(3, Psr7\Utils::copyToStream($s1, $s2, 3));
+
+        self::assertSame('foo', (string) $s2);
+    }
+
+    public function testCopyToStreamThrowsWhenWriteFails(): void
+    {
+        $s1 = Psr7\Utils::streamFor('foobaz');
+        $s2 = Psr7\Utils::streamFor('');
+        $s2 = FnStream::decorate($s2, [
+            'write' => function () {
+                return 0;
+            },
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to write to stream');
+
+        Psr7\Utils::copyToStream($s1, $s2);
+    }
+
+    public function testCopyToStreamThrowsWhenWriteFailsWithMaxLen(): void
+    {
+        $s1 = Psr7\Utils::streamFor('foobaz');
+        $s2 = Psr7\Utils::streamFor('');
+        $s2 = FnStream::decorate($s2, [
+            'write' => function () {
+                return 0;
+            },
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to write to stream');
+
+        Psr7\Utils::copyToStream($s1, $s2, 10);
+    }
+
+    public function testCopyToStreamThrowsWhenDestinationBufferStreamReachesHighWaterMark(): void
+    {
+        $source = Psr7\Utils::streamFor('foobaz');
+        $dest = new Psr7\BufferStream(3);
+
+        try {
+            Psr7\Utils::copyToStream($source, $dest);
+            self::fail('Expected a RuntimeException to be thrown');
+        } catch (\RuntimeException $e) {
+            self::assertSame('Unable to write to stream', $e->getMessage());
+        }
+
+        // The bytes are buffered even though copyToStream reports failure.
+        self::assertSame('foobaz', (string) $dest);
+    }
+
+    public function testCopyToStreamThrowsWhenDestinationDroppingStreamIsFull(): void
+    {
+        $source = Psr7\Utils::streamFor('foobaz');
+        $underlying = new Psr7\BufferStream();
+        $dest = new Psr7\DroppingStream($underlying, 3);
+
+        try {
+            Psr7\Utils::copyToStream($source, $dest);
+            self::fail('Expected a RuntimeException to be thrown');
+        } catch (\RuntimeException $e) {
+            self::assertSame('Unable to write to stream', $e->getMessage());
+        }
+
+        // The destination kept up to maxLength bytes and dropped the rest.
+        self::assertSame('foo', (string) $underlying);
+    }
+
+    public function testCopyToStreamReadsInChunksInsteadOfAllInMemory(): void
+    {
+        $sizes = [];
+        $s1 = new FnStream([
+            'eof' => function () {
+                return false;
+            },
+            'read' => function ($size) use (&$sizes) {
+                $sizes[] = $size;
+
+                return str_repeat('.', $size);
+            },
+        ]);
+        $s2 = Psr7\Utils::streamFor('');
+        self::assertSame(16394, Psr7\Utils::copyToStream($s1, $s2, 16394));
+        $s2->seek(0);
+        self::assertSame(16394, strlen($s2->getContents()));
+        self::assertSame(8192, $sizes[0]);
+        self::assertSame(8192, $sizes[1]);
+        self::assertSame(10, $sizes[2]);
+    }
+
+    public function testStopsCopyToSteamWhenReadFailsWithMaxLen(): void
+    {
+        $s1 = Psr7\Utils::streamFor('foobaz');
+        $s1 = FnStream::decorate($s1, [
+            'read' => function () {
+                return '';
+            },
+        ]);
+        $s2 = Psr7\Utils::streamFor('');
+        self::assertSame(0, Psr7\Utils::copyToStream($s1, $s2, 10));
+        self::assertSame('', (string) $s2);
+    }
+
+    public function testReadsLines(): void
+    {
+        $s = Psr7\Utils::streamFor("foo\nbaz\nbar");
+        self::assertSame("foo\n", Psr7\Utils::readLine($s));
+        self::assertSame("baz\n", Psr7\Utils::readLine($s));
+        self::assertSame('bar', Psr7\Utils::readLine($s));
+    }
+
+    public function testReadsLinesUpToMaxLength(): void
+    {
+        $s = Psr7\Utils::streamFor("12345\n");
+        self::assertSame('123', Psr7\Utils::readLine($s, 4));
+        self::assertSame("45\n", Psr7\Utils::readLine($s));
+    }
+
+    public function testReadLinesEof(): void
+    {
+        // Should return empty string on EOF
+        $s = Psr7\Utils::streamFor("foo\nbar");
+        while (!$s->eof()) {
+            Psr7\Utils::readLine($s);
+        }
+        self::assertSame('', Psr7\Utils::readLine($s));
+    }
+
+    public function testReadsLineUntilEmptyStringReturnedFromRead(): void
+    {
+        $s = $this->createMock(StreamInterface::class);
+        $s->expects(self::exactly(2))
+            ->method('read')
+            ->willReturnCallback(function () {
+                static $called = false;
+                if ($called) {
+                    return '';
+                }
+                $called = true;
+
+                return 'h';
+            });
+        $s->expects(self::exactly(2))
+            ->method('eof')
+            ->willReturn(false);
+        self::assertSame('h', Psr7\Utils::readLine($s));
+    }
+
+    public function testReadLineThrowsWhenReadTimesOut(): void
+    {
+        $s = $this->createMock(StreamInterface::class);
+        $s->method('read')->willReturn('');
+        $s->method('eof')->willReturn(false);
+        $s->method('getMetadata')->with('timed_out')->willReturn(true);
+
+        $this->expectException(Psr7\Exception\TimeoutException::class);
+        $this->expectExceptionMessage('Unable to read line from stream: timed out');
+
+        Psr7\Utils::readLine($s);
+    }
+
+    public function testReadLineIgnoresMetadataProbeFailure(): void
+    {
+        $s = $this->createMock(StreamInterface::class);
+        $s->method('read')->willReturn('');
+        $s->method('eof')->willReturn(false);
+        $s->method('getMetadata')->with('timed_out')->willThrowException(new \RuntimeException('metadata failed'));
+
+        self::assertSame('', Psr7\Utils::readLine($s));
+    }
+
+    /**
+     * @dataProvider redactUserInfoProvider
+     */
+    public function testRedactUserInfo(string $expected, string $uri): void
+    {
+        self::assertSame($expected, (string) Psr7\Utils::redactUserInfo(new Psr7\Uri($uri)));
+    }
+
+    public static function redactUserInfoProvider(): iterable
+    {
+        yield 'username and password' => ['http://***@localhost/', 'http://my_user:secretPass@localhost/'];
+        yield 'username only' => ['http://***@localhost/', 'http://ghp_TOKEN@localhost/'];
+        yield 'empty password' => ['http://***@localhost/', 'http://user:@localhost/'];
+        yield 'percent-encoded userinfo' => ['http://***@localhost/', 'http://us%40er:p%23ss@localhost/'];
+        yield 'rest of the uri preserved' => ['https://***@example.com:8443/path?q=1#frag', 'https://user:pass@example.com:8443/path?q=1#frag'];
+        yield 'ipv6 host' => ['http://***@[::1]:8080/', 'http://user:pass@[::1]:8080/'];
+        yield 'already redacted' => ['http://***@localhost/', 'http://***@localhost/'];
+        yield 'no userinfo' => ['http://localhost/', 'http://localhost/'];
+    }
+
+    public function testRedactUserInfoReturnsSameInstanceWithoutUserInfo(): void
+    {
+        $uri = new Psr7\Uri('http://localhost/');
+
+        self::assertSame($uri, Psr7\Utils::redactUserInfo($uri));
+    }
+
+    /**
+     * @dataProvider redactUserInfoInStringProvider
+     */
+    public function testRedactUserInfoInString(string $expected, string $subject, string $uri): void
+    {
+        self::assertSame($expected, Psr7\Utils::redactUserInfoInString($subject, $uri));
+    }
+
+    public static function redactUserInfoInStringProvider(): iterable
+    {
+        yield 'full uri embedded' => [
+            "Failed to connect to 'http://***@localhost:8125'",
+            "Failed to connect to 'http://my_user:secretPass@localhost:8125'",
+            'http://my_user:secretPass@localhost:8125',
+        ];
+        yield 'embedded without scheme' => [
+            'Could not resolve ***@localhost',
+            'Could not resolve ghp_TOKEN@localhost',
+            'http://ghp_TOKEN@localhost/',
+        ];
+        yield 'multiple occurrences' => [
+            'via http://***@localhost and http://***@localhost',
+            'via http://user:pass@localhost and http://user:pass@localhost',
+            'http://user:pass@localhost',
+        ];
+        yield 'authority-form uri' => [
+            "Unsupported proxy syntax in '***@localhost:8125'",
+            "Unsupported proxy syntax in 'user:pass@localhost:8125'",
+            'user:pass@localhost:8125',
+        ];
+        yield 'non-http scheme' => [
+            'via socks5h://***@localhost:1080',
+            'via socks5h://user:pass@localhost:1080',
+            'socks5h://user:pass@localhost:1080',
+        ];
+        yield 'ipv6 host' => [
+            'via http://***@[::1]:8080',
+            'via http://user:pass@[::1]:8080',
+            'http://user:pass@[::1]:8080',
+        ];
+        yield 'raw control bytes in credentials' => [
+            'Failed to connect to http://***@localhost:8125',
+            "Failed to connect to http://user:se\x01cr\x7Fet@localhost:8125",
+            "http://user:se\x01cr\x7Fet@localhost:8125",
+        ];
+        yield 'raw at sign in credentials' => [
+            'http://***@localhost',
+            'http://user:p@ss@localhost',
+            'http://user:p@ss@localhost',
+        ];
+        yield 'raw slash in credentials' => [
+            "Unsupported proxy syntax in 'http://***@localhost:8125'",
+            "Unsupported proxy syntax in 'http://user:se/cret@localhost:8125'",
+            'http://user:se/cret@localhost:8125',
+        ];
+        yield 'raw question mark in credentials' => [
+            "Unsupported proxy syntax in 'http://***@localhost:8125'",
+            "Unsupported proxy syntax in 'http://user:se?cret@localhost:8125'",
+            'http://user:se?cret@localhost:8125',
+        ];
+        yield 'raw hash in credentials' => [
+            "Unsupported proxy syntax in 'http://***@localhost:8125'",
+            "Unsupported proxy syntax in 'http://user:se#cret@localhost:8125'",
+            'http://user:se#cret@localhost:8125',
+        ];
+        yield 'multiple raw at signs across a raw slash' => [
+            "Unsupported proxy syntax in 'http://***@real.example'",
+            "Unsupported proxy syntax in 'http://user:old@localhost:99999999/se:cret@real.example'",
+            'http://user:old@localhost:99999999/se:cret@real.example',
+        ];
+        yield 'multiple raw at signs across a raw question mark' => [
+            "Unsupported proxy syntax in 'http://***@real.example'",
+            "Unsupported proxy syntax in 'http://user:old@localhost:99999999?se:cret@real.example'",
+            'http://user:old@localhost:99999999?se:cret@real.example',
+        ];
+        yield 'multiple raw at signs across a raw hash' => [
+            "Unsupported proxy syntax in 'http://***@real.example'",
+            "Unsupported proxy syntax in 'http://user:old@localhost:99999999#se:cret@real.example'",
+            'http://user:old@localhost:99999999#se:cret@real.example',
+        ];
+        yield 'multiple raw at signs in authority-form' => [
+            "Unsupported proxy syntax in '***@real.example'",
+            "Unsupported proxy syntax in 'user:old@localhost:99999999/se:cret@real.example'",
+            'user:old@localhost:99999999/se:cret@real.example',
+        ];
+        yield 'at sign only in path' => [
+            "Failed to connect to 'http://localhost:8125/health@check'",
+            "Failed to connect to 'http://localhost:8125/health@check'",
+            'http://localhost:8125/health@check',
+        ];
+        yield 'at sign only in query' => [
+            'via http://localhost:8125?q=user@example.com',
+            'via http://localhost:8125?q=user@example.com',
+            'http://localhost:8125?q=user@example.com',
+        ];
+        yield 'at sign only in fragment' => [
+            'via http://localhost:8125#frag@ment',
+            'via http://localhost:8125#frag@ment',
+            'http://localhost:8125#frag@ment',
+        ];
+        yield 'at sign only before the scheme' => [
+            'via we@ird://host',
+            'via we@ird://host',
+            'we@ird://host',
+        ];
+        yield 'uri not embedded in subject' => [
+            'Connection refused',
+            'Connection refused',
+            'http://user:pass@localhost',
+        ];
+        yield 'no userinfo' => ['error text', 'error text', 'http://localhost:8125'];
+        yield 'empty uri' => ['error text', 'error text', ''];
+        yield 'empty userinfo' => ['http://@localhost', 'http://@localhost', 'http://@localhost'];
+    }
+
+    /**
+     * @dataProvider redactUriForMessageProvider
+     */
+    public function testRedactUriForMessage(string $expected, string $uri): void
+    {
+        self::assertSame($expected, Psr7\Utils::redactUriForMessage(new Psr7\Uri($uri)));
+    }
+
+    public static function redactUriForMessageProvider(): iterable
+    {
+        yield 'credentials and sensitive components' => [
+            'https://***@example.com:8443/path',
+            'https://user:pass@example.com:8443/path?token=secret#private',
+        ];
+        yield 'username only' => [
+            'https://***@0x7f000001/path',
+            'https://token@0x7f000001/path?secret',
+        ];
+        yield 'no credentials' => [
+            'https://example.com/path',
+            'https://example.com/path?token=secret#private',
+        ];
+    }
+
+    public function testRedactUriForMessageFallsBackWhenComponentAccessThrows(): void
+    {
+        $uri = $this->createMock(UriInterface::class);
+        $uri->method('__toString')->willReturn('https://user:pass@example.com/path?token=secret');
+        $uri->method('getUserInfo')->willThrowException(new \RuntimeException('failed'));
+
+        self::assertSame('https://***@example.com/path', Psr7\Utils::redactUriForMessage($uri));
+    }
+
+    /**
+     * @dataProvider redactUriStringForMessageProvider
+     */
+    public function testRedactUriStringForMessage(string $expected, string $uri): void
+    {
+        self::assertSame($expected, Psr7\Utils::redactUriStringForMessage($uri));
+    }
+
+    public static function redactUriStringForMessageProvider(): iterable
+    {
+        yield 'malformed port and credentials' => [
+            'https://***@example.com:bad/path',
+            'https://user:pass@example.com:bad/path?token=secret#private',
+        ];
+        yield 'relative reference' => ['/path', '/path?token=secret#private'];
+        yield 'diagnostic control escaping' => ['http://[::1]\\x0A', "http://[::1]\n"];
+    }
+
+    public function testCalculatesHash(): void
+    {
+        $s = Psr7\Utils::streamFor('foobazbar');
+        self::assertSame(md5('foobazbar'), Psr7\Utils::hash($s, 'md5'));
+    }
+
+    public function testCalculatesHashThrowsWhenSeekFails(): void
+    {
+        $s = new NoSeekStream(Psr7\Utils::streamFor('foobazbar'));
+        $s->read(2);
+
+        $this->expectException(\RuntimeException::class);
+
+        Psr7\Utils::hash($s, 'md5');
+    }
+
+    public function testCalculatesHashSeeksToOriginalPosition(): void
+    {
+        $s = Psr7\Utils::streamFor('foobazbar');
+        $s->seek(4);
+        self::assertSame(md5('foobazbar'), Psr7\Utils::hash($s, 'md5'));
+        self::assertSame(4, $s->tell());
+    }
+
+    public function testCalculatesHashThrowsWhenReadTimesOut(): void
+    {
+        $s = $this->createMock(StreamInterface::class);
+        $s->method('tell')->willReturn(0);
+        $s->method('eof')->willReturn(false);
+        $s->method('read')->willReturn('');
+        $s->method('getMetadata')->with('timed_out')->willReturn(true);
+
+        $this->expectException(Psr7\Exception\TimeoutException::class);
+        $this->expectExceptionMessage('Unable to calculate stream hash: timed out');
+
+        Psr7\Utils::hash($s, 'md5');
+    }
+
+    public function testCalculatesHashStopsWhenReadReturnsEmptyString(): void
+    {
+        $s = $this->createMock(StreamInterface::class);
+        $s->method('tell')->willReturn(0);
+        $s->method('eof')->willReturn(false);
+        $s->method('read')->willReturn('');
+        $s->method('getMetadata')->with('timed_out')->willReturn(false);
+        $s->expects(self::once())->method('seek')->with(0);
+
+        self::assertSame(md5(''), Psr7\Utils::hash($s, 'md5'));
+    }
+
+    public function testOpensFilesSuccessfully(): void
+    {
+        $r = Psr7\Utils::tryFopen(__FILE__, 'r');
+        self::assertIsResource($r);
+        fclose($r);
+    }
+
+    public function testThrowsExceptionNotWarning(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to open /path/to/does/not/exist using mode r');
+
+        Psr7\Utils::tryFopen('/path/to/does/not/exist', 'r');
+    }
+
+    public function testTryFopenEscapesFilenameInException(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to open /path/to/does\\x0Anot-exist using mode r');
+
+        Psr7\Utils::tryFopen("/path/to/does\nnot-exist", 'r');
+    }
+
+    public function testThrowsExceptionNotValueError(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to open  using mode r');
+
+        Psr7\Utils::tryFopen('', 'r');
+    }
+
+    public function testGetsContentsThrowExceptionWhenNotReadable(): void
+    {
+        $r = fopen(tempnam(sys_get_temp_dir(), 'guzzle-psr7-'), 'w');
+        fwrite($r, 'hello world!');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to read stream contents');
+
+        try {
+            Psr7\Utils::tryGetContents($r);
+        } finally {
+            fclose($r);
+        }
+    }
+
+    public function testGetsContentsThrowExceptionWhenCLosed(): void
+    {
+        $r = fopen(tempnam(sys_get_temp_dir(), 'guzzle-psr7-'), 'r+');
+        fclose($r);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to read stream contents');
+
+        Psr7\Utils::tryGetContents($r);
+    }
+
+    public function testTryGetContentsThrowsTimeoutWhenReadReturnsFalseAndResourceTimedOut(): void
+    {
+        PhpStreamMock::$streamGetContentsReturnsFalse = true;
+        PhpStreamMock::$isStreamTimedOut = true;
+        $resource = Psr7\Utils::tryFopen('php://temp', 'r+');
+
+        $this->expectException(Psr7\Exception\TimeoutException::class);
+        $this->expectExceptionMessage('Unable to read stream contents: timed out');
+
+        try {
+            Psr7\Utils::tryGetContents($resource);
+        } finally {
+            fclose($resource);
+        }
+    }
+
+    public function testTryGetContentsThrowsTimeoutWhenPartialReadTimesOut(): void
+    {
+        PhpStreamMock::$streamGetContentsResult = 'partial';
+        PhpStreamMock::$isStreamTimedOut = true;
+        $resource = Psr7\Utils::tryFopen('php://temp', 'r+');
+
+        $this->expectException(Psr7\Exception\TimeoutException::class);
+        $this->expectExceptionMessage('Unable to read stream contents: timed out');
+
+        try {
+            Psr7\Utils::tryGetContents($resource);
+        } finally {
+            fclose($resource);
+        }
+    }
+
+    public function testTryGetContentsWrapsReadFailureWhenResourceTimedOut(): void
+    {
+        $previous = new \ErrorException('read failed');
+        PhpStreamMock::$streamGetContentsThrowable = $previous;
+        PhpStreamMock::$isStreamTimedOut = true;
+        $resource = Psr7\Utils::tryFopen('php://temp', 'r+');
+
+        try {
+            Psr7\Utils::tryGetContents($resource);
+            self::fail('Expected timeout exception.');
+        } catch (Psr7\Exception\TimeoutException $e) {
+            self::assertSame('Unable to read stream contents: timed out', $e->getMessage());
+            self::assertSame($previous, $e->getPrevious());
+        } finally {
+            fclose($resource);
+        }
+    }
+
+    public function testCreatesUriForValue(): void
+    {
+        self::assertInstanceOf('GuzzleHttp\Psr7\Uri', Psr7\Utils::uriFor('/foo'));
+        self::assertInstanceOf(
+            'GuzzleHttp\Psr7\Uri',
+            Psr7\Utils::uriFor(new Psr7\Uri('/foo'))
+        );
+    }
+
+    public function testValidatesUri(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        Psr7\Utils::uriFor([]);
+    }
+
+    public function testKeepsPositionOfResource(): void
+    {
+        $h = fopen(__FILE__, 'r');
+        fseek($h, 10);
+        $stream = Psr7\Utils::streamFor($h);
+        self::assertSame(10, $stream->tell());
+        $stream->close();
+    }
+
+    public function testCreatesWithFactory(): void
+    {
+        $stream = Psr7\Utils::streamFor('foo');
+        self::assertInstanceOf('GuzzleHttp\Psr7\Stream', $stream);
+        self::assertSame('foo', $stream->getContents());
+        $stream->close();
+    }
+
+    public function testFactoryCreatesFromEmptyString(): void
+    {
+        $s = Psr7\Utils::streamFor();
+        self::assertInstanceOf('GuzzleHttp\Psr7\Stream', $s);
+    }
+
+    public function testFactoryCreatesFromNull(): void
+    {
+        $s = Psr7\Utils::streamFor(null);
+        self::assertInstanceOf('GuzzleHttp\Psr7\Stream', $s);
+    }
+
+    public function testFactoryCreatesFromResource(): void
+    {
+        $r = fopen(__FILE__, 'r');
+        $s = Psr7\Utils::streamFor($r);
+        self::assertInstanceOf('GuzzleHttp\Psr7\Stream', $s);
+        self::assertSame(file_get_contents(__FILE__), (string) $s);
+    }
+
+    public function testFactoryCreatesFromObjectWithToString(): void
+    {
+        $r = new HasToString();
+        $s = Psr7\Utils::streamFor($r);
+        self::assertInstanceOf('GuzzleHttp\Psr7\Stream', $s);
+        self::assertSame('foo', (string) $s);
+    }
+
+    public function testFactoryTreatsCallableStringAsStringBody(): void
+    {
+        $s = Psr7\Utils::streamFor('strlen');
+
+        self::assertNotInstanceOf(Psr7\PumpStream::class, $s);
+        self::assertSame('strlen', $s->getContents());
+    }
+
+    public function testFactoryCreatesFromCallableArray(): void
+    {
+        $source = new class {
+            /** @var list<string|false> */
+            private array $chunks = ['foo', false];
+
+            /**
+             * @return string|false
+             */
+            public function read(int $length)
+            {
+                if ($this->chunks === []) {
+                    return false;
+                }
+
+                return array_shift($this->chunks);
+            }
+        };
+
+        $s = Psr7\Utils::streamFor([$source, 'read']);
+
+        self::assertInstanceOf(Psr7\PumpStream::class, $s);
+        self::assertSame('foo', $s->getContents());
+    }
+
+    public function testFactoryCreatesFromInvokableObject(): void
+    {
+        $source = new class {
+            /** @var list<string|false> */
+            private array $chunks = ['foo', false];
+
+            /**
+             * @return string|false
+             */
+            public function __invoke(int $length)
+            {
+                if ($this->chunks === []) {
+                    return false;
+                }
+
+                return array_shift($this->chunks);
+            }
+        };
+
+        $s = Psr7\Utils::streamFor($source);
+
+        self::assertInstanceOf(Psr7\PumpStream::class, $s);
+        self::assertSame('foo', $s->getContents());
+    }
+
+    public function testCreatePassesThrough(): void
+    {
+        $s = Psr7\Utils::streamFor('foo');
+        self::assertSame($s, Psr7\Utils::streamFor($s));
+    }
+
+    public function testThrowsExceptionForUnknown(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        Psr7\Utils::streamFor(new \stdClass());
+    }
+
+    public function testReturnsCustomMetadata(): void
+    {
+        $s = Psr7\Utils::streamFor('foo', ['metadata' => ['hwm' => 3]]);
+        self::assertSame(3, $s->getMetadata('hwm'));
+        self::assertArrayHasKey('hwm', $s->getMetadata());
+    }
+
+    public function testCustomUriMetadataDoesNotAffectStreamSize(): void
+    {
+        $s = Psr7\Utils::streamFor('foo', ['metadata' => ['uri' => []]]);
+
+        self::assertSame([], $s->getMetadata('uri'));
+        self::assertSame(3, $s->getSize());
+    }
+
+    public function testCanSetSize(): void
+    {
+        $s = Psr7\Utils::streamFor('', ['size' => 10]);
+        self::assertSame(10, $s->getSize());
+    }
+
+    /**
+     * @dataProvider invalidStreamSizes
+     *
+     * @param mixed $size
+     */
+    public function testStreamForRejectsInvalidSizeOption($size): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Stream size must be a non-negative integer or null');
+
+        Psr7\Utils::streamFor('', ['size' => $size]);
+    }
+
+    public static function invalidStreamSizes(): iterable
+    {
+        yield 'negative integer' => [-1];
+        yield 'string integer' => ['10'];
+        yield 'float' => [10.0];
+    }
+
+    /**
+     * @dataProvider nonStringScalars
+     *
+     * @param mixed $value
+     */
+    public function testStreamForRejectsNonStringScalar($value): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot create a stream from');
+
+        Psr7\Utils::streamFor($value);
+    }
+
+    public static function nonStringScalars(): iterable
+    {
+        yield 'int' => [1];
+        yield 'float' => [1.5];
+        yield 'bool' => [true];
+        yield 'NAN' => [\NAN];
+        yield 'INF' => [\INF];
+        yield '-INF' => [-\INF];
+    }
+
+    public function testCanCreateIteratorBasedStream(): void
+    {
+        $a = new \ArrayIterator(['foo', 'bar', '123']);
+        $p = Psr7\Utils::streamFor($a);
+        self::assertInstanceOf('GuzzleHttp\Psr7\PumpStream', $p);
+        self::assertSame('foo', $p->read(3));
+        self::assertFalse($p->eof());
+        self::assertSame('b', $p->read(1));
+        self::assertSame('a', $p->read(1));
+        self::assertSame('r12', $p->read(3));
+        self::assertFalse($p->eof());
+        self::assertSame('3', $p->getContents());
+        self::assertTrue($p->eof());
+        self::assertSame(9, $p->tell());
+    }
+
+    public function testIteratorBasedStreamDoesNotTreatFalseAsEof(): void
+    {
+        $stream = Psr7\Utils::streamFor(new \ArrayIterator([false, 'x']));
+
+        self::assertSame('x', $stream->getContents());
+    }
+
+    public function testIteratorBasedStreamDoesNotTreatNullAsEof(): void
+    {
+        $stream = Psr7\Utils::streamFor(new \ArrayIterator([null, 'x']));
+
+        self::assertSame('x', $stream->getContents());
+    }
+
+    public function testIteratorBasedStreamCastsScalarValuesToStrings(): void
+    {
+        $stream = Psr7\Utils::streamFor(new \ArrayIterator([1, 2.5, true, false, 'x']));
+
+        self::assertSame('12.51x', $stream->getContents());
+    }
+
+    public function testIteratorBasedStreamCastsStringableObjectsToStrings(): void
+    {
+        $value = new class {
+            public function __toString(): string
+            {
+                return 'foo';
+            }
+        };
+
+        $stream = Psr7\Utils::streamFor(new \ArrayIterator([$value, 'bar']));
+
+        self::assertSame('foobar', $stream->getContents());
+    }
+
+    public function testIteratorBasedStreamSkipsEmptyConvertedChunks(): void
+    {
+        $emptyStringable = new class {
+            public function __toString(): string
+            {
+                return '';
+            }
+        };
+
+        $stream = Psr7\Utils::streamFor(new \ArrayIterator([
+            '',
+            false,
+            null,
+            $emptyStringable,
+            'foo',
+            '',
+            'bar',
+            null,
+        ]));
+
+        self::assertSame('foobar', $stream->getContents());
+        self::assertTrue($stream->eof());
+    }
+
+    public function testIteratorBasedStreamTerminatesWhenOnlyEmptyConvertedChunksAreYielded(): void
+    {
+        $stream = Psr7\Utils::streamFor(new \ArrayIterator(['', false, null]));
+
+        self::assertSame('', $stream->getContents());
+        self::assertTrue($stream->eof());
+    }
+
+    public function testCallableStreamCloseClearsBufferedBytes(): void
+    {
+        $stream = Psr7\Utils::streamFor(static function (): string {
+            return 'abc';
+        });
+
+        self::assertSame('a', $stream->read(1));
+
+        $stream->close();
+
+        self::assertSame('', $stream->read(10));
+        self::assertTrue($stream->eof());
+    }
+
+    public function testIteratorStreamCloseClearsBufferedBytes(): void
+    {
+        $stream = Psr7\Utils::streamFor(new \ArrayIterator(['abc']));
+
+        self::assertSame('a', $stream->read(1));
+
+        $stream->close();
+
+        self::assertSame('', $stream->read(10));
+        self::assertTrue($stream->eof());
+    }
+
+    public function testIteratorBasedStreamRejectsArrayValues(): void
+    {
+        $stream = Psr7\Utils::streamFor(new \ArrayIterator([['x']]));
+
+        $this->expectException(\UnexpectedValueException::class);
+        $this->expectExceptionMessage('Iterator must yield scalar, null, or stringable values');
+
+        $stream->getContents();
+    }
+
+    public function testIteratorBasedStreamRejectsNonStringableObjects(): void
+    {
+        $stream = Psr7\Utils::streamFor(new \ArrayIterator([new \stdClass()]));
+
+        $this->expectException(\UnexpectedValueException::class);
+        $this->expectExceptionMessage('Iterator must yield scalar, null, or stringable values');
+
+        $stream->getContents();
+    }
+
+    /**
+     * @dataProvider nonFiniteIteratorChunkProvider
+     */
+    public function testIteratorBasedStreamRejectsNonFiniteFloatValues(float $value): void
+    {
+        $stream = Psr7\Utils::streamFor(new \ArrayIterator([$value]));
+
+        $this->expectException(\UnexpectedValueException::class);
+        $this->expectExceptionMessage('Iterator must not yield non-finite float values');
+
+        $stream->getContents();
+    }
+
+    public static function nonFiniteIteratorChunkProvider(): iterable
+    {
+        yield 'NAN' => [\NAN];
+        yield 'INF' => [\INF];
+        yield '-INF' => [-\INF];
+    }
+
+    public function testIteratorBasedStreamRejectsNonFiniteFloatAfterValidChunks(): void
+    {
+        $stream = Psr7\Utils::streamFor(new \ArrayIterator(['foo', \NAN]));
+
+        $this->expectException(\UnexpectedValueException::class);
+        $this->expectExceptionMessage('Iterator must not yield non-finite float values');
+
+        $stream->getContents();
+    }
+
+    public function testConvertsRequestsToStrings(): void
+    {
+        $request = new Psr7\Request('PUT', 'http://foo.com/hi?123', [
+            'Baz' => 'bar',
+            'Qux' => 'ipsum',
+        ], 'hello', '1.0');
+        self::assertSame(
+            "PUT /hi?123 HTTP/1.0\r\nHost: foo.com\r\nBaz: bar\r\nQux: ipsum\r\n\r\nhello",
+            Psr7\Message::toString($request)
+        );
+    }
+
+    public function testConvertsResponsesToStrings(): void
+    {
+        $response = new Psr7\Response(200, [
+            'Baz' => 'bar',
+            'Qux' => 'ipsum',
+        ], 'hello', '1.0', 'FOO');
+        self::assertSame(
+            "HTTP/1.0 200 FOO\r\nBaz: bar\r\nQux: ipsum\r\n\r\nhello",
+            Psr7\Message::toString($response)
+        );
+    }
+
+    public function testCorrectlyRendersSetCookieHeadersToString(): void
+    {
+        $response = new Psr7\Response(200, [
+            'Set-Cookie' => ['bar', 'baz', 'qux'],
+        ], 'hello', '1.0', 'FOO');
+        self::assertSame(
+            "HTTP/1.0 200 FOO\r\nSet-Cookie: bar\r\nSet-Cookie: baz\r\nSet-Cookie: qux\r\n\r\nhello",
+            Psr7\Message::toString($response)
+        );
+    }
+
+    public function testCanModifyRequestWithUri(): void
+    {
+        $r1 = new Psr7\Request('GET', 'http://foo.com');
+        $r2 = Psr7\Utils::modifyRequest($r1, [
+            'uri' => new Psr7\Uri('http://www.foo.com'),
+        ]);
+        self::assertSame('http://www.foo.com', (string) $r2->getUri());
+        self::assertSame('www.foo.com', (string) $r2->getHeaderLine('host'));
+    }
+
+    public function testCanModifyRequestWithUriAndPort(): void
+    {
+        $r1 = new Psr7\Request('GET', 'http://foo.com:8000');
+        $r2 = Psr7\Utils::modifyRequest($r1, [
+            'uri' => new Psr7\Uri('http://www.foo.com:8000'),
+        ]);
+        self::assertSame('http://www.foo.com:8000', (string) $r2->getUri());
+        self::assertSame('www.foo.com:8000', (string) $r2->getHeaderLine('host'));
+    }
+
+    public function testCanModifyRequestWithUriAndZeroPort(): void
+    {
+        $r1 = new Psr7\Request('GET', 'http://foo.com');
+        $r2 = Psr7\Utils::modifyRequest($r1, [
+            'uri' => (new Psr7\Uri('http://www.foo.com'))->withPort(0),
+        ]);
+        self::assertSame('http://www.foo.com:0', (string) $r2->getUri());
+        self::assertSame('www.foo.com:0', (string) $r2->getHeaderLine('host'));
+    }
+
+    public function testCanModifyRequestWithUriAndNonHttpSchemePort(): void
+    {
+        $r1 = new Psr7\Request('GET', 'http://foo.com');
+        $r2 = Psr7\Utils::modifyRequest($r1, [
+            'uri' => new Psr7\Uri('ws://www.foo.com:8080'),
+        ]);
+        self::assertSame('ws://www.foo.com:8080', (string) $r2->getUri());
+        self::assertSame('www.foo.com:8080', (string) $r2->getHeaderLine('host'));
+    }
+
+    public function testModifyRequestRejectsInvalidUriHostFromCustomUri(): void
+    {
+        $uri = $this->createMock(UriInterface::class);
+        $uri->method('getHost')->willReturn("foo\nbar");
+        $uri->method('getPort')->willReturn(null);
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        Psr7\Utils::modifyRequest(new Psr7\Request('GET', '/'), ['uri' => $uri]);
+    }
+
+    public function testModifyRequestOmitsDefaultPortFromCustomUri(): void
+    {
+        $uri = $this->createMock(UriInterface::class);
+        $uri->method('getHost')->willReturn('www.foo.com');
+        $uri->method('getPort')->willReturn(80);
+        $uri->method('getScheme')->willReturn('http');
+
+        $r2 = Psr7\Utils::modifyRequest(new Psr7\Request('GET', '/'), ['uri' => $uri]);
+
+        self::assertSame('www.foo.com', $r2->getHeaderLine('host'));
+    }
+
+    public function testCanModifyRequestWithFalseyUriHost(): void
+    {
+        $r1 = new Psr7\Request('GET', 'http://foo.com');
+        $r2 = Psr7\Utils::modifyRequest($r1, [
+            'uri' => new Psr7\Uri('http://0'),
+        ]);
+        self::assertSame('http://0', (string) $r2->getUri());
+        self::assertSame('0', (string) $r2->getHeaderLine('host'));
+    }
+
+    public function testCanModifyRequestWithCaseInsensitiveHeader(): void
+    {
+        $r1 = new Psr7\Request('GET', 'http://foo.com', ['User-Agent' => 'foo']);
+        $r2 = Psr7\Utils::modifyRequest($r1, ['set_headers' => ['User-agent' => 'bar']]);
+        self::assertSame('bar', $r2->getHeaderLine('User-Agent'));
+        self::assertSame('bar', $r2->getHeaderLine('User-agent'));
+    }
+
+    public function testReturnsAsIsWhenNoChanges(): void
+    {
+        $r1 = new Psr7\Request('GET', 'http://foo.com');
+        $r2 = Psr7\Utils::modifyRequest($r1, []);
+        self::assertSame($r1, $r2);
+
+        $r1 = new Psr7\ServerRequest('GET', 'http://foo.com');
+        $r2 = Psr7\Utils::modifyRequest($r1, []);
+        self::assertSame($r1, $r2);
+    }
+
+    public function testReturnsUriAsIsWhenNoChanges(): void
+    {
+        $r1 = new Psr7\Request('GET', 'http://foo.com');
+        $r2 = Psr7\Utils::modifyRequest($r1, ['set_headers' => ['foo' => 'bar']]);
+        self::assertNotSame($r1, $r2);
+        self::assertSame('bar', $r2->getHeaderLine('foo'));
+    }
+
+    public function testRemovesHeadersFromMessage(): void
+    {
+        $r1 = new Psr7\Request('GET', 'http://foo.com', ['foo' => 'bar']);
+        $r2 = Psr7\Utils::modifyRequest($r1, ['remove_headers' => ['foo']]);
+        self::assertNotSame($r1, $r2);
+        self::assertFalse($r2->hasHeader('foo'));
+    }
+
+    public function testAddsQueryToUri(): void
+    {
+        $r1 = new Psr7\Request('GET', 'http://foo.com');
+        $r2 = Psr7\Utils::modifyRequest($r1, ['query' => 'foo=bar']);
+        self::assertNotSame($r1, $r2);
+        self::assertSame('foo=bar', $r2->getUri()->getQuery());
+    }
+
+    public function testModifyRequestKeepInstanceOfRequest(): void
+    {
+        $r1 = new Psr7\Request('GET', 'http://foo.com');
+        $r2 = Psr7\Utils::modifyRequest($r1, ['remove_headers' => ['non-existent']]);
+        self::assertInstanceOf('GuzzleHttp\Psr7\Request', $r2);
+
+        $r1 = new Psr7\ServerRequest('GET', 'http://foo.com');
+        $r2 = Psr7\Utils::modifyRequest($r1, ['remove_headers' => ['non-existent']]);
+        self::assertInstanceOf('Psr\Http\Message\ServerRequestInterface', $r2);
+    }
+
+    public function testModifyRequestPreservesConcreteRequestSubclass(): void
+    {
+        $request = new class('GET', 'http://example.com', 'user-123') extends Psr7\Request {
+            private string $userId;
+
+            public function __construct(string $method, $uri, string $userId)
+            {
+                $this->userId = $userId;
+
+                parent::__construct($method, $uri);
+            }
+
+            public function userId(): string
+            {
+                return $this->userId;
+            }
+        };
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'method' => 'POST',
+            'uri' => new Psr7\Uri('http://www.example.com/path'),
+            'query' => 'a=b',
+            'set_headers' => ['X-Test' => '1'],
+            'body' => 'payload',
+            'version' => '2',
+        ]);
+
+        self::assertSame(get_class($request), get_class($modified));
+        self::assertSame('user-123', $modified->userId());
+        self::assertSame('POST', $modified->getMethod());
+        self::assertSame('http://www.example.com/path?a=b', (string) $modified->getUri());
+        self::assertSame('www.example.com', $modified->getHeaderLine('Host'));
+        self::assertSame('1', $modified->getHeaderLine('X-Test'));
+        self::assertSame('payload', (string) $modified->getBody());
+        self::assertSame('2', $modified->getProtocolVersion());
+
+        self::assertSame('GET', $request->getMethod());
+        self::assertFalse($request->hasHeader('X-Test'));
+    }
+
+    public function testModifyRequestPreservesConcreteServerRequestSubclass(): void
+    {
+        $request = new class('GET', 'http://example.com', [], null, '1.1', ['server' => 'value'], 'ctx') extends Psr7\ServerRequest {
+            private string $context;
+
+            public function __construct(
+                string $method,
+                $uri,
+                array $headers,
+                $body,
+                string $version,
+                array $serverParams,
+                string $context
+            ) {
+                $this->context = $context;
+
+                parent::__construct($method, $uri, $headers, $body, $version, $serverParams);
+            }
+
+            public function context(): string
+            {
+                return $this->context;
+            }
+        };
+
+        $file = new Psr7\UploadedFile('Test', 100, \UPLOAD_ERR_OK);
+        $request = $request
+            ->withCookieParams(['cookie' => 'value'])
+            ->withQueryParams(['query' => 'value'])
+            ->withParsedBody(['body' => 'value'])
+            ->withUploadedFiles([$file])
+            ->withAttribute('attribute', 'value');
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'set_headers' => ['X-Test' => '1'],
+        ]);
+
+        self::assertSame(get_class($request), get_class($modified));
+        self::assertSame('ctx', $modified->context());
+        self::assertSame(['server' => 'value'], $modified->getServerParams());
+        self::assertSame(['cookie' => 'value'], $modified->getCookieParams());
+        self::assertSame(['query' => 'value'], $modified->getQueryParams());
+        self::assertSame(['body' => 'value'], $modified->getParsedBody());
+        self::assertSame([$file], $modified->getUploadedFiles());
+        self::assertSame(['attribute' => 'value'], $modified->getAttributes());
+        self::assertSame('1', $modified->getHeaderLine('X-Test'));
+    }
+
+    public function testModifyRequestPreservesProvidedUriImplementation(): void
+    {
+        $uri = self::customUri('http://www.example.com/path');
+        $request = new Psr7\Request('GET', 'http://example.com');
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'uri' => $uri,
+        ]);
+
+        self::assertSame($uri, $modified->getUri());
+        self::assertSame('www.example.com', $modified->getHeaderLine('Host'));
+        self::assertSame('http://www.example.com/path', (string) $modified->getUri());
+    }
+
+    public function testModifyRequestPreservesProvidedUriImplementationWhenChangingQuery(): void
+    {
+        $uri = self::customUri('http://www.example.com/path');
+        $request = new Psr7\Request('GET', 'http://example.com');
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'uri' => $uri,
+            'query' => 'a=b',
+        ]);
+
+        self::assertSame(get_class($uri), get_class($modified->getUri()));
+        self::assertSame('www.example.com', $modified->getHeaderLine('Host'));
+        self::assertSame('http://www.example.com/path?a=b', (string) $modified->getUri());
+    }
+
+    public function testModifyRequestPreservesExistingUriImplementationWhenChangingQuery(): void
+    {
+        $uri = self::customUri('http://example.com/path');
+        $request = new Psr7\Request('GET', $uri);
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'query' => 'a=b',
+        ]);
+
+        self::assertSame(get_class($uri), get_class($modified->getUri()));
+        self::assertSame('http://example.com/path?a=b', (string) $modified->getUri());
+        self::assertSame('', $uri->getQuery());
+    }
+
+    public function testModifyRequestPreservesProvidedStreamImplementationForBody(): void
+    {
+        $body = self::customStream('payload');
+        $request = new Psr7\Request('GET', 'http://example.com');
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'body' => $body,
+        ]);
+
+        self::assertSame($body, $modified->getBody());
+        self::assertSame('payload', (string) $modified->getBody());
+    }
+
+    public function testModifyRequestPreservesRequestUriAndBodyImplementationsTogether(): void
+    {
+        $request = self::customRequest('GET', self::customUri('http://example.com/original'));
+        $uri = self::customUri('http://www.example.com/path');
+        $body = self::customStream('payload');
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'method' => 'POST',
+            'uri' => $uri,
+            'query' => 'a=b',
+            'set_headers' => ['X-Test' => '1'],
+            'body' => $body,
+            'version' => '2',
+        ]);
+
+        self::assertSame(get_class($request), get_class($modified));
+        self::assertSame(get_class($uri), get_class($modified->getUri()));
+        self::assertSame('POST', $modified->getMethod());
+        self::assertSame('http://www.example.com/path?a=b', (string) $modified->getUri());
+        self::assertSame('www.example.com', $modified->getHeaderLine('Host'));
+        self::assertSame('1', $modified->getHeaderLine('X-Test'));
+        self::assertSame($body, $modified->getBody());
+        self::assertSame('payload', (string) $modified->getBody());
+        self::assertSame('2', $modified->getProtocolVersion());
+
+        self::assertSame('GET', $request->getMethod());
+        self::assertSame('http://example.com/original', (string) $request->getUri());
+        self::assertFalse($request->hasHeader('X-Test'));
+    }
+
+    public function testModifyRequestConvertsBodyWithStreamFor(): void
+    {
+        $request = new Psr7\Request('GET', 'http://example.com');
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'body' => 'payload',
+        ]);
+
+        self::assertInstanceOf(StreamInterface::class, $modified->getBody());
+        self::assertSame('payload', (string) $modified->getBody());
+    }
+
+    public function testModifyRequestConvertsCallableArrayBodyWithStreamFor(): void
+    {
+        $source = new class {
+            /** @var list<string|false> */
+            private array $chunks = ['payload', false];
+
+            /**
+             * @return string|false
+             */
+            public function read(int $length)
+            {
+                if ($this->chunks === []) {
+                    return false;
+                }
+
+                return array_shift($this->chunks);
+            }
+        };
+
+        $request = new Psr7\Request('GET', 'http://example.com');
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'body' => [$source, 'read'],
+        ]);
+
+        self::assertInstanceOf(Psr7\PumpStream::class, $modified->getBody());
+        self::assertSame('payload', $modified->getBody()->getContents());
+    }
+
+    public function testModifyRequestConvertsStringableBodyWithStreamFor(): void
+    {
+        $request = new Psr7\Request('GET', 'http://example.com');
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'body' => new HasToString(),
+        ]);
+
+        self::assertSame('foo', $modified->getBody()->getContents());
+    }
+
+    public function testModifyRequestTreatsCallableStringBodyAsString(): void
+    {
+        $request = new Psr7\Request('GET', 'http://example.com');
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'body' => 'strlen',
+        ]);
+
+        self::assertNotInstanceOf(Psr7\PumpStream::class, $modified->getBody());
+        self::assertSame('strlen', $modified->getBody()->getContents());
+    }
+
+    public function testModifyRequestReaddsHostHeaderWhenFinalHeadersDoNotContainHost(): void
+    {
+        $request = (new Psr7\Request('GET', 'http://example.com'))->withoutHeader('Host');
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'set_headers' => ['X-Test' => '1'],
+        ]);
+
+        self::assertSame('example.com', $modified->getHeaderLine('Host'));
+        self::assertSame('1', $modified->getHeaderLine('X-Test'));
+    }
+
+    public function testModifyRequestValidatesReaddedHostFromCustomUri(): void
+    {
+        $uri = new class('http://safe.example/') extends Psr7\Uri {
+            public function getHost(): string
+            {
+                return 'ex%2Fample.com';
+            }
+        };
+        $request = (new Psr7\Request('GET', 'http://safe.example/', ['Host' => 'safe.example']))
+            ->withUri($uri, true)
+            ->withoutHeader('Host');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid host');
+
+        Psr7\Utils::modifyRequest($request, ['set_headers' => ['X-Test' => '1']]);
+    }
+
+    /**
+     * @dataProvider hostHeaderCaseProvider
+     */
+    public function testModifyRequestRejectsUriAndExplicitHostHeader(string $hostHeader): void
+    {
+        $request = new Psr7\Request('GET', 'http://foo.com');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot modify request with both a URI containing a host and an explicit Host header.');
+
+        Psr7\Utils::modifyRequest($request, [
+            'uri' => new Psr7\Uri('http://bar.com'),
+            'set_headers' => [$hostHeader => 'custom'],
+        ]);
+    }
+
+    public function testModifyRequestRejectsFalseyUriHostAndExplicitHostHeader(): void
+    {
+        $request = new Psr7\Request('GET', 'http://foo.com');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot modify request with both a URI containing a host and an explicit Host header.');
+
+        Psr7\Utils::modifyRequest($request, [
+            'uri' => new Psr7\Uri('http://0'),
+            'set_headers' => ['host' => 'custom'],
+        ]);
+    }
+
+    public function testModifyRequestCanSetExplicitHostHeaderWithoutUriChange(): void
+    {
+        $request = new Psr7\Request('GET', 'http://foo.com');
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'set_headers' => ['host' => 'custom'],
+        ]);
+
+        self::assertSame('custom', $modified->getHeaderLine('Host'));
+    }
+
+    public function testModifyRequestCanSetExplicitHostHeaderWithRelativeUriChange(): void
+    {
+        $request = new Psr7\Request('GET', 'http://foo.com');
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'uri' => new Psr7\Uri('/relative'),
+            'set_headers' => ['host' => 'custom'],
+        ]);
+
+        self::assertSame('custom', $modified->getHeaderLine('Host'));
+        self::assertSame('/relative', (string) $modified->getUri());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function hostHeaderCaseProvider(): iterable
+    {
+        yield 'canonical' => ['Host'];
+        yield 'lowercase' => ['host'];
+        yield 'uppercase' => ['HOST'];
+        yield 'mixed case' => ['HoSt'];
+    }
+
+    public function testModifyRequestPreservesNumericHeaderNames(): void
+    {
+        $request = new Psr7\Request('GET', 'http://example.com', ['123' => 'old']);
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'set_headers' => ['X-Test' => '1'],
+        ]);
+
+        self::assertSame('old', $modified->getHeaderLine('123'));
+        self::assertSame('1', $modified->getHeaderLine('X-Test'));
+    }
+
+    public function testModifyRequestReplacesNumericHeaderNames(): void
+    {
+        $request = new Psr7\Request('GET', 'http://example.com', ['123' => 'old']);
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'set_headers' => ['123' => 'new'],
+        ]);
+
+        self::assertSame('new', $modified->getHeaderLine('123'));
+    }
+
+    public function testModifyRequestRemovesNumericHeaderNames(): void
+    {
+        $request = new Psr7\Request('GET', 'http://example.com', ['123' => 'old']);
+
+        $modified = Psr7\Utils::modifyRequest($request, [
+            'remove_headers' => ['123'],
+        ]);
+
+        self::assertFalse($modified->hasHeader('123'));
+    }
+
+    /**
+     * @dataProvider providesInvalidModifyRequestChanges
+     */
+    public function testModifyRequestRejectsInvalidChangeValues(array $changes, string $expectedMessage): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage($expectedMessage);
+
+        Psr7\Utils::modifyRequest(new Psr7\Request('GET', 'http://example.com'), $changes);
+    }
+
+    public function testModifyRequestIgnoresUnknownChangeKeys(): void
+    {
+        $request = new Psr7\Request('GET', 'http://example.com');
+
+        self::assertSame($request, Psr7\Utils::modifyRequest($request, ['unknown' => new \stdClass()]));
+    }
+
+    public function testModifyServerRequestWithUploadedFiles(): void
+    {
+        $request = new Psr7\ServerRequest('GET', 'http://example.com/bla');
+        $file = new Psr7\UploadedFile('Test', 100, \UPLOAD_ERR_OK);
+        $request = $request->withUploadedFiles([$file]);
+
+        /** @var Psr7\ServerRequest $modifiedRequest */
+        $modifiedRequest = Psr7\Utils::modifyRequest($request, ['set_headers' => ['foo' => 'bar']]);
+
+        self::assertCount(1, $modifiedRequest->getUploadedFiles());
+
+        $files = $modifiedRequest->getUploadedFiles();
+        self::assertInstanceOf('GuzzleHttp\Psr7\UploadedFile', $files[0]);
+    }
+
+    public function testModifyServerRequestWithCookies(): void
+    {
+        $request = (new Psr7\ServerRequest('GET', 'http://example.com/bla'))
+            ->withCookieParams(['name' => 'value']);
+
+        /** @var Psr7\ServerRequest $modifiedRequest */
+        $modifiedRequest = Psr7\Utils::modifyRequest($request, ['set_headers' => ['foo' => 'bar']]);
+
+        self::assertSame(['name' => 'value'], $modifiedRequest->getCookieParams());
+    }
+
+    public function testModifyServerRequestParsedBody(): void
+    {
+        $request = (new Psr7\ServerRequest('GET', 'http://example.com/bla'))
+            ->withParsedBody(['name' => 'value']);
+
+        /** @var Psr7\ServerRequest $modifiedRequest */
+        $modifiedRequest = Psr7\Utils::modifyRequest($request, ['set_headers' => ['foo' => 'bar']]);
+
+        self::assertSame(['name' => 'value'], $modifiedRequest->getParsedBody());
+    }
+
+    public function testModifyServerRequestQueryParams(): void
+    {
+        $request = (new Psr7\ServerRequest('GET', 'http://example.com/bla'))
+            ->withQueryParams(['name' => 'value']);
+
+        /** @var Psr7\ServerRequest $modifiedRequest */
+        $modifiedRequest = Psr7\Utils::modifyRequest($request, ['set_headers' => ['foo' => 'bar']]);
+
+        self::assertSame(['name' => 'value'], $modifiedRequest->getQueryParams());
+    }
+
+    public function testModifyServerRequestRetainsAttributes(): void
+    {
+        $request = (new Psr7\ServerRequest('GET', 'http://example.com/bla'))
+            ->withAttribute('foo', 'bar');
+
+        /** @var Psr7\ServerRequest $modifiedRequest */
+        $modifiedRequest = Psr7\Utils::modifyRequest($request, ['set_headers' => ['baz' => 'qux']]);
+
+        self::assertSame(['foo' => 'bar'], $modifiedRequest->getAttributes());
+    }
+
+    /**
+     * @return array<string, array{0: array, 1: string}>
+     */
+    public static function providesInvalidModifyRequestChanges(): array
+    {
+        return [
+            'method null' => [
+                ['method' => null],
+                'Utils::modifyRequest() change "method" must be string; null provided.',
+            ],
+            'method int' => [
+                ['method' => 123],
+                'Utils::modifyRequest() change "method" must be string; int provided.',
+            ],
+            'uri null' => [
+                ['uri' => null],
+                'Utils::modifyRequest() change "uri" must be UriInterface; null provided.',
+            ],
+            'uri string' => [
+                ['uri' => 'http://example.com'],
+                'Utils::modifyRequest() change "uri" must be UriInterface; string provided.',
+            ],
+            'query null' => [
+                ['query' => null],
+                'Utils::modifyRequest() change "query" must be string; null provided.',
+            ],
+            'query int' => [
+                ['query' => 123],
+                'Utils::modifyRequest() change "query" must be string; int provided.',
+            ],
+            'version null' => [
+                ['version' => null],
+                'Utils::modifyRequest() change "version" must be string; null provided.',
+            ],
+            'version int' => [
+                ['version' => 2],
+                'Utils::modifyRequest() change "version" must be string; int provided.',
+            ],
+            'body null' => [
+                ['body' => null],
+                'Utils::modifyRequest() change "body" must be resource|string|StreamInterface|callable|\Iterator|\Stringable; null provided.',
+            ],
+            'set_headers null' => [
+                ['set_headers' => null],
+                'Utils::modifyRequest() change "set_headers" must be array<array-key, string|non-empty-array<array-key, string>>; null provided.',
+            ],
+            'set_headers string' => [
+                ['set_headers' => 'X-Test: value'],
+                'Utils::modifyRequest() change "set_headers" must be array<array-key, string|non-empty-array<array-key, string>>; string provided.',
+            ],
+            'set_headers value bool' => [
+                ['set_headers' => ['X-Test' => false]],
+                'Utils::modifyRequest() change "set_headers.X-Test" must be string|non-empty-array<array-key, string>; bool provided.',
+            ],
+            'set_headers control in key' => [
+                ['set_headers' => ["X\nTest" => false]],
+                'Utils::modifyRequest() change "set_headers.X\\x0ATest" must be string|non-empty-array<array-key, string>; bool provided.',
+            ],
+            'set_headers value empty array' => [
+                ['set_headers' => ['X-Test' => []]],
+                'Utils::modifyRequest() change "set_headers.X-Test" must be string|non-empty-array<array-key, string>; array provided.',
+            ],
+            'set_headers value array non-string item' => [
+                ['set_headers' => ['X-Test' => [false]]],
+                'Utils::modifyRequest() change "set_headers.X-Test.0" must be string; bool provided.',
+            ],
+            'remove_headers null' => [
+                ['remove_headers' => null],
+                'Utils::modifyRequest() change "remove_headers" must be array<array-key, string|int>; null provided.',
+            ],
+            'remove_headers string' => [
+                ['remove_headers' => 'Host'],
+                'Utils::modifyRequest() change "remove_headers" must be array<array-key, string|int>; string provided.',
+            ],
+            'remove_headers bool value' => [
+                ['remove_headers' => [false]],
+                'Utils::modifyRequest() change "remove_headers.0" must be string|int; bool provided.',
+            ],
+        ];
+    }
+
+    private static function customRequest(string $method, UriInterface $uri): Psr7\Request
+    {
+        return new class($method, $uri) extends Psr7\Request {
+        };
+    }
+
+    private static function customUri(string $uri): UriInterface
+    {
+        return new class($uri) extends Psr7\Uri {
+        };
+    }
+
+    private static function customStream(string $contents): StreamInterface
+    {
+        $resource = Psr7\Utils::tryFopen('php://temp', 'r+');
+        \fwrite($resource, $contents);
+        \rewind($resource);
+
+        return new class($resource) extends Psr7\Stream {
+        };
+    }
+
+    /**
+     * @return list<array{0: string[], 1: array, 2: array}>
+     */
+    public static function providesCaselessRemoveCases(): array
+    {
+        return [
+            [
+                ['foo-bar'],
+                ['Foo-Bar' => 'hello'],
+                [],
+            ],
+            [
+                ['foo-bar'],
+                ['hello'],
+                ['hello'],
+            ],
+            [
+                ['foo-Bar'],
+                ['Foo-Bar' => 'hello', 123 => '', 'Foo-BAR' => 'hello123', 'foobar' => 'baz'],
+                [123 => '', 'foobar' => 'baz'],
+            ],
+            [
+                ['foo-Bar', 123],
+                ['Foo-Bar' => 'hello', 123 => '', 'Foo-BAR' => 'hello123', 'foobar' => 'baz'],
+                ['foobar' => 'baz'],
+            ],
+        ];
+    }
+
+    /**
+     * @dataProvider providesCaselessRemoveCases
+     *
+     * @param string[] $keys
+     */
+    public function testCaselessRemove(array $keys, array $data, array $expected): void
+    {
+        self::assertSame($expected, Psr7\Utils::caselessRemove($keys, $data));
+    }
+}
