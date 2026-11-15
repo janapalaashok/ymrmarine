@@ -68,8 +68,8 @@ $defaults = [
 ];
 $serviceDesc = trim($type . ' of ' . $vessel . ($inv['port_name'] ? ' at ' . $inv['port_name'] : '') . ($completed ? ' on ' . $completed : ''));
 $serviceRate = (string)($inv['invoice_amount'] ?? '');
-$invoiceNo = invoicePeekNumber($db, $inv) . ($isRecovery ? 'B' : '');
 $noFixed = trim((string)($inv['invoice_no'] ?? '')) !== '';
+$invoiceNo = $noFixed ? (string)$inv['invoice_no'] . ($isRecovery ? 'B' : '') : ''; // typed by hand (no automatic series)
 $hasVesselFile = invoiceFileAbs($inv['file_path'] ?? null) !== null;
 $hasRecFile = invoiceFileAbs($inv['rec_file_path'] ?? null) !== null;
 // The form as last downloaded (Modify); the recovery form borrows the vessel invoice's header
@@ -155,13 +155,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $items[] = ['desc' => $xd, 'rate' => $xr, 'qty' => $xq ?? 1.0];
         }
     }
-    // A corrected number for a vessel invoice that already has one (e.g. 1000 → 962): the
-    // client prefix is kept when only digits are typed; it must not be another invoice's.
+    // The vessel invoice's number is typed by hand (required to download). Only digits: the
+    // number keeps its client prefix (YMR-BB-962), or gets the client's code when it has none.
+    // It must not be another invoice's. The recovery invoice uses the vessel's number + B.
     $fixNo = null;
-    if (!$isRecovery && $noFixed && isset($_POST['invoice_no_fix'])) {
-        $want = strtoupper(preg_replace('/\s+/', '', (string)$_POST['invoice_no_fix']));
-        if (ctype_digit($want)) $want = preg_replace('/-[0-9]+$/', '', (string)$inv['invoice_no']) . '-' . ltrim($want, '0');
-        if ($want !== '' && $want !== strtoupper((string)$inv['invoice_no'])) {
+    $download = ($_POST['mode'] ?? '') === 'download';
+    if (!$isRecovery) {
+        $want = strtoupper(preg_replace('/\s+/', '', (string)($_POST['invoice_no_fix'] ?? '')));
+        if (ctype_digit($want) && $want !== '') {
+            $want = $noFixed && preg_match('/-[0-9]+$/', (string)$inv['invoice_no'])
+                ? preg_replace('/-[0-9]+$/', '', strtoupper((string)$inv['invoice_no'])) . '-' . ltrim($want, '0')
+                : 'YMR-' . invoiceCodeForClient($db, (int)($inv['eff_client_id'] ?? 0)) . '-' . ltrim($want, '0');
+        }
+        if ($want === '') {
+            if ($download) $errors[] = 'Invoice No. (type the invoice number)';
+        } elseif ($want !== strtoupper((string)($inv['invoice_no'] ?? ''))) {
             if (!preg_match('/^[A-Z0-9][A-Z0-9\-\/]{0,58}[0-9]$/', $want)) {
                 $errors[] = 'Invoice No. (letters, digits and - only, ending in its number, e.g. YMR-BB-962)';
             } else {
@@ -172,25 +180,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 else $fixNo = $want;
             }
         }
+    } elseif (!$noFixed && $download) {
+        $errors[] = 'Invoice No. — make the Vessel Invoice first: its number is typed there (the Recovery Invoice uses it with B)';
     }
     if ($errors) {
         http_response_code(422);
         header('Content-Type: text/html; charset=utf-8');
         exit('<div style="font-family:sans-serif;padding:24px;color:#991b1b"><b>Please fill in:</b><ul><li>' . implode('</li><li>', array_map('sanitize', $errors)) . '</li></ul></div>');
     }
-    // Number: the vessel's (fixed on its first download; preview shows the next free one)
-    $download = ($_POST['mode'] ?? '') === 'download';
-    try {
-        if ($fixNo !== null) {
-            $d['invoice_no'] = $fixNo; // saved with the PDF below
-        } else {
-            $d['invoice_no'] = ($download ? invoiceAllocateNumber($db, $id) : invoicePeekNumber($db, $inv)) . ($isRecovery ? 'B' : '');
-        }
-    } catch (Throwable $e) {
-        error_log('invoice number: ' . $e->getMessage());
-        http_response_code(500);
-        exit('The invoice number could not be assigned. Please try again.');
-    }
+    // Number: as typed (saved with the PDF below); the recovery invoice: the vessel's + B
+    $d['invoice_no'] = $fixNo ?? ($noFixed ? (string)$inv['invoice_no'] . ($isRecovery ? 'B' : '') : '');
     $d['items'] = $items;
     @include_once __DIR__ . '/vendor/autoload.php';
     if (!class_exists(\Dompdf\Dompdf::class)) {
@@ -323,12 +322,12 @@ include 'includes/header.php';
         <h2><?= $isRecovery ? 'Recovery Invoice' : 'Generate Invoice' ?></h2>
         <div class="ig-sub"><?= sanitize($vessel) ?><?= $defaults['port'] ? ' · ' . sanitize($defaults['port']) : '' ?> — details are filled from the vessel record; change anything before downloading.</div>
         <div class="ig-row">
-<?php if ($noFixed && !$isRecovery): ?>
-            <div><label>Invoice No.</label><input class="form-control" name="invoice_no_fix" value="<?= sanitize($invoiceNo) ?>" maxlength="60" data-testid="ig-invoice-no">
-                <div class="ig-hint">This vessel's number — correct it here if needed (the Recovery Invoice follows it with B)</div></div>
+<?php if (!$isRecovery): ?>
+            <div><label>Invoice No. <b style="color:#dc2626">*</b></label><input class="form-control" name="invoice_no_fix" value="<?= sanitize($invoiceNo) ?>" maxlength="60" placeholder="e.g. YMR-BB-962" data-testid="ig-invoice-no">
+                <div class="ig-hint">Type the invoice number (only digits: the client code is added). The Recovery Invoice uses it with B.</div></div>
 <?php else: ?>
-            <div><label>Invoice No.</label><input class="form-control" value="<?= sanitize($invoiceNo) ?>" readonly data-testid="ig-invoice-no">
-                <div class="ig-hint"><?= $noFixed ? 'This vessel\'s number' : 'Assigned when you download' ?><?= $isRecovery ? ' (+ B for recovery)' : '' ?></div></div>
+            <div><label>Invoice No.</label><input class="form-control" value="<?= sanitize($invoiceNo) ?>" readonly placeholder="Typed on the Vessel Invoice" data-testid="ig-invoice-no">
+                <div class="ig-hint"><?= $noFixed ? 'The vessel invoice\'s number + B' : 'Make the Vessel Invoice first — its number is typed there' ?></div></div>
 <?php endif; ?>
             <div><label>Invoice Date</label><input class="form-control" type="date" name="invoice_date" value="<?= sanitize($defaults['invoice_date']) ?>"></div>
         </div>

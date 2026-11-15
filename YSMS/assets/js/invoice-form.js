@@ -86,10 +86,10 @@
 
   // ---------- invoice number ----------
   function noState() {
-    var auto = st.mode === 'add' && st.auto;
-    el.badge.textContent = auto ? 'Auto · next in series' : (el.no.value.trim() ? 'Manual' : 'Not assigned');
-    el.badge.className = 'ivf-badge' + (auto ? '' : el.no.value.trim() ? ' man' : ' none');
-    el.noAuto.hidden = auto || (st.mode === 'edit' && !!(st.row && st.row.invoice_no));
+    // the invoice number is typed by hand (no automatic series)
+    el.badge.textContent = el.no.value.trim() ? 'Manual' : 'Not assigned';
+    el.badge.className = 'ivf-badge' + (el.no.value.trim() ? ' man' : ' none');
+    el.noAuto.hidden = true;
   }
   function fillAuto() {
     if (st.next === null) return;
@@ -166,7 +166,7 @@
   function open(row) {
     if (st.saving) return;
     st.lastFocus = document.activeElement;
-    st.mode = row ? 'edit' : 'add'; st.row = row || null; st.auto = !row; st.survey = null; st.next = null; st.rid = rid();
+    st.mode = row ? 'edit' : 'add'; st.row = row || null; st.auto = false; st.survey = null; st.next = null; st.rid = rid();
     form.reset(); clearErrors(); setTypes([]);
     el.title.textContent = row ? 'Edit Invoice' : 'Add Invoice';
     el.sub.textContent = row ? (row.manual ? 'Manual entry' : 'From Pending Reports') + (row.invoice_no ? ' · ' + row.invoice_no : '') : 'Manual entry — not linked to Pending Reports';
@@ -188,10 +188,9 @@
         el.client.value = row.client_id ? String(row.client_id) : ''; setPort(row.port_id); setTypes(row.type_ids);
         if (row.client_id && !el.client.value) fieldError('client_id', 'The client of this entry no longer exists — choose one.');
         noState();
-        fetchNext().catch(function () {});
       } else {
         el.date.value = today(); el.status.value = (C.statuses || [])[0] || '';
-        fetchNext().catch(function (e) { el.hint.className = 'hint bad'; el.hint.textContent = e.message; });
+        el.no.value = ''; el.hint.className = 'hint'; el.hint.textContent = 'Type the invoice number (e.g. YMR-BB-962, or only 962 — the client code is added).'; noState();
       }
       el.save.disabled = false;
       setTimeout(function () { if (!box.hidden && !form.contains(document.activeElement)) (row ? el.amt : el.vessel).focus(); }, 60); // never steal focus from a field already in use

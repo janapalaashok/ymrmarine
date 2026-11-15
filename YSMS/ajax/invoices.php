@@ -226,7 +226,7 @@ if ($action === 'create' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $q = $db->prepare('SELECT invoice_no, deleted_at FROM invoices WHERE survey_id = ?'); $q->execute([$sid]);
         if ($o = $q->fetch(PDO::FETCH_ASSOC)) $err['survey_id'] = 'This survey already has an Invoices entry' . ($o['invoice_no'] ? ' (' . $o['invoice_no'] . ')' : '') . ($o['deleted_at'] ? ' under Deleted — restore it instead.' : ' — edit that entry instead.');
     }
-    $auto = ($_POST['no_auto'] ?? '') === '1';
+    $auto = false; // the invoice number is always typed (no automatic series); no_auto is no longer honoured
     $code = isset($err['client_id']) ? 'XX' : invoiceCodeForClient($db, $v['client_id']); // before the transaction (may save a missing client code)
     if (!$auto) {
         [$no, $ne] = invoiceNormalizeNumber($v['invoice_no'], $code);

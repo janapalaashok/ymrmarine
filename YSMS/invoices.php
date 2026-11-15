@@ -184,8 +184,8 @@ include 'includes/header.php';
         <button type="button" class="x" data-ivf-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="ivf-b">
         <div class="ivf-no" data-ivf-nobox>
-            <div class="ivf-no-top"><label for="ivfNo">Invoice Number</label><span class="ivf-badge" data-ivf-nobadge>Auto</span>
-                <button type="button" class="ivf-lnk" data-ivf-noauto data-testid="ivf-no-auto"><i class="fa-solid fa-rotate"></i> Use next number</button></div>
+            <div class="ivf-no-top"><label for="ivfNo">Invoice Number</label><span class="ivf-badge none" data-ivf-nobadge>Not assigned</span>
+                <button type="button" class="ivf-lnk" data-ivf-noauto data-testid="ivf-no-auto" hidden><i class="fa-solid fa-rotate"></i> Use next number</button></div>
             <input id="ivfNo" name="invoice_no" autocomplete="off" spellcheck="false" maxlength="60" data-testid="ivf-no">
             <div class="hint" data-ivf-nohint></div>
             <div class="ivf-e" data-e="invoice_no"></div>
