@@ -96,4 +96,8 @@ UPDATE admins SET password = '$2y$10$...' WHERE username = 'admin';
 - The design is fully responsive (mobile + tablet + desktop).
 - Contact form submissions are stored and visible in Admin → Messages.
 - Employee Login button URL is editable from Site Settings.
+## Developer Training
 
+First contribution by Ashok.
+Role: Junior Developer
+Branch: feature/ashok-changes
