@@ -859,14 +859,14 @@ include 'includes/header.php';
     .searchable-select.open .ss-panel { display: block; }
     .searchable-select .ss-search-wrap {
         position: relative;
-        padding: 8px 10px;
+        padding: 8px 15px;
         border-bottom: 1px solid var(--border-color);
     }
     .ss-country-wrap select.ss-country-filter {
         width: 100%;
         border: 1px solid var(--border-color);
         border-radius: 8px;
-        padding: 8px 10px 8px 32px;
+        padding: 8px 10px 8px 34px;
         font-size: 12.5px;
         background: #f8fafc;
         color: var(--text-dark);
@@ -880,7 +880,7 @@ include 'includes/header.php';
     }
     .searchable-select .ss-search-wrap i {
         position: absolute;
-        left: 18px;
+        left: 27px;
         top: 50%;
         transform: translateY(-50%);
         color: #94a3b8;
@@ -890,7 +890,7 @@ include 'includes/header.php';
         width: 100%;
         border: 1px solid var(--border-color);
         border-radius: 8px;
-        padding: 8px 10px 8px 30px;
+        padding: 8px 10px 8px 34px;
         font-size: 13px;
         background: #f8fafc;
         outline: none;
@@ -1341,6 +1341,9 @@ include 'includes/header.php';
     #assignVesselForm .searchable-select .ss-option.ss-selected { background: #F3EEFE !important; color: #5B2DEE !important; }
     #assignVesselForm .ss-multi .ss-option-checkbox { accent-color: #7C3AED !important; }
     #assignVesselForm .searchable-select .ss-search-input { border-radius: 12px !important; }
+    /* keep the search / country text clear of its icon (the desktop .form-group-custom input rule sets 14px !important) */
+    .searchable-select .ss-search-wrap .ss-search-input,
+    .searchable-select .ss-search-wrap select.ss-country-filter { padding-left: 34px !important; }
 
     /* file input as a drop zone */
     #assignVesselForm input[type="file"][name="assignment_attachment[]"] {
