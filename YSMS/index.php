@@ -307,6 +307,28 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
         </div>
     </div>
 
+    <?php
+    // Share-as-picture button of a dashboard card (the card is the closest [data-share]; assets/js/card-share.js)
+    $csBtn = fn(string $cls = '') => '<button type="button" class="cs-btn' . ($cls !== '' ? ' ' . $cls : '') . '" data-cs aria-label="Share as picture" title="Share as picture" data-testid="card-share-btn"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i></button>';
+    ?>
+    <style>
+    /* share-as-picture buttons */
+    .cs-btn { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 1px solid #e2e8f0; background: #fff; color: #475569; font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; padding: 0; cursor: pointer; box-shadow: 0 2px 6px rgba(15,23,42,.08); transition: background .15s, color .15s; }
+    .cs-btn:hover, .cs-btn:focus-visible { background: #1E1B6B; color: #fff; border-color: #1E1B6B; }
+    .cs-btn.busy i { animation: cs-spin 1s linear infinite; }
+    @keyframes cs-spin { to { transform: rotate(360deg); } }
+    .cs-btn.cs-abs { position: absolute; top: 8px; right: 8px; z-index: 2; }
+    .stat-card[data-share], .recovery-row-card[data-share] { position: relative; }
+    .stat-card[data-share] .stat-title { margin-right: 34px; }
+    .cs-btn.cs-light { background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.35); color: #fff; box-shadow: none; }
+    .cs-btn.cs-light:hover, .cs-btn.cs-light:focus-visible { background: #fff; color: #1E1B6B; border-color: #fff; }
+    .section-title-row .cs-btn { margin-left: 8px; }
+    .cs-title-acts { display: inline-flex; align-items: center; gap: 4px; }
+    /* the picture of a highlight card: its subtitle (date / month) is shown, the "Open ..." line is not */
+    .dash-hl a.cs-snap .s { display: block !important; } .dash-hl a.cs-snap .go { display: none !important; }
+    .cs-snap .sfr-link { display: none !important; }
+    @media (max-width: 575.98px) { .cs-btn.cs-abs { top: 6px; right: 6px; width: 26px; height: 26px; font-size: 11px; } }
+    </style>
     <style>
     /* Dashboard highlight cards: Pending Vessels / Reports / Completed and Appointments & Surveys Completed */
     .dash-hl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
@@ -333,15 +355,18 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     </style>
     <div class="overview-section ha-ov">
         <div class="dash-hl ov-hl" style="margin-top:0" data-testid="dash-overview">
-            <a class="pv" href="vessels.php" data-testid="dash-ov-pending-vessels">
+            <a class="pv" href="vessels.php" data-testid="dash-ov-pending-vessels" data-share="Pending Vessels">
+                <?= $csBtn('cs-abs cs-light') ?>
                 <i class="fa-solid fa-ship ic" aria-hidden="true"></i>
                 <span class="n"><?= (int)$pending_vessels ?></span><span class="l">Pending Vessels</span><span class="s">Waiting for survey</span><span class="go">Open Pending Vessels <i class="fa-solid fa-chevron-right"></i></span>
             </a>
-            <a class="pr" href="reports.php" data-testid="dash-ov-pending-reports">
+            <a class="pr" href="reports.php" data-testid="dash-ov-pending-reports" data-share="Pending Reports">
+                <?= $csBtn('cs-abs cs-light') ?>
                 <i class="fa-solid fa-file-lines ic" aria-hidden="true"></i>
                 <span class="n"><?= (int)$pending_reports ?></span><span class="l">Pending Reports</span><span class="s">Survey done, report to upload</span><span class="go">Open Pending Reports <i class="fa-solid fa-chevron-right"></i></span>
             </a>
-            <a class="cv" href="completed.php" data-testid="dash-ov-completed">
+            <a class="cv" href="completed.php" data-testid="dash-ov-completed" data-share="Completed Vessels">
+                <?= $csBtn('cs-abs cs-light') ?>
                 <i class="fa-solid fa-circle-check ic" aria-hidden="true"></i>
                 <span class="n"><?= (int)$completed_vessels ?></span><span class="l">Completed Vessels</span><span class="s">Report uploaded</span><span class="go">Open Completed <i class="fa-solid fa-chevron-right"></i></span>
             </a>
@@ -367,15 +392,18 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     <div class="overview-section mt-4" data-testid="dash-highlights">
         <div class="section-title-row"><span class="section-title"><i class="fa-solid fa-calendar-days me-1" style="color:#5B2DEE"></i> Appointments &amp; Surveys Completed</span></div>
         <div class="dash-hl">
-            <a class="t" href="monthly_data.php?tab=appointments&amp;month=<?= $hlMonth ?>&amp;day=<?= $hlToday ?>" data-testid="dash-hl-today">
+            <a class="t" href="monthly_data.php?tab=appointments&amp;month=<?= $hlMonth ?>&amp;day=<?= $hlToday ?>" data-testid="dash-hl-today" data-share="Today's Appointments">
+                <?= $csBtn('cs-abs cs-light') ?>
                 <i class="fa-solid fa-calendar-day ic" aria-hidden="true"></i>
                 <span class="n"><?= (int)$hl['today'] ?></span><span class="l">Today's Appointments</span><span class="s"><?= strtoupper(date('d-M-Y')) ?></span><span class="go">Open in Monthly Data <i class="fa-solid fa-chevron-right"></i></span>
             </a>
-            <a class="m" href="monthly_data.php?tab=appointments&amp;month=<?= $hlMonth ?>" data-testid="dash-hl-month">
+            <a class="m" href="monthly_data.php?tab=appointments&amp;month=<?= $hlMonth ?>" data-testid="dash-hl-month" data-share="This Month's Appointments">
+                <?= $csBtn('cs-abs cs-light') ?>
                 <i class="fa-solid fa-calendar-week ic" aria-hidden="true"></i>
                 <span class="n"><?= (int)$hl['month'] ?></span><span class="l">This Month's Appointments</span><span class="s"><?= date('F Y') ?></span><span class="go">Open in Monthly Data <i class="fa-solid fa-chevron-right"></i></span>
             </a>
-            <a class="c" href="monthly_data.php?tab=completed&amp;month=<?= $hlMonth ?>" data-testid="dash-hl-completed">
+            <a class="c" href="monthly_data.php?tab=completed&amp;month=<?= $hlMonth ?>" data-testid="dash-hl-completed" data-share="Surveys Completed This Month">
+                <?= $csBtn('cs-abs cs-light') ?>
                 <i class="fa-solid fa-circle-check ic" aria-hidden="true"></i>
                 <span class="n"><?= (int)$hl['done'] ?></span><span class="l">Surveys Completed This Month</span><span class="s">By Survey Completed Date · <?= date('F Y') ?></span><span class="go">Open in Monthly Data <i class="fa-solid fa-chevron-right"></i></span>
             </a>
@@ -412,7 +440,7 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     .mc-t { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
     .mc-t b { font-size: 14px; font-weight: 800; color: #0f172a; display: inline-flex; align-items: center; gap: 7px; }
     .mc-t b i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
-    .mc-t span { font-size: 12px; color: #64748b; font-weight: 600; }
+    .mc-t span { font-size: 12px; color: #64748b; font-weight: 600; margin-left: auto; }
     .mc-t span strong { color: #0f172a; font-size: 14px; }
     .mc-svg { display: block; width: 100%; height: auto; margin-top: 6px; overflow: visible; }
     .mc-svg text { font-family: inherit; }
@@ -430,13 +458,13 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
             </select>
         </div>
         <div class="mc-grid">
-            <div class="mc-card" data-mc="appt" data-testid="dash-mc-appt">
-                <div class="mc-t"><b><i style="background:#1d6fe0"></i>Appointments</b><span>Total <strong data-mc-total>0</strong></span></div>
+            <div class="mc-card" data-mc="appt" data-testid="dash-mc-appt" data-share="Month-wise Appointments {year}">
+                <div class="mc-t"><b><i style="background:#1d6fe0"></i>Appointments</b><span>Total <strong data-mc-total>0</strong></span><?= $csBtn() ?></div>
                 <svg class="mc-svg" viewBox="0 0 600 230" role="img" aria-label="Appointments per month"></svg>
                 <div class="mc-tip"></div>
             </div>
-            <div class="mc-card" data-mc="rec" data-testid="dash-mc-rec">
-                <div class="mc-t"><b><i style="background:#059669"></i>Recovery (MT)</b><span>Total <strong data-mc-total>0</strong></span></div>
+            <div class="mc-card" data-mc="rec" data-testid="dash-mc-rec" data-share="Month-wise Recovery {year}">
+                <div class="mc-t"><b><i style="background:#059669"></i>Recovery (MT)</b><span>Total <strong data-mc-total>0</strong></span><?= $csBtn() ?></div>
                 <svg class="mc-svg" viewBox="0 0 600 230" role="img" aria-label="Recovery per month"></svg>
                 <div class="mc-tip"></div>
             </div>
@@ -557,8 +585,8 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
         .na-v { padding: 6px 7px; } .na-v b { font-size: 12.5px; } .na-v small { font-size: 9.5px; }
     }
     </style>
-    <div class="overview-section mt-4" data-testid="dash-need-attention">
-        <div class="section-title-row"><span class="section-title"><i class="fa-solid fa-triangle-exclamation me-1" style="color:#dc2626"></i> Need Attention</span></div>
+    <div class="overview-section mt-4" data-testid="dash-need-attention" data-share="Need Attention">
+        <div class="section-title-row"><span class="section-title"><i class="fa-solid fa-triangle-exclamation me-1" style="color:#dc2626"></i> Need Attention</span><?= $csBtn() ?></div>
         <div class="na-card">
             <div class="na-wrap">
                 <table class="na-table" data-testid="dash-na-table">
@@ -627,8 +655,8 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     <div class="overview-section mt-4" data-testid="dash-overdue">
         <div class="od-grid">
             <?php foreach ($odBoxes as $k => $bx): $list = $odLists[$k]; ?>
-            <div class="od-box" data-testid="dash-od-<?= $k ?>">
-                <div class="od-h <?= $k ?>"><i class="fa-solid <?= $bx['icon'] ?>" aria-hidden="true"></i><div><b><?= $bx['title'] ?></b><small><?= $bx['sub'] ?></small></div><span class="n" data-testid="dash-od-<?= $k ?>-count"><?= count($list) ?></span></div>
+            <div class="od-box" data-testid="dash-od-<?= $k ?>" data-share="<?= $bx['title'] ?>">
+                <div class="od-h <?= $k ?>"><i class="fa-solid <?= $bx['icon'] ?>" aria-hidden="true"></i><div><b><?= $bx['title'] ?></b><small><?= $bx['sub'] ?></small></div><span class="n" data-testid="dash-od-<?= $k ?>-count"><?= count($list) ?></span><?= $csBtn('cs-light') ?></div>
                 <?php if ($list): ?>
                 <div class="od-colh"><span>Vessel</span><span><?= $bx['col'] ?></span></div>
                 <div class="od-list">
@@ -742,19 +770,23 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     </div>
 
     <div class="stat-grid" data-testid="super-admin-average-ships-grid">
-        <div class="stat-card" data-testid="avg-ships-per-year-card">
+        <div class="stat-card" data-testid="avg-ships-per-year-card" data-share="Average Ships Per Year">
+            <?= $csBtn('cs-abs') ?>
             <span class="stat-title stat-title--blue"><i class="fa-solid fa-calendar stat-title-icon"></i>Average Ships Per Year</span>
             <div class="stat-val"><?= number_format($sa_avg_per_year, 1) ?></div>
         </div>
-        <div class="stat-card" data-testid="avg-ships-per-month-super-card">
+        <div class="stat-card" data-testid="avg-ships-per-month-super-card" data-share="Average Ships Per Month">
+            <?= $csBtn('cs-abs') ?>
             <span class="stat-title"><i class="fa-solid fa-calendar-days stat-title-icon"></i>Average Ships Per Month</span>
             <div class="stat-val"><?= number_format($sa_avg_per_month, 1) ?></div>
         </div>
-        <div class="stat-card" data-testid="avg-ships-per-day-card">
+        <div class="stat-card" data-testid="avg-ships-per-day-card" data-share="Average Ships Per Day">
+            <?= $csBtn('cs-abs') ?>
             <span class="stat-title stat-title--orange"><i class="fa-solid fa-calendar-day stat-title-icon"></i>Average Ships Per Day</span>
             <div class="stat-val"><?= number_format($sa_avg_per_day, 2) ?></div>
         </div>
-        <div class="stat-card" data-testid="avg-ships-per-surveyor-card">
+        <div class="stat-card" data-testid="avg-ships-per-surveyor-card" data-share="Average Ships Per Surveyor">
+            <?= $csBtn('cs-abs') ?>
             <span class="stat-title stat-title--purple"><i class="fa-solid fa-user-tie stat-title-icon"></i>Average Ships Per Surveyor</span>
             <div class="stat-val"><?= number_format((float)$avg_ships_per_surveyor, 1) ?></div>
         </div>
@@ -763,7 +795,8 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     <div class="overview-section mt-4">
         <div class="section-title-row"><span class="section-title">Recovery Analytics</span></div>
         <div class="recovery-row-grid" data-testid="recovery-row-grid">
-            <div class="recovery-row-card" data-testid="recovery-by-surveyor-card">
+            <div class="recovery-row-card" data-testid="recovery-by-surveyor-card" data-share="Recovery by Surveyor - Top 10" style="position:relative">
+                <?= $csBtn('cs-abs') ?>
                 <div class="recovery-row-card-title"><span class="stat-title stat-title--purple"><i class="fa-solid fa-user-tie stat-title-icon"></i>Recovery by Surveyor — Top 10</span></div>
                 <div class="recovery-row-card-body">
                     <?php if (!empty($recovery_by_surveyor)): ?>
@@ -779,7 +812,8 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
                 </div>
             </div>
 
-            <div class="recovery-row-card" data-testid="recovery-by-port-card">
+            <div class="recovery-row-card" data-testid="recovery-by-port-card" data-share="Recovery by Port - Top 5" style="position:relative">
+                <?= $csBtn('cs-abs') ?>
                 <div class="recovery-row-card-title"><span class="stat-title"><i class="fa-solid fa-anchor stat-title-icon"></i>Recovery by Port — Top 5</span></div>
                 <div class="recovery-row-card-body">
                     <?php if (!empty($recovery_by_port)): ?>
@@ -795,7 +829,8 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
                 </div>
             </div>
 
-            <div class="recovery-row-card" data-testid="recovery-by-country-card">
+            <div class="recovery-row-card" data-testid="recovery-by-country-card" data-share="Recovery by Country - Top 5" style="position:relative">
+                <?= $csBtn('cs-abs') ?>
                 <div class="recovery-row-card-title"><span class="stat-title stat-title--blue"><i class="fa-solid fa-earth-asia stat-title-icon"></i>Recovery by Country — Top 5</span></div>
                 <div class="recovery-row-card-body">
                     <?php if (!empty($recovery_by_country)): ?>
@@ -811,7 +846,8 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
                 </div>
             </div>
 
-            <div class="recovery-row-card" data-testid="recovery-by-client-card">
+            <div class="recovery-row-card" data-testid="recovery-by-client-card" data-share="Recovery by Client - Top 5" style="position:relative">
+                <?= $csBtn('cs-abs') ?>
                 <div class="recovery-row-card-title"><span class="stat-title stat-title--orange"><i class="fa-solid fa-building stat-title-icon"></i>Recovery by Client — Top 5</span></div>
                 <div class="recovery-row-card-body">
                     <?php if (!empty($recovery_by_client)): ?>
@@ -832,7 +868,8 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     <div class="overview-section mt-4">
         <div class="section-title-row"><span class="section-title">Ships Completed Analytics</span></div>
         <div class="ships-row-grid" data-testid="ships-completed-row-grid">
-            <div class="recovery-row-card" data-testid="ships-by-country-top5-card">
+            <div class="recovery-row-card" data-testid="ships-by-country-top5-card" data-share="Ships Completed by Country - Top 5" style="position:relative">
+                <?= $csBtn('cs-abs') ?>
                 <div class="recovery-row-card-title"><span class="stat-title"><i class="fa-solid fa-earth-americas stat-title-icon"></i>Ships Completed by Country — Top 5</span></div>
                 <div class="recovery-row-card-body">
                     <?php if (!empty($ships_by_country_top5)): ?>
@@ -848,7 +885,8 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
                 </div>
             </div>
 
-            <div class="recovery-row-card" data-testid="ships-by-port-top5-card">
+            <div class="recovery-row-card" data-testid="ships-by-port-top5-card" data-share="Ships Completed by Port - Top 5" style="position:relative">
+                <?= $csBtn('cs-abs') ?>
                 <div class="recovery-row-card-title"><span class="stat-title stat-title--blue"><i class="fa-solid fa-ship stat-title-icon"></i>Ships Completed by Port — Top 5</span></div>
                 <div class="recovery-row-card-body">
                     <?php if (!empty($ships_by_port_top5)): ?>
@@ -868,10 +906,10 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     <?php endif; ?>
 
     <?php if (in_array($role, ['Admin', 'Super Admin'], true)): ?>
-    <div class="overview-section mt-4">
+    <div class="overview-section mt-4" data-share="Surveyor Performance">
         <div class="section-title-row">
             <span class="section-title">Surveyor Performance — Full Report</span>
-            <a href="recovery.php" class="sfr-link" data-testid="sfr-recovery-link">Recovery details <i class="fa-solid fa-chevron-right"></i></a>
+            <span class="cs-title-acts"><a href="recovery.php" class="sfr-link" data-testid="sfr-recovery-link">Recovery details <i class="fa-solid fa-chevron-right"></i></a><?= $csBtn() ?></span>
         </div>
         <?php
             $spInitials = function (string $n): string { $w = preg_split('/\s+/', trim($n)); return strtoupper(mb_substr($w[0] ?? '', 0, 1) . mb_substr($w[count($w) - 1] ?? '', 0, 1)); };
@@ -1136,5 +1174,8 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
 </script>
 <?php
 include 'includes/nav.php';
+?>
+<script src="assets/js/card-share.js?v=<?= @filemtime(__DIR__ . '/assets/js/card-share.js') ?>"></script>
+<?php
 include 'includes/footer.php';
 ?>
