@@ -177,7 +177,7 @@
     sh.el.querySelector('.cs-img').innerHTML = '<img alt="" data-testid="card-share-img" src="' + sh.url + '">';
     var acts = sh.el.querySelector('.cs-acts'), msg = sh.el.querySelector('.cs-msg');
     var copyOk = !!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem);
-    acts.innerHTML = (canShareFile(file) ? '<button type="button" class="pri" data-act="share" data-testid="card-share-go"><i class="fa-solid fa-share-nodes"></i> Share</button>' : '') +
+    acts.innerHTML = (canShareFile(file) ? '<button type="button" class="pri" data-act="share" data-testid="card-share-go"><i class="fa-solid fa-share"></i> Share</button>' : '') +
       (copyOk ? '<button type="button" data-act="copy" data-testid="card-share-copy"><i class="fa-regular fa-copy"></i> Copy</button>' : '') +
       '<button type="button" class="' + (canShareFile(file) ? '' : 'pri') + '" data-act="save" data-testid="card-share-save"><i class="fa-solid fa-download"></i> Save picture</button>';
     acts.addEventListener('click', function (e) {

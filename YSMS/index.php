@@ -309,11 +309,12 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
 
     <?php
     // Share-as-picture button of a dashboard card (the card is the closest [data-share]; assets/js/card-share.js)
-    $csBtn = fn(string $cls = '') => '<button type="button" class="cs-btn' . ($cls !== '' ? ' ' . $cls : '') . '" data-cs aria-label="Share as picture" title="Share as picture" data-testid="card-share-btn"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i></button>';
+    $csBtn = fn(string $cls = '') => '<button type="button" class="cs-btn' . ($cls !== '' ? ' ' . $cls : '') . '" data-cs aria-label="Share as picture" title="Share as picture" data-testid="card-share-btn"><i class="fa-solid fa-share" aria-hidden="true"></i></button>';
     ?>
     <style>
     /* share-as-picture buttons */
     .cs-btn { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 1px solid #e2e8f0; background: #fff; color: #475569; font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; padding: 0; cursor: pointer; box-shadow: 0 2px 6px rgba(15,23,42,.08); transition: background .15s, color .15s; }
+    button.cs-btn.cs-btn[data-cs] { min-height: 0; min-width: 0; } /* beat header.php mobile button min-height */
     .cs-btn:hover, .cs-btn:focus-visible { background: #1E1B6B; color: #fff; border-color: #1E1B6B; }
     .cs-btn.busy i { animation: cs-spin 1s linear infinite; }
     @keyframes cs-spin { to { transform: rotate(360deg); } }
