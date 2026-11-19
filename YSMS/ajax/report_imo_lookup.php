@@ -18,8 +18,7 @@ if (time() - $last < 5) rilOut(['ok' => false, 'error' => 'Please wait a few sec
 $_SESSION['rg_lookup_at'] = time();
 session_write_close();
 
-require_once dirname(__DIR__) . '/includes/survey_form.php';
-require_once dirname(__DIR__) . '/includes/survey_reports.php';
+require_once dirname(__DIR__) . '/includes/vessel_lookup.php';
 
 try {
     // field key → type, as the Survey Report form checks them (only the particulars the lookup finds)
