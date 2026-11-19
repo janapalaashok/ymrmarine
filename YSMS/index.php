@@ -342,7 +342,7 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     .dash-hl .t { background: linear-gradient(120deg, #4B2FD6 0%, #7C3AED 100%); }
     .dash-hl .m { background: linear-gradient(120deg, #0f4cc0 0%, #1d6fe0 100%); }
     .dash-hl .c { background: linear-gradient(120deg, #047857 0%, #10b981 100%); }
-    .dash-hl .ic { position: absolute; right: 14px; top: 12px; font-size: 58px; opacity: .14; pointer-events: none; }
+    .dash-hl .ic { position: absolute; right: 14px; top: 46px; font-size: 58px; opacity: .14; pointer-events: none; } /* below the share button (top 8px, 30px tall) */
     .dash-hl .n { flex: none; display: flex; align-items: center; justify-content: center; min-width: 56px; padding-right: 18px; margin-right: 18px; border-right: 2px solid rgba(255,255,255,.85); font-size: 46px; font-weight: 800; line-height: 1; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
     .dash-hl .tx { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; padding-right: 30px; }
     .dash-hl .l { font-size: 16px; font-weight: 800; line-height: 1.2; }
