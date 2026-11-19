@@ -916,6 +916,73 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     </div>
     <?php endif; ?>
 
+    <?php if (in_array($role, ['Admin', 'Super Admin'], true)):
+        // 🌟 Country-wise and Client-wise ships & recovery — the Surveyor Performance rules: a ship counts once
+        //    it has left Pending Vessels (Pending Report + Completed); recovery as the Total Recovery card
+        //    (NOT APPLICABLE survey types count as 0). Country = the port's country (blank → India, as the
+        //    other country figures); a vessel without a port / client is listed as "not set".
+        $cwLists = ['country' => [], 'client' => []];
+        try {
+            ensurePortsCountryColumn($db);
+            $cwRec = recoveryCountedSql('s');
+            $cwDone = "s.status IN ('Pending Report','Completed')";
+            $cwLists['country'] = $db->query("
+                SELECT CASE WHEN p.id IS NULL THEN 'Port not set' ELSE COALESCE(NULLIF(TRIM(p.country), ''), 'India') END AS name,
+                       COUNT(*) AS ships, COALESCE(SUM($cwRec), 0) AS recovery
+                FROM surveys s LEFT JOIN ports p ON p.id = s.port_id
+                WHERE $cwDone GROUP BY name ORDER BY ships DESC, recovery DESC, name ASC
+            ")->fetchAll(PDO::FETCH_ASSOC);
+            $cwLists['client'] = $db->query("
+                SELECT COALESCE(NULLIF(TRIM(c.company_name), ''), 'Client not set') AS name,
+                       COUNT(*) AS ships, COALESCE(SUM($cwRec), 0) AS recovery
+                FROM surveys s LEFT JOIN clients c ON c.id = s.client_id
+                WHERE $cwDone GROUP BY s.client_id, name ORDER BY ships DESC, recovery DESC, name ASC
+            ")->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) { error_log('dashboard country / client tables: ' . $e->getMessage()); }
+        $cwBoxes = [
+            'country' => ['title' => 'Country-wise Ships & Recovery', 'sub' => 'Ships attended and recovery by the port\'s country', 'icon' => 'fa-earth-asia', 'col' => 'Country'],
+            'client' => ['title' => 'Client-wise Ships & Recovery', 'sub' => 'Ships attended and recovery by client', 'icon' => 'fa-building', 'col' => 'Client'],
+        ];
+        $cwMt = fn($v) => number_format((float)$v, 3);
+    ?>
+    <style>
+    .cw-h { background: linear-gradient(120deg, #1e3a8a 0%, #3b82f6 100%); }
+    .cw-h.client { background: linear-gradient(120deg, #4B2FD6 0%, #7C3AED 100%); }
+    .cw-colh, .cw-row, .cw-tot { display: grid; grid-template-columns: minmax(0, 1fr) 64px 118px; gap: 10px; align-items: center; padding: 9px 14px; }
+    .cw-colh { background: #F8FAFC; border-bottom: 1px solid #e2e8f0; font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .06em; }
+    .cw-colh span + span, .cw-row span + span, .cw-tot span + span { text-align: right; }
+    .cw-row { border-bottom: 1px solid #f1f5f9; color: #0f172a; font-size: 13px; }
+    .cw-row:hover { background: #F8FAFC; }
+    .cw-row .v { font-weight: 800; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cw-row .sh { font-weight: 800; }
+    .cw-row .rc { font-weight: 800; color: #4B2FD6; white-space: nowrap; }
+    .cw-u { font-size: 10px; font-weight: 700; color: #94a3b8; margin-left: 2px; }
+    .cw-tot { margin-top: auto; background: #1E1B6B; color: #fff; font-weight: 800; font-size: 13px; }
+    .cw-tot .cw-u { color: rgba(255,255,255,.6); }
+    .cs-snap .od-list { max-height: none !important; }
+    @media (max-width: 575.98px) { .cw-colh, .cw-row, .cw-tot { grid-template-columns: minmax(0, 1fr) 44px 104px; gap: 8px; } .cw-row .v { white-space: normal; overflow-wrap: anywhere; } }
+    </style>
+    <div class="overview-section mt-4" data-testid="dash-country-client">
+        <div class="od-grid">
+            <?php foreach ($cwBoxes as $k => $bx): $list = $cwLists[$k]; ?>
+            <div class="od-box" data-testid="dash-cw-<?= $k ?>" data-share="<?= $bx['title'] ?>">
+                <div class="od-h cw-h <?= $k ?>"><i class="fa-solid <?= $bx['icon'] ?>" aria-hidden="true"></i><div><b><?= $bx['title'] ?></b><small><?= $bx['sub'] ?></small></div><span class="n" data-testid="dash-cw-<?= $k ?>-count" title="<?= count($list) ?> <?= $k === 'country' ? 'countries' : 'clients' ?>"><?= count($list) ?></span><?= $csBtn('cs-light') ?></div>
+                <?php if ($list): ?>
+                <div class="cw-colh"><span><?= $bx['col'] ?></span><span>Ships</span><span>Recovery</span></div>
+                <div class="od-list">
+                    <?php foreach ($list as $r): ?>
+                    <div class="cw-row" data-testid="dash-cw-<?= $k ?>-row"><span class="v" title="<?= sanitize($r['name']) ?>"><?= sanitize($r['name']) ?></span><span class="sh"><?= (int)$r['ships'] ?></span><span class="rc"><?= $cwMt($r['recovery']) ?><span class="cw-u">MT</span></span></div>
+                    <?php endforeach; ?>
+                </div>
+                <div class="cw-tot" data-testid="dash-cw-<?= $k ?>-total"><span>Total</span><span><?= array_sum(array_map(fn($r) => (int)$r['ships'], $list)) ?></span><span><?= $cwMt(array_sum(array_map(fn($r) => (float)$r['recovery'], $list))) ?><span class="cw-u">MT</span></span></div>
+                <?php else: ?>
+                <div class="od-empty" style="color:#64748b"><i class="fa-solid fa-circle-info me-1"></i> No ships attended yet.</div>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
     <?php if (in_array($role, ['Admin', 'Super Admin'], true)): ?>
     <div class="overview-section mt-4" data-share="Surveyor Performance">
         <div class="section-title-row">
