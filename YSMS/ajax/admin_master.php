@@ -154,6 +154,10 @@ try {
         if ($module === 'ports' && isset($data['country']) && $data['country'] === '') {
             $data['country'] = 'India';
         }
+        // Ports: names and countries in capitals (portCaps)
+        if ($module === 'ports') {
+            foreach (['port_name', 'country'] as $pc) if (isset($data[$pc])) $data[$pc] = portCaps($data[$pc]);
+        }
 
         // Clients: only write address columns if they actually exist in DB
         if ($module === 'clients') {

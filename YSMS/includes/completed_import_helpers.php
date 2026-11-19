@@ -903,7 +903,7 @@ function completedImportInsertRow(PDO $db, array $v, string $actorName): array {
                     $chk->execute([$name]);
                     $id = (int)($chk->fetchColumn() ?: 0);
                     if ($id > 0) return $id;
-                    $db->prepare("INSERT INTO ports (port_name, country) VALUES (?, ?)")->execute([$name, $pp['country']]);
+                    $db->prepare("INSERT INTO ports (port_name, country) VALUES (?, ?)")->execute([portCaps($name), portCaps($pp['country'])]);
                     return (int)$db->lastInsertId();
                 };
                 $baseId = $ensure($pp['create_port']);

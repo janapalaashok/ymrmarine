@@ -332,6 +332,7 @@ include 'includes/header.php';
                 <input type="text" class="admin-search-input" placeholder="Search <?= sanitize(strtolower($mod['label'])) ?>..." data-testid="admin-search-<?= sanitize($key) ?>">
                 <?php if ($key === 'ports'): ?>
                     <a href="ports_import.php" class="admin-bulk-btn" data-testid="admin-bulk-ports"><i class="fa-solid fa-file-arrow-up"></i> Bulk Upload</a>
+                    <a href="ports_review.php" class="admin-bulk-btn" data-testid="admin-review-ports"><i class="fa-solid fa-anchor-circle-check"></i> Review Ports</a>
                 <?php endif; ?>
                 <button type="button" class="admin-add-btn" data-testid="admin-add-<?= sanitize($key) ?>"><i class="fa-solid fa-plus"></i> Add</button>
             </div>
