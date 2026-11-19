@@ -332,26 +332,34 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     </style>
     <style>
     /* Dashboard highlight cards: Pending Vessels / Reports / Completed and Appointments & Surveys Completed */
-    .dash-hl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
-    .dash-hl a { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 4px; padding: 16px 16px 14px; border-radius: 18px; color: #fff; text-decoration: none; box-shadow: 0 10px 24px rgba(15,23,42,.14); transition: transform .15s ease, box-shadow .15s ease; min-width: 0; }
-    .dash-hl a:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(15,23,42,.2); color: #fff; }
+    .dash-hl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 10px; }
+    /* card: big number | divider | title, subtitle, OPEN ... link */
+    .dash-hl a { position: relative; overflow: hidden; display: flex; flex-direction: row; align-items: stretch; padding: 20px 22px; min-height: 124px; border-radius: 20px; color: #fff; text-decoration: none; box-shadow: 0 12px 26px rgba(15,23,42,.16); transition: transform .15s ease, box-shadow .15s ease; min-width: 0; }
+    .dash-hl a:hover { transform: translateY(-2px); box-shadow: 0 16px 32px rgba(15,23,42,.22); color: #fff; }
     .dash-hl .pv { background: linear-gradient(120deg, #1e3a8a 0%, #3b82f6 100%); }
     .dash-hl .pr { background: linear-gradient(120deg, #c2410c 0%, #f59e0b 100%); }
     .dash-hl .cv { background: linear-gradient(120deg, #047857 0%, #10b981 100%); }
     .dash-hl .t { background: linear-gradient(120deg, #4B2FD6 0%, #7C3AED 100%); }
     .dash-hl .m { background: linear-gradient(120deg, #0f4cc0 0%, #1d6fe0 100%); }
     .dash-hl .c { background: linear-gradient(120deg, #047857 0%, #10b981 100%); }
-    .dash-hl .ic { position: absolute; right: -6px; top: -8px; font-size: 64px; opacity: .14; }
-    .dash-hl .n { font-size: 30px; font-weight: 800; line-height: 1.05; }
-    .dash-hl .l { font-size: 13px; font-weight: 700; line-height: 1.25; }
-    .dash-hl .s { font-size: 11px; opacity: .8; font-weight: 500; }
-    .dash-hl .go { font-size: 11.5px; font-weight: 700; opacity: .9; margin-top: 4px; }
+    .dash-hl .ic { position: absolute; right: 14px; top: 12px; font-size: 58px; opacity: .14; pointer-events: none; }
+    .dash-hl .n { flex: none; display: flex; align-items: center; justify-content: center; min-width: 56px; padding-right: 18px; margin-right: 18px; border-right: 2px solid rgba(255,255,255,.85); font-size: 46px; font-weight: 800; line-height: 1; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+    .dash-hl .tx { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; padding-right: 30px; }
+    .dash-hl .l { font-size: 16px; font-weight: 800; line-height: 1.2; }
+    .dash-hl .s { font-size: 12.5px; opacity: .92; font-weight: 500; }
+    .dash-hl .go { margin-top: 8px; font-size: 10.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; opacity: .95; white-space: nowrap; }
+    .dash-hl .go i { font-size: 9px; margin-left: 6px; }
     @media (max-width: 991.98px) { .ha-page .ha-band { height: 200px; } } /* the blue band ends behind the first row of cards (no Today's Overview heading) */
+    @media (max-width: 1399.98px) {
+        .dash-hl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .dash-hl > a:last-child:nth-child(odd) { grid-column: 1 / -1; } /* the third card takes the full row */
+    }
     @media (max-width: 575.98px) {
-        .dash-hl { gap: 8px; }
-        .dash-hl a { padding: 12px 10px; border-radius: 14px; }
-        .dash-hl .n { font-size: 24px; }
- .dash-hl .l { font-size: 11.5px; } .dash-hl .s, .dash-hl .go { display: none; } .dash-hl .ic { font-size: 44px; }
+        .dash-hl { grid-template-columns: 1fr; gap: 10px; }
+        .dash-hl a { padding: 14px 16px; min-height: 0; border-radius: 16px; }
+        .dash-hl .n { min-width: 44px; padding-right: 14px; margin-right: 14px; font-size: 34px; }
+        .dash-hl .l { font-size: 14px; } .dash-hl .s { font-size: 11.5px; } .dash-hl .go { margin-top: 5px; font-size: 9.5px; }
+        .dash-hl .ic { font-size: 44px; right: 10px; top: 10px; }
     }
     </style>
     <div class="overview-section ha-ov">
@@ -359,17 +367,17 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
             <a class="pv" href="vessels.php" data-testid="dash-ov-pending-vessels" data-share="Pending Vessels">
                 <?= $csBtn('cs-abs cs-light') ?>
                 <i class="fa-solid fa-ship ic" aria-hidden="true"></i>
-                <span class="n"><?= (int)$pending_vessels ?></span><span class="l">Pending Vessels</span><span class="s">Waiting for survey</span><span class="go">Open Pending Vessels <i class="fa-solid fa-chevron-right"></i></span>
+                <span class="n"><?= (int)$pending_vessels ?></span><span class="tx"><span class="l">Pending Vessels</span><span class="s">Waiting for survey</span><span class="go">Open Pending Vessels <i class="fa-solid fa-chevron-right"></i></span></span>
             </a>
             <a class="pr" href="reports.php" data-testid="dash-ov-pending-reports" data-share="Pending Reports">
                 <?= $csBtn('cs-abs cs-light') ?>
                 <i class="fa-solid fa-file-lines ic" aria-hidden="true"></i>
-                <span class="n"><?= (int)$pending_reports ?></span><span class="l">Pending Reports</span><span class="s">Survey done, report to upload</span><span class="go">Open Pending Reports <i class="fa-solid fa-chevron-right"></i></span>
+                <span class="n"><?= (int)$pending_reports ?></span><span class="tx"><span class="l">Pending Reports</span><span class="s">Survey done, report to upload</span><span class="go">Open Pending Reports <i class="fa-solid fa-chevron-right"></i></span></span>
             </a>
             <a class="cv" href="completed.php" data-testid="dash-ov-completed" data-share="Completed Vessels">
                 <?= $csBtn('cs-abs cs-light') ?>
                 <i class="fa-solid fa-circle-check ic" aria-hidden="true"></i>
-                <span class="n"><?= (int)$completed_vessels ?></span><span class="l">Completed Vessels</span><span class="s">Report uploaded</span><span class="go">Open Completed <i class="fa-solid fa-chevron-right"></i></span>
+                <span class="n"><?= (int)$completed_vessels ?></span><span class="tx"><span class="l">Completed Vessels</span><span class="s">Report uploaded</span><span class="go">Open Completed <i class="fa-solid fa-chevron-right"></i></span></span>
             </a>
         </div>
     </div>
@@ -396,17 +404,17 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
             <a class="t" href="monthly_data.php?tab=appointments&amp;month=<?= $hlMonth ?>&amp;day=<?= $hlToday ?>" data-testid="dash-hl-today" data-share="Today's Appointments">
                 <?= $csBtn('cs-abs cs-light') ?>
                 <i class="fa-solid fa-calendar-day ic" aria-hidden="true"></i>
-                <span class="n"><?= (int)$hl['today'] ?></span><span class="l">Today's Appointments</span><span class="s"><?= strtoupper(date('d-M-Y')) ?></span><span class="go">Open in Monthly Data <i class="fa-solid fa-chevron-right"></i></span>
+                <span class="n"><?= (int)$hl['today'] ?></span><span class="tx"><span class="l">Today's Appointments</span><span class="s"><?= strtoupper(date('d-M-Y')) ?></span><span class="go">Open in Monthly Data <i class="fa-solid fa-chevron-right"></i></span></span>
             </a>
             <a class="m" href="monthly_data.php?tab=appointments&amp;month=<?= $hlMonth ?>" data-testid="dash-hl-month" data-share="This Month's Appointments">
                 <?= $csBtn('cs-abs cs-light') ?>
                 <i class="fa-solid fa-calendar-week ic" aria-hidden="true"></i>
-                <span class="n"><?= (int)$hl['month'] ?></span><span class="l">This Month's Appointments</span><span class="s"><?= date('F Y') ?></span><span class="go">Open in Monthly Data <i class="fa-solid fa-chevron-right"></i></span>
+                <span class="n"><?= (int)$hl['month'] ?></span><span class="tx"><span class="l">This Month's Appointments</span><span class="s"><?= date('F Y') ?></span><span class="go">Open in Monthly Data <i class="fa-solid fa-chevron-right"></i></span></span>
             </a>
             <a class="c" href="monthly_data.php?tab=completed&amp;month=<?= $hlMonth ?>" data-testid="dash-hl-completed" data-share="Surveys Completed This Month">
                 <?= $csBtn('cs-abs cs-light') ?>
                 <i class="fa-solid fa-circle-check ic" aria-hidden="true"></i>
-                <span class="n"><?= (int)$hl['done'] ?></span><span class="l">Surveys Completed This Month</span><span class="s">By Survey Completed Date · <?= date('F Y') ?></span><span class="go">Open in Monthly Data <i class="fa-solid fa-chevron-right"></i></span>
+                <span class="n"><?= (int)$hl['done'] ?></span><span class="tx"><span class="l">Surveys Completed This Month</span><span class="s">By Survey Completed Date · <?= date('F Y') ?></span><span class="go">Open in Monthly Data <i class="fa-solid fa-chevron-right"></i></span></span>
             </a>
         </div>
     </div>
