@@ -43,7 +43,7 @@
             if (id === 'HOLDS' && !NUMS_TO_WORDS[v]) return; // the No. of Holds list is 1–10
             out[id] = v;
         });
-        if (fields.grt) out.GRT = String(fields.grt) + (fields.nrt ? ' / ' + fields.nrt : ''); // "GRT / NRT"
+        if (fields.grt) out.GRT = String(fields.grt); // GRT only (no NRT)
         return out;
     }
     function lookup(sid) {

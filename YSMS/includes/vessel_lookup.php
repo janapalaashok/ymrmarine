@@ -2,7 +2,7 @@
 /**
  * Vessel lookup by IMO number — used by Survey Reports (includes/survey_reports.php) and the
  * Report Generator's "IMO Lookup" (ajax/report_imo_lookup.php). Fast first: particulars found
- * for this IMO before (table survey_vessel_lookup, kept 60 days), the latest survey report of
+ * for this IMO before (table survey_vessel_lookup, kept for good), the latest survey report of
  * this IMO, then Gemini + Google Search. Values are checked with the Survey Report field types.
  */
 require_once __DIR__ . '/survey_form.php';
@@ -84,11 +84,11 @@ function srVesselLookup(string $imoRaw, array $types): array {
 }
 
 /**
- * Vessel lookup, fast first: (1) particulars found for this IMO before (kept 60 days), (2) the latest report
+ * Vessel lookup, fast first: (1) particulars found for this IMO before (kept for good: once an IMO is found it is
+ * not asked again), (2) the latest report
  * of this IMO typed in by a surveyor, (3) the AI web search (slow, 20-60 s) — its answer is kept for next time.
  * The PHP session is released before the AI is asked, so autosave and other requests do not wait for it.
  */
-const SR_LOOKUP_KEEP_DAYS = 60;
 function srLookupEnsure(PDO $db): void {
     static $done = false; if ($done) return; $done = true;
     $db->exec("CREATE TABLE IF NOT EXISTS `survey_vessel_lookup` (
@@ -109,8 +109,8 @@ function srLookupFast(PDO $db, string $imoRaw, array $types, int $exceptReport =
     };
     try {
         srLookupEnsure($db);
-        $q = $db->prepare('SELECT fields, sources, fetched_at FROM survey_vessel_lookup WHERE imo = ? AND fetched_at > ?');
-        $q->execute([$imo, date('Y-m-d H:i:s', time() - SR_LOOKUP_KEEP_DAYS * 86400)]);
+        $q = $db->prepare('SELECT fields, sources, fetched_at FROM survey_vessel_lookup WHERE imo = ?');
+        $q->execute([$imo]);
         if ($row = $q->fetch(PDO::FETCH_ASSOC)) {
             $f = $keep((array)json_decode((string)$row['fields'], true));
             if ($f) return ['ok' => true, 'imo' => $imo, 'fields' => $f, 'sources' => (array)json_decode((string)$row['sources'], true), 'from' => 'saved', 'at' => $row['fetched_at']];
