@@ -354,12 +354,14 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
         .dash-hl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .dash-hl > a:last-child:nth-child(odd) { grid-column: 1 / -1; } /* the third card takes the full row */
     }
-    @media (max-width: 575.98px) {
-        .dash-hl { grid-template-columns: 1fr; gap: 10px; }
-        .dash-hl a { padding: 14px 16px; min-height: 0; border-radius: 16px; }
-        .dash-hl .n { min-width: 44px; padding-right: 14px; margin-right: 14px; font-size: 34px; }
-        .dash-hl .l { font-size: 14px; } .dash-hl .s { font-size: 11.5px; } .dash-hl .go { margin-top: 5px; font-size: 9.5px; }
-        .dash-hl .ic { font-size: 44px; right: 10px; top: 10px; }
+    @media (max-width: 575.98px) { /* phones keep the earlier compact cards: three a row, number over title */
+        .dash-hl { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+        .dash-hl > a:last-child:nth-child(odd) { grid-column: auto; }
+        .dash-hl a { flex-direction: column; gap: 4px; padding: 12px 10px; min-height: 0; border-radius: 14px; box-shadow: 0 10px 24px rgba(15,23,42,.14); }
+        .dash-hl .n { display: block; min-width: 0; padding: 0; margin: 0; border: 0; font-size: 24px; line-height: 1.05; letter-spacing: normal; }
+        .dash-hl .tx { padding-right: 0; gap: 4px; }
+        .dash-hl .l { font-size: 11.5px; font-weight: 700; line-height: 1.25; } .dash-hl .s, .dash-hl .go { display: none; }
+        .dash-hl .ic { font-size: 44px; right: -6px; top: -8px; }
     }
     </style>
     <div class="overview-section ha-ov">
