@@ -422,7 +422,13 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     </div>
     <?php endif; ?>
 
-    <?php if (in_array($role, ['Admin', 'Super Admin'], true)):
+    <?php
+    // Surveyors see the month charts, Need Attention and the overdue boxes for their own vessels only
+    // (assigned to them, or shared with them through survey_surveyors) — the same rule as their other pages.
+    $dashScope = $role === 'Surveyor' ? ' AND (s.surveyor_id = ? OR s.id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?))' : '';
+    $dashScopeP = $role === 'Surveyor' ? [(int)$user_id, (int)$user_id] : [];
+    ?>
+    <?php if (in_array($role, ['Admin', 'Super Admin', 'Surveyor'], true)):
         // 🌟 Month-wise Appointments (Monthly Data rule) and Recovery (Pending Report + Completed by Survey
         //    Completed Date, NOT APPLICABLE types count 0 — same as Monthly Data / Recovery), Jan–Dec, from 2026.
         require_once 'includes/monthly_data.php';
@@ -432,13 +438,13 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
         for ($y = $mcFirst; $y <= $mcLast; $y++) $mcData[$y] = ['appt' => array_fill(0, 12, 0), 'rec' => array_fill(0, 12, 0.0)];
         try {
             $from = $mcFirst . '-01-01'; $to = ($mcLast + 1) . '-01-01';
-            $q = $db->prepare('SELECT YEAR(d) AS y, MONTH(d) AS m, COUNT(*) AS n FROM (SELECT ' . MD_APPT_DATE_SQL . ' AS d FROM surveys s) x WHERE d >= ? AND d < ? GROUP BY y, m');
-            $q->execute([$from, $to]);
+            $q = $db->prepare('SELECT YEAR(d) AS y, MONTH(d) AS m, COUNT(*) AS n FROM (SELECT ' . MD_APPT_DATE_SQL . ' AS d FROM surveys s WHERE 1 = 1' . $dashScope . ') x WHERE d >= ? AND d < ? GROUP BY y, m');
+            $q->execute(array_merge($dashScopeP, [$from, $to]));
             foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) $mcData[(int)$r['y']]['appt'][(int)$r['m'] - 1] = (int)$r['n'];
             $cd = surveyCompletedDateSql('s');
             $q = $db->prepare("SELECT YEAR($cd) AS y, MONTH($cd) AS m, COALESCE(SUM(" . recoveryCountedSql('s') . "), 0) AS t FROM surveys s
-                WHERE s.status IN ('Pending Report','Completed') AND $cd >= ? AND $cd < ? GROUP BY y, m");
-            $q->execute([$from, $to]);
+                WHERE s.status IN ('Pending Report','Completed')$dashScope AND $cd >= ? AND $cd < ? GROUP BY y, m");
+            $q->execute(array_merge($dashScopeP, [$from, $to]));
             foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) $mcData[(int)$r['y']]['rec'][(int)$r['m'] - 1] = round((float)$r['t'], 3);
         } catch (Throwable $e) { error_log('dashboard month charts: ' . $e->getMessage()); }
     ?>
@@ -483,6 +489,7 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     </div>
     <script>
     (function () {
+      var LINK = <?= json_encode($role !== 'Surveyor') ?>; // Monthly Data is Admin / Super Admin only
       var DATA = <?= json_encode($mcData) ?>, MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       var CFG = { appt: { color: '#1d6fe0', tab: 'appointments', fmt: function (v) { return String(v); }, unit: function (v) { return v === 1 ? 'appointment' : 'appointments'; } },
                   rec: { color: '#059669', tab: 'recovery', fmt: function (v) { return v.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 }); }, unit: function () { return 'MT recovery'; } } };
@@ -519,11 +526,12 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
           var mm = year + '-' + ('0' + (i + 1)).slice(-2);
           hit.addEventListener('mouseenter', function () {
             var box = svg.getBoundingClientRect(), cb = card.getBoundingClientRect(), k = box.width / W; // SVG has no offsetLeft: place from the card's box
-            tip.innerHTML = '<span></span><small></small>'; tip.firstChild.textContent = c.fmt(v) + ' ' + c.unit(v); tip.lastChild.textContent = MON[i] + ' ' + year + ' · click to open';
+            tip.innerHTML = '<span></span><small></small>'; tip.firstChild.textContent = c.fmt(v) + ' ' + c.unit(v); tip.lastChild.textContent = MON[i] + ' ' + year + (LINK ? ' · click to open' : '');
             tip.style.left = (box.left - cb.left + (L + slot * i + slot / 2) * k) + 'px'; tip.style.top = (box.top - cb.top + Math.max(y, T + 10) * k - 6) + 'px'; tip.classList.add('on');
           });
           hit.addEventListener('mouseleave', function () { tip.classList.remove('on'); });
-          hit.addEventListener('click', function () { location.href = 'monthly_data.php?tab=' + c.tab + '&month=' + mm; });
+          if (LINK) hit.addEventListener('click', function () { location.href = 'monthly_data.php?tab=' + c.tab + '&month=' + mm; });
+          else hit.style.cursor = 'default';
           var tt = el('title', {}, MON[i] + ' ' + year + ': ' + c.fmt(v)); hit.appendChild(tt);
           svg.appendChild(hit);
         });
@@ -535,7 +543,7 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     </script>
     <?php endif; ?>
 
-    <?php if (in_array($role, ['Admin', 'Super Admin'], true)):
+    <?php if (in_array($role, ['Admin', 'Super Admin', 'Surveyor'], true)):
         // 🌟 Need Attention: vessels whose ETA / ETB / ETC (set on the vessel page) is today, tomorrow or the
         //    day after — a 3 x 3 table, red strongest for today. Cancelled / Missed / Completed vessels are left out.
         require_once 'includes/vessel_dates.php';
@@ -548,9 +556,9 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
         try {
             $q = $db->prepare("SELECT s.id, s.vessel_name, s.status, s.survey_type_ids, s.eta_date, s.etb_date, s.etc_date, st.type_name, p.port_name
                 FROM surveys s LEFT JOIN survey_types st ON st.id = s.survey_type_id LEFT JOIN ports p ON p.id = s.port_id
-                WHERE s.status NOT IN ('Cancelled','Missed','Completed') AND (s.eta_date BETWEEN ? AND ? OR s.etb_date BETWEEN ? AND ? OR s.etc_date BETWEEN ? AND ?)
+                WHERE s.status NOT IN ('Cancelled','Missed','Completed') AND (s.eta_date BETWEEN ? AND ? OR s.etb_date BETWEEN ? AND ? OR s.etc_date BETWEEN ? AND ?)$dashScope
                 ORDER BY s.vessel_name ASC, s.id ASC");
-            $q->execute([$naDays[0], $naDays[2], $naDays[0], $naDays[2], $naDays[0], $naDays[2]]);
+            $q->execute(array_merge([$naDays[0], $naDays[2], $naDays[0], $naDays[2], $naDays[0], $naDays[2]], $dashScopeP));
             foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) {
                 foreach ($naCols as $k => $c) {
                     $v = substr((string)($r[$c] ?? ''), 0, 10);
@@ -623,17 +631,17 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     </div>
     <?php endif; ?>
 
-    <?php if (in_array($role, ['Admin', 'Super Admin'], true)):
+    <?php if (in_array($role, ['Admin', 'Super Admin', 'Surveyor'], true)):
         // 🌟 Overdue lists: Pending Vessels more than 30 days after their Appointment Date, and Pending Reports
         //    more than 15 days after their Survey Completed Date — oldest first, days counted as on the vessel
         //    pages' overdue alert (calendar days since that date). Vessels without that date are not listed.
         $odLists = ['pv' => [], 'pr' => []];
         try {
-            $odSql = function (string $status, string $col, int $days) use ($db): array {
+            $odSql = function (string $status, string $col, int $days) use ($db, $dashScope, $dashScopeP): array {
                 $today = date('Y-m-d'); // the app's day (Asia/Kolkata), as the vessel pages' overdue alert
                 $q = $db->prepare("SELECT s.id, s.vessel_name, DATEDIFF(?, DATE(s.$col)) AS days FROM surveys s
-                    WHERE s.status = ? AND YEAR(s.$col) > 0 AND DATEDIFF(?, DATE(s.$col)) > ? ORDER BY days DESC, s.id ASC");
-                $q->execute([$today, $status, $today, $days]);
+                    WHERE s.status = ? AND YEAR(s.$col) > 0 AND DATEDIFF(?, DATE(s.$col)) > ?$dashScope ORDER BY days DESC, s.id ASC");
+                $q->execute(array_merge([$today, $status, $today, $days], $dashScopeP));
                 return $q->fetchAll(PDO::FETCH_ASSOC);
             };
             $odLists['pv'] = $odSql('Pending Vessel', 'appointment_date', 30);
@@ -685,73 +693,9 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     <?php endif; ?>
 
     <?php if ($role === 'Super Admin'):
-        // 🌟 Super Admin analytics — Recovery by Surveyor (Top 10), Recovery by
-        // Port/Country/Client (Top 5 each), Top 5 completed ships by
-        // country/port, and average ships per year/month/day/surveyor. All
-        // computed live from the same `surveys`/`ports`/`clients`/`users`
-        // tables used everywhere else on this dashboard — no hardcoded values.
-        ensurePortsCountryColumn($db);
-
-        $recovery_by_surveyor = $db->query("
-            SELECT u.full_name, SUM(ABS(s.recovery_amount)) AS total
-            FROM surveys s
-            JOIN users u ON s.surveyor_id = u.id
-            WHERE s.recovery_amount IS NOT NULL AND s.status IN ('Pending Report','Completed') AND " . recoveryAppliesSql('s') . "
-            GROUP BY s.surveyor_id, u.full_name
-            ORDER BY total DESC
-            LIMIT 10
-        ")->fetchAll(PDO::FETCH_ASSOC);
-
-        $recovery_by_port = $db->query("
-            SELECT p.port_name, SUM(ABS(s.recovery_amount)) AS total
-            FROM surveys s
-            JOIN ports p ON s.port_id = p.id
-            WHERE s.recovery_amount IS NOT NULL AND s.status IN ('Pending Report','Completed') AND " . recoveryAppliesSql('s') . "
-            GROUP BY s.port_id, p.port_name
-            ORDER BY total DESC
-            LIMIT 5
-        ")->fetchAll(PDO::FETCH_ASSOC);
-
-        $recovery_by_country = $db->query("
-            SELECT COALESCE(NULLIF(p.country, ''), 'India') AS country, SUM(ABS(s.recovery_amount)) AS total
-            FROM surveys s
-            JOIN ports p ON s.port_id = p.id
-            WHERE s.recovery_amount IS NOT NULL AND s.status IN ('Pending Report','Completed') AND " . recoveryAppliesSql('s') . "
-            GROUP BY COALESCE(NULLIF(p.country, ''), 'India')
-            ORDER BY total DESC
-            LIMIT 5
-        ")->fetchAll(PDO::FETCH_ASSOC);
-
-        $recovery_by_client = $db->query("
-            SELECT c.company_name, SUM(ABS(s.recovery_amount)) AS total
-            FROM surveys s
-            JOIN clients c ON s.client_id = c.id
-            WHERE s.recovery_amount IS NOT NULL AND s.status IN ('Pending Report','Completed') AND " . recoveryAppliesSql('s') . "
-            GROUP BY s.client_id, c.company_name
-            ORDER BY total DESC
-            LIMIT 5
-        ")->fetchAll(PDO::FETCH_ASSOC);
-
-        $ships_by_country_top5 = $db->query("
-            SELECT COALESCE(NULLIF(p.country, ''), 'India') AS country, COUNT(*) AS cnt
-            FROM surveys s
-            JOIN ports p ON s.port_id = p.id
-            WHERE s.status = 'Completed'
-            GROUP BY COALESCE(NULLIF(p.country, ''), 'India')
-            ORDER BY cnt DESC
-            LIMIT 5
-        ")->fetchAll(PDO::FETCH_ASSOC);
-
-        $ships_by_port_top5 = $db->query("
-            SELECT p.port_name, COUNT(*) AS cnt
-            FROM surveys s
-            JOIN ports p ON s.port_id = p.id
-            WHERE s.status = 'Completed'
-            GROUP BY s.port_id, p.port_name
-            ORDER BY cnt DESC
-            LIMIT 5
-        ")->fetchAll(PDO::FETCH_ASSOC);
-
+        // 🌟 Super Admin Analytics — four cards in the Pending Vessels card design:
+        //    ships per day / month (Completed ships over the span of their completed dates) and
+        //    recovery per month / per ship (the Surveyor Performance "All vessels" averages).
         // Average ships per year/month/day, based on the actual date span of
         // completed surveys (first completed → most recently completed).
         $span_row = $db->query("
@@ -773,149 +717,39 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
             $sa_avg_per_month = $sa_completed_count / $monthSpan;
             $sa_avg_per_year = $sa_completed_count / $yearSpan;
         }
+        $sa_rec_month = (float)($sfr_total['avg_month'] ?? 0);
+        $sa_rec_ship = (float)($sfr_total['avg_ship'] ?? 0);
     ?>
-    <div class="overview-section mt-4">
-        <div class="section-title-row">
-            <span class="section-title">Super Admin Analytics</span>
-        </div>
-    </div>
-
-    <div class="stat-grid" data-testid="super-admin-average-ships-grid">
-        <div class="stat-card" data-testid="avg-ships-per-year-card" data-share="Average Ships Per Year">
-            <?= $csBtn('cs-abs') ?>
-            <span class="stat-title stat-title--blue"><i class="fa-solid fa-calendar stat-title-icon"></i>Average Ships Per Year</span>
-            <div class="stat-val"><?= number_format($sa_avg_per_year, 1) ?></div>
-        </div>
-        <div class="stat-card" data-testid="avg-ships-per-month-super-card" data-share="Average Ships Per Month">
-            <?= $csBtn('cs-abs') ?>
-            <span class="stat-title"><i class="fa-solid fa-calendar-days stat-title-icon"></i>Average Ships Per Month</span>
-            <div class="stat-val"><?= number_format($sa_avg_per_month, 1) ?></div>
-        </div>
-        <div class="stat-card" data-testid="avg-ships-per-day-card" data-share="Average Ships Per Day">
-            <?= $csBtn('cs-abs') ?>
-            <span class="stat-title stat-title--orange"><i class="fa-solid fa-calendar-day stat-title-icon"></i>Average Ships Per Day</span>
-            <div class="stat-val"><?= number_format($sa_avg_per_day, 2) ?></div>
-        </div>
-        <div class="stat-card" data-testid="avg-ships-per-surveyor-card" data-share="Average Ships Per Surveyor">
-            <?= $csBtn('cs-abs') ?>
-            <span class="stat-title stat-title--purple"><i class="fa-solid fa-user-tie stat-title-icon"></i>Average Ships Per Surveyor</span>
-            <div class="stat-val"><?= number_format((float)$avg_ships_per_surveyor, 1) ?></div>
-        </div>
-    </div>
-
-    <div class="overview-section mt-4">
-        <div class="section-title-row"><span class="section-title">Recovery Analytics</span></div>
-        <div class="recovery-row-grid" data-testid="recovery-row-grid">
-            <div class="recovery-row-card" data-testid="recovery-by-surveyor-card" data-share="Recovery by Surveyor - Top 10" style="position:relative">
-                <?= $csBtn('cs-abs') ?>
-                <div class="recovery-row-card-title"><span class="stat-title stat-title--purple"><i class="fa-solid fa-user-tie stat-title-icon"></i>Recovery by Surveyor — Top 10</span></div>
-                <div class="recovery-row-card-body">
-                    <?php if (!empty($recovery_by_surveyor)): ?>
-                        <?php foreach ($recovery_by_surveyor as $row): ?>
-                            <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--border-color);">
-                                <span class="fw-semibold" style="font-size:13.5px;"><?= sanitize($row['full_name']) ?></span>
-                                <span class="fw-bold text-primary" style="font-size:13.5px;"><?= number_format((float)$row['total'], 3) ?> MT</span>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="text-muted text-center py-2" style="font-size:12.5px;">No recovery data yet.</div>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <div class="recovery-row-card" data-testid="recovery-by-port-card" data-share="Recovery by Port - Top 5" style="position:relative">
-                <?= $csBtn('cs-abs') ?>
-                <div class="recovery-row-card-title"><span class="stat-title"><i class="fa-solid fa-anchor stat-title-icon"></i>Recovery by Port — Top 5</span></div>
-                <div class="recovery-row-card-body">
-                    <?php if (!empty($recovery_by_port)): ?>
-                        <?php foreach ($recovery_by_port as $row): ?>
-                            <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--border-color);">
-                                <span class="fw-semibold" style="font-size:13.5px;"><?= sanitize($row['port_name']) ?></span>
-                                <span class="fw-bold text-primary" style="font-size:13.5px;"><?= number_format((float)$row['total'], 3) ?> MT</span>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="text-muted text-center py-2" style="font-size:12.5px;">No recovery data yet.</div>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <div class="recovery-row-card" data-testid="recovery-by-country-card" data-share="Recovery by Country - Top 5" style="position:relative">
-                <?= $csBtn('cs-abs') ?>
-                <div class="recovery-row-card-title"><span class="stat-title stat-title--blue"><i class="fa-solid fa-earth-asia stat-title-icon"></i>Recovery by Country — Top 5</span></div>
-                <div class="recovery-row-card-body">
-                    <?php if (!empty($recovery_by_country)): ?>
-                        <?php foreach ($recovery_by_country as $row): ?>
-                            <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--border-color);">
-                                <span class="fw-semibold" style="font-size:13.5px;"><?= sanitize($row['country']) ?></span>
-                                <span class="fw-bold text-primary" style="font-size:13.5px;"><?= number_format((float)$row['total'], 3) ?> MT</span>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="text-muted text-center py-2" style="font-size:12.5px;">No recovery data yet.</div>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <div class="recovery-row-card" data-testid="recovery-by-client-card" data-share="Recovery by Client - Top 5" style="position:relative">
-                <?= $csBtn('cs-abs') ?>
-                <div class="recovery-row-card-title"><span class="stat-title stat-title--orange"><i class="fa-solid fa-building stat-title-icon"></i>Recovery by Client — Top 5</span></div>
-                <div class="recovery-row-card-body">
-                    <?php if (!empty($recovery_by_client)): ?>
-                        <?php foreach ($recovery_by_client as $row): ?>
-                            <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--border-color);">
-                                <span class="fw-semibold" style="font-size:13.5px;"><?= sanitize($row['company_name']) ?></span>
-                                <span class="fw-bold text-primary" style="font-size:13.5px;"><?= number_format((float)$row['total'], 3) ?> MT</span>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="text-muted text-center py-2" style="font-size:12.5px;">No recovery data yet.</div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="overview-section mt-4">
-        <div class="section-title-row"><span class="section-title">Ships Completed Analytics</span></div>
-        <div class="ships-row-grid" data-testid="ships-completed-row-grid">
-            <div class="recovery-row-card" data-testid="ships-by-country-top5-card" data-share="Ships Completed by Country - Top 5" style="position:relative">
-                <?= $csBtn('cs-abs') ?>
-                <div class="recovery-row-card-title"><span class="stat-title"><i class="fa-solid fa-earth-americas stat-title-icon"></i>Ships Completed by Country — Top 5</span></div>
-                <div class="recovery-row-card-body">
-                    <?php if (!empty($ships_by_country_top5)): ?>
-                        <?php foreach ($ships_by_country_top5 as $row): ?>
-                            <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--border-color);">
-                                <span class="fw-semibold" style="font-size:13.5px;"><?= sanitize($row['country']) ?></span>
-                                <span class="fw-bold text-primary" style="font-size:13.5px;"><?= (int)$row['cnt'] ?> ships</span>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="text-muted text-center py-2" style="font-size:12.5px;">No completed vessels yet.</div>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <div class="recovery-row-card" data-testid="ships-by-port-top5-card" data-share="Ships Completed by Port - Top 5" style="position:relative">
-                <?= $csBtn('cs-abs') ?>
-                <div class="recovery-row-card-title"><span class="stat-title stat-title--blue"><i class="fa-solid fa-ship stat-title-icon"></i>Ships Completed by Port — Top 5</span></div>
-                <div class="recovery-row-card-body">
-                    <?php if (!empty($ships_by_port_top5)): ?>
-                        <?php foreach ($ships_by_port_top5 as $row): ?>
-                            <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--border-color);">
-                                <span class="fw-semibold" style="font-size:13.5px;"><?= sanitize($row['port_name']) ?></span>
-                                <span class="fw-bold text-primary" style="font-size:13.5px;"><?= (int)$row['cnt'] ?> ships</span>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="text-muted text-center py-2" style="font-size:12.5px;">No completed vessels yet.</div>
-                    <?php endif; ?>
-                </div>
-            </div>
+    <style>
+    .dash-hl.sa-hl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    @media (max-width: 575.98px) { .dash-hl.sa-hl { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    </style>
+    <div class="overview-section mt-4" data-testid="dash-sa-analytics">
+        <div class="section-title-row"><span class="section-title"><i class="fa-solid fa-chart-line me-1" style="color:#4B2FD6"></i> Super Admin Analytics</span></div>
+        <div class="dash-hl sa-hl">
+            <a class="pv" href="completed.php" data-testid="avg-ships-per-day-card" data-share="Average Ships Per Day">
+                <?= $csBtn('cs-abs cs-light') ?>
+                <i class="fa-solid fa-calendar-day ic" aria-hidden="true"></i>
+                <span class="n"><?= number_format($sa_avg_per_day, 2) ?></span><span class="tx"><span class="l">Average Ships Per Day</span><span class="s">Completed ships ÷ days, first to last completed</span><span class="go">Open Completed <i class="fa-solid fa-chevron-right"></i></span></span>
+            </a>
+            <a class="pr" href="completed.php" data-testid="avg-ships-per-month-super-card" data-share="Average Ships Per Month">
+                <?= $csBtn('cs-abs cs-light') ?>
+                <i class="fa-solid fa-calendar-days ic" aria-hidden="true"></i>
+                <span class="n"><?= number_format($sa_avg_per_month, 1) ?></span><span class="tx"><span class="l">Average Ships Per Month</span><span class="s">Completed ships ÷ months, first to last completed</span><span class="go">Open Completed <i class="fa-solid fa-chevron-right"></i></span></span>
+            </a>
+            <a class="t" href="recovery.php" data-testid="avg-recovery-per-month-card" data-share="Avg Recovery per Month">
+                <?= $csBtn('cs-abs cs-light') ?>
+                <i class="fa-solid fa-gas-pump ic" aria-hidden="true"></i>
+                <span class="n"><?= number_format($sa_rec_month, 3) ?></span><span class="tx"><span class="l">Avg Recovery per Month</span><span class="s">MT · total recovery ÷ months since the first ship</span><span class="go">Open Recovery <i class="fa-solid fa-chevron-right"></i></span></span>
+            </a>
+            <a class="c" href="recovery.php" data-testid="avg-recovery-per-ship-card" data-share="Avg Recovery per Ship">
+                <?= $csBtn('cs-abs cs-light') ?>
+                <i class="fa-solid fa-ship ic" aria-hidden="true"></i>
+                <span class="n"><?= number_format($sa_rec_ship, 3) ?></span><span class="tx"><span class="l">Avg Recovery per Ship</span><span class="s">MT · total recovery ÷ ships with recovery</span><span class="go">Open Recovery <i class="fa-solid fa-chevron-right"></i></span></span>
+            </a>
         </div>
     </div>
     <?php endif; ?>
-
     <?php if (in_array($role, ['Admin', 'Super Admin'], true)):
         // 🌟 Country-wise and Client-wise ships & recovery — the Surveyor Performance rules: a ship counts once
         //    it has left Pending Vessels (Pending Report + Completed); recovery as the Total Recovery card
