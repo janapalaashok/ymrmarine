@@ -227,6 +227,8 @@ include 'includes/header.php';
 <!-- PDF input source (in addition to Excel): assets/js/report_pdf_source.js, ajax/report_pdf.php -->
 <script>window.RG_CSRF = <?= json_encode(csrf_token()) ?>;</script>
 <script src="assets/js/report_pdf_source.js?v=<?= @filemtime(__DIR__ . '/assets/js/report_pdf_source.js') ?: time() ?>"></script>
+<!-- IMO Lookup next to Fill XXX: assets/js/report_imo_lookup.js, ajax/report_imo_lookup.php -->
+<script src="assets/js/report_imo_lookup.js?v=<?= @filemtime(__DIR__ . '/assets/js/report_imo_lookup.js') ?: time() ?>"></script>
 <script>
 /* ============================================================
    🌟 6 రిపోర్ట్ టైప్‌ల టాబ్ కాన్ఫిగ్ — ప్రతి టాబ్ లాజిక్ index (1).html లో ఇచ్చిన
@@ -549,6 +551,7 @@ function buildSectionBlock(sid) {
     html += `<div class="rg-xxx-row">
         <button type="button" class="rg-xxx-btn" onclick="fillRedeliveryXXX('${sid}')" data-testid="fill-xxx-${sid}">Fill XXX</button>
         <span>${isOffhire ? 'Redelivery' : 'Delivery'} not known yet: date XX-XX-XXXX, time XX:XX, VLSFO / LSMGO / HSFO XXX.XXX</span>
+        ${window.rgImoHtml ? rgImoHtml(sid, (sectionState[sid] && sectionState[sid].formValues.IMO) || '') : ''}
     </div>`;
     html += `<div class="accordion-group-card">
         <div class="accordion-header-bar" onclick="toggleAccordion('missingSection_${sid}', 'arrow1_${sid}')">
