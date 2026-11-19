@@ -956,19 +956,35 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
         .sp-table tfoot small { display: block; font-size: 10px; font-weight: 600; opacity: .65; }
         .sp-table tfoot .sp-u { color: rgba(255,255,255,.6); }
         .sp-empty { padding: 28px; text-align: center; color: #94a3b8; }
+        /* column pager: phones only */
+        .sp-nav { display: none; }
+        @media (max-width: 575.98px) {
+            .sp-table { min-width: 0; }
+            .sp-table tr > :nth-child(n+2) { display: none; }
+            .sp-table[data-col="2"] tr > :nth-child(2), .sp-table[data-col="3"] tr > :nth-child(3), .sp-table[data-col="4"] tr > :nth-child(4),
+            .sp-table[data-col="5"] tr > :nth-child(5), .sp-table[data-col="6"] tr > :nth-child(6), .sp-table[data-col="7"] tr > :nth-child(7) { display: table-cell; }
+            .sp-table td:first-child, .sp-table th:first-child { width: 50%; }
+            .sp-table tbody td:first-child { white-space: normal; }
+            .sp-table thead th { vertical-align: middle; padding: 10px 8px; letter-spacing: .03em; }
+            .sp-th { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+            .sp-th-t { text-align: center; }
+            .sp-table button.sp-nav[data-sp-nav] { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 26px; height: 26px; min-height: 0; min-width: 0; padding: 0; border-radius: 50%; border: 1px solid #e2e8f0; background: #fff; color: #5B2DEE; font-size: 10px; cursor: pointer; }
+            .sp-table button.sp-nav[data-sp-nav]:active { background: #F3EEFE; }
+            .cs-snap .sp-table button.sp-nav[data-sp-nav] { display: none; } /* the picture shows the columns only */
+        }
         </style>
         <div class="sp-card" data-testid="surveyor-full-report-card">
             <div class="sp-wrap">
-                <table class="sp-table" data-testid="surveyor-full-report-grid">
+                <table class="sp-table" data-col="2" data-testid="surveyor-full-report-grid">
                     <thead>
                         <tr>
                             <th>Surveyor Name</th>
-                            <th>Total Ships<br>Attended</th>
-                            <th>Ships Attended -<br>This Month</th>
-                            <th class="grp-rec">Total<br>Recovery</th>
-                            <th class="grp-rec">Recovery -<br>This Month</th>
-                            <th>Avg Recovery<br>per Ship</th>
-                            <th>Avg Recovery<br>per Month</th>
+<?php
+                            // Phones show the name and one figure column at a time; < and > step through them.
+                            $spCols = [['Total Ships<br>Attended', ''], ['Ships Attended -<br>This Month', ''], ['Total<br>Recovery', 'grp-rec'], ['Recovery -<br>This Month', 'grp-rec'], ['Avg Recovery<br>per Ship', ''], ['Avg Recovery<br>per Month', '']];
+                            foreach ($spCols as $ci => [$label, $cls]): ?>
+                            <th<?= $cls !== '' ? ' class="' . $cls . '"' : '' ?>><span class="sp-th"><?php if ($ci > 0): ?><button type="button" class="sp-nav" data-sp-nav="-1" aria-label="Previous column" data-testid="sfr-prev"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button><?php endif; ?><span class="sp-th-t"><?= $label ?></span><?php if ($ci < count($spCols) - 1): ?><button type="button" class="sp-nav" data-sp-nav="1" aria-label="Next column" data-testid="sfr-next"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button><?php endif; ?></span></th>
+                            <?php endforeach; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -1003,6 +1019,13 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
             </div>
         </div>
     </div>
+    <script>
+    document.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-sp-nav]'); if (!b) return;
+        var t = b.closest('.sp-table'), c = (+t.getAttribute('data-col') || 2) + (+b.getAttribute('data-sp-nav'));
+        t.setAttribute('data-col', String(Math.min(7, Math.max(2, c))));
+    });
+    </script>
     <?php endif; ?>
 
     <!-- Quick links: stacked on mobile, one neat row on desktop -->
