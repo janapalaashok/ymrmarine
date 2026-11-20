@@ -112,26 +112,138 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if ($isRecovery) {
         // Description line (no amount), then commission on each fuel's recovery.
         $d['note'] = mb_substr(trim((string)($_POST['service_desc'] ?? '')), 0, 2000);
+        $priceMode = ($_POST['price_mode'] ?? 'cp') === 'plat' ? 'plat' : 'cp';
+
         $pct = igNum($_POST['recovery_pct'] ?? '');
-        if ($pct === null || $pct <= 0 || $pct > 100) $errors[] = 'Agreed recovery %';
+
+        if ($pct === null || $pct <= 0 || $pct > 100) {
+            $errors[] = 'Agreed recovery %';
+        }
+
         $fuelRows = [];
+
         foreach (IG_FUELS as $k => $label) {
+
             $rate = igNum($_POST[$k . '_rate'] ?? '');
             $qty = igNum($_POST[$k . '_qty'] ?? '');
-            // Unit = agreed CP price × agreed % (when the CP price is given and the unit left empty)
-            $cp = igNum($_POST['cp_' . $k] ?? '');
-            if ($rate === null && $cp !== null && $pct !== null && trim((string)($_POST[$k . '_rate'] ?? '')) === '') $rate = round($cp * $pct / 100, 2);
-            if (in_array($k, IG_FUELS_OPTIONAL, true) && trim((string)($_POST[$k . '_rate'] ?? '')) === '' && $rate === null) $rate = 0.0;
-            if (in_array($k, IG_FUELS_OPTIONAL, true) && trim((string)($_POST[$k . '_qty'] ?? '')) === '') $qty = 0.0;
-            if ($rate === null || $qty === null) { $errors[] = $label . ' unit and quantity (enter 0 if there is none)'; continue; }
-            $fuelRows[$k] = ['rate' => $rate, 'qty' => $qty];
+
+            if ($priceMode === 'cp') {
+
+                // CP mode:
+                // Unit = agreed CP price × agreed recovery %
+                $cp = igNum($_POST['cp_' . $k] ?? '');
+
+                if (
+                    $rate === null &&
+                    $cp !== null &&
+                    $pct !== null &&
+                    trim((string)($_POST[$k . '_rate'] ?? '')) === ''
+                ) {
+                    $rate = round($cp * $pct / 100, 2);
+                }
+
+            } else {
+
+                // PLAT mode:
+                // Unit = quoted PLAT price directly
+                $plat = igNum($_POST['plat_' . $k] ?? '');
+
+                if (
+                    $rate === null &&
+                    $plat !== null &&
+                    trim((string)($_POST[$k . '_rate'] ?? '')) === ''
+                ) {
+                    if (
+                        $rate === null &&
+                        $plat !== null &&
+                        $pct !== null &&
+                        trim((string)($_POST[$k . '_rate'] ?? '')) === ''
+                    ) {
+                        $rate = round($plat * $pct / 100, 2);
+                    }
+                }
+            }
+
+            if (
+                in_array($k, IG_FUELS_OPTIONAL, true) &&
+                trim((string)($_POST[$k . '_rate'] ?? '')) === '' &&
+                $rate === null
+            ) {
+                $rate = 0.0;
+            }
+
+            if (
+                in_array($k, IG_FUELS_OPTIONAL, true) &&
+                trim((string)($_POST[$k . '_qty'] ?? '')) === ''
+            ) {
+                $qty = 0.0;
+            }
+
+            if ($rate === null || $qty === null) {
+                $errors[] = $label . ' unit and quantity (enter 0 if there is none)';
+                continue;
+            }
+
+            $fuelRows[$k] = [
+                'rate' => $rate,
+                'qty'  => $qty,
+                'base_price' => $priceMode === 'plat'
+                    ? igNum($_POST['plat_' . $k] ?? '')
+                    : igNum($_POST['cp_' . $k] ?? '')
+            ];
         }
+
         if (!$errors) {
+
             $pctTxt = rtrim(rtrim(number_format($pct, 2, '.', ''), '0'), '.');
+
             foreach ($fuelRows as $k => $r) {
-                // HSFO / ULSFO are listed only when filled in (not 0); VLSFO and LSMGO always.
-                if (in_array($k, IG_FUELS_OPTIONAL, true) && ($r['rate'] * $r['qty']) <= 0) continue;
-                $items[] = ['desc' => 'COMMISSION ON RECOVERY @' . $pctTxt . '% OF CP PRICE FOR ' . IG_FUELS[$k], 'rate' => $r['rate'], 'qty' => $r['qty']]; // % is only part of the wording
+
+                if (
+                    in_array($k, IG_FUELS_OPTIONAL, true) &&
+                    ($r['rate'] * $r['qty']) <= 0
+                ) {
+                    continue;
+                }
+
+                if ($priceMode === 'cp') {
+
+                    $platTxt = rtrim(
+                        rtrim(number_format((float)$r['base_price'], 2, '.', ''), '0'),
+                        '.'
+                    );
+
+                    $desc =
+                        'COMMISSION ON RECOVERY @' .
+                        $pctTxt .
+                        '% OF CP PRICE FOR ' .
+                        IG_FUELS[$k] .
+                        ' ' .
+                        $platTxt .
+                        ' PMT';
+
+                } else {
+
+                    $platTxt = rtrim(
+                        rtrim(number_format((float)$r['base_price'], 2, '.', ''), '0'),
+                        '.'
+                    );
+
+                    $desc =
+                        'COMMISSION ON RECOVERY @' .
+                        $pctTxt .
+                        '% OF PLAT PRICE FOR ' .
+                        IG_FUELS[$k] .
+                        ' ' .
+                        $platTxt .
+                        ' PMT';
+                }
+
+                $items[] = [
+                    'desc' => $desc,
+                    'rate' => $r['rate'],
+                    'qty'  => $r['qty']
+                ];
             }
         }
     } else {
@@ -292,6 +404,49 @@ include 'includes/header.php';
 .ig-cp-f .form-control { padding-left: 8px; padding-right: 6px; }
 .ig-cp-f { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .ig-cp-k { display: block; font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 2px; }
+.ig-price-mode {
+    margin-top: 10px;
+}
+
+.ig-price-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 4px;
+    background: #f1f5f9;
+    border-radius: 10px;
+}
+
+.ig-price-toggle label {
+    margin: 0;
+}
+
+.ig-price-toggle input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.ig-price-toggle span {
+    display: block;
+    padding: 8px 10px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.ig-price-toggle input:checked + span {
+    background: #fff;
+    color: #6C4CF1;
+    box-shadow: 0 1px 3px rgba(15,23,42,.12);
+}
+
+.ig-plat {
+    display: none;
+}
 @media (max-width: 575.98px) { .ig-cp { grid-template-columns: 1fr; } .ig-cp-f { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .ig-opt { font-weight: 500; color: #94a3b8; font-size: 11px; }
 .ig-svc-row { display: grid; grid-template-columns: 1fr 170px; gap: 8px; align-items: start; background: #f8fafc; border: 1px solid #eef1f6; border-radius: 10px; padding: 8px; position: relative; }
@@ -350,16 +505,108 @@ include 'includes/header.php';
 <?php if ($isRecovery): ?>
         <label>Description</label>
         <textarea class="form-control" name="service_desc" rows="3" data-testid="ig-service-desc"><?= sanitize($sv('service_desc', 'Recovery of bunkers — ' . $serviceDesc)) ?></textarea>
-        <div class="ig-cp">
-            <div><label>Agreed recovery % <span class="ig-req">*</span></label>
-            <input class="form-control" name="recovery_pct" inputmode="decimal" placeholder="e.g. 8" value="<?= sanitize($sv('recovery_pct', '')) ?>" required data-ig-pct data-testid="ig-recovery-pct"></div>
-            <div><label>Agreed CP price <span class="ig-opt">(USD / MT, optional)</span></label>
-            <div class="ig-cp-f">
-            <?php foreach (IG_CP_ORDER as $k): $label = IG_FUELS[$k]; ?>
-            <div><span class="ig-cp-k"><?= $label ?></span><input class="form-control" name="cp_<?= $k ?>" inputmode="decimal" placeholder="USD" value="<?= sanitize($sv('cp_' . $k, '')) ?>" data-ig-cp="<?= $k ?>" data-testid="ig-cp-<?= $k ?>"></div>
-            <?php endforeach; ?>
-            </div></div>
+        <div class="ig-price-mode">
+            <label>CP Price Available?</label>
+
+            <div class="ig-price-toggle">
+                <label>
+                    <input
+                        type="radio"
+                        name="price_mode"
+                        value="cp"
+                        <?= $sv('price_mode', 'cp') !== 'plat' ? 'checked' : '' ?>
+                        data-ig-price-mode
+                    >
+                    <span>Yes — CP Price</span>
+                </label>
+
+                <label>
+                    <input
+                        type="radio"
+                        name="price_mode"
+                        value="plat"
+                        <?= $sv('price_mode', 'cp') === 'plat' ? 'checked' : '' ?>
+                        data-ig-price-mode
+                    >
+                    <span>No — PLAT Price</span>
+                </label>
+            </div>
         </div>
+
+        <div class="ig-recovery-pct">
+    <label>
+        Agreed recovery %
+        <span class="ig-req">*</span>
+    </label>
+
+    <input
+        class="form-control"
+        name="recovery_pct"
+        inputmode="decimal"
+        placeholder="e.g. 8"
+        value="<?= sanitize($sv('recovery_pct', '')) ?>"
+        required
+        data-ig-pct
+        data-testid="ig-recovery-pct"
+    >
+</div>
+
+<div data-ig-cp-section>
+    <label>
+        Agreed CP price
+        <span class="ig-opt">(USD / MT, optional)</span>
+    </label>
+
+    <div class="ig-cp-f">
+        <?php foreach (IG_CP_ORDER as $k): $label = IG_FUELS[$k]; ?>
+            <div>
+                <span class="ig-cp-k"><?= $label ?></span>
+
+                <input
+                    class="form-control"
+                    name="cp_<?= $k ?>"
+                    inputmode="decimal"
+                    placeholder="USD"
+                    value="<?= sanitize($sv('cp_' . $k, '')) ?>"
+                    data-ig-cp="<?= $k ?>"
+                    data-testid="ig-cp-<?= $k ?>"
+                >
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+        <div class="ig-plat" data-ig-plat-section>
+            <label>
+                PLAT Price
+                <span class="ig-opt">(USD / MT)</span>
+            </label>
+
+            <div class="ig-cp-f">
+                <?php foreach (IG_CP_ORDER as $k): $label = IG_FUELS[$k]; ?>
+                    <div>
+                        <span class="ig-cp-k"><?= $label ?></span>
+
+                        <input
+                            class="form-control"
+                            name="plat_<?= $k ?>"
+                            inputmode="decimal"
+                            placeholder="USD"
+                            value="<?= sanitize($sv('plat_' . $k, '')) ?>"
+                            data-ig-plat="<?= $k ?>"
+                            data-testid="ig-plat-<?= $k ?>"
+                        >
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <label>
+            Recovery
+            <span class="ig-hint" data-ig-recovery-hint>
+                (unit = agreed CP price × agreed %, filled in from the CP price; quantity = MT recovered)
+            </span>
+        </label>
         <label>Recovery <span class="ig-hint">(unit = agreed CP price × agreed %, filled in from the CP price; quantity = MT recovered)</span></label>
         <div class="ig-svc" data-testid="ig-recovery">
             <?php foreach (IG_FUELS as $k => $label): ?>
@@ -475,19 +722,107 @@ include 'includes/header.php';
     document.querySelector('[data-ig-total]').textContent = '$' + t.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
   // Recovery: unit of each fuel = agreed CP price × agreed % (recalculated when either changes)
-  function cpUnits(only) {
-    var pctEl = document.querySelector('[data-ig-pct]'); if (!pctEl) return;
-    var pct = num(pctEl.value);
-    document.querySelectorAll('[data-ig-cp]').forEach(function (c) {
-      var k = c.getAttribute('data-ig-cp'); if (only && only !== k) return;
-      var rate = document.querySelector('[data-ig-fuel-rate="' + k + '"]');
-      if (!rate || String(c.value).trim() === '' || !(pct > 0)) return;
-      rate.value = (Math.round(num(c.value) * pct) / 100).toFixed(2);
+  // Recovery pricing: CP or PLAT price × agreed %
+var priceModes = document.querySelectorAll('[data-ig-price-mode]');
+var cpSection = document.querySelector('[data-ig-cp-section]');
+var platSection = document.querySelector('[data-ig-plat-section]');
+var recoveryHint = document.querySelector('[data-ig-recovery-hint]');
+
+function getPriceMode() {
+    var selected = document.querySelector('[data-ig-price-mode]:checked');
+    return selected ? selected.value : 'cp';
+}
+
+function updatePriceMode() {
+    var mode = getPriceMode();
+    var isPlat = mode === 'plat';
+
+    if (cpSection) {
+        cpSection.style.display = isPlat ? 'none' : 'block';
+    }
+
+    if (platSection) {
+        platSection.style.display = isPlat ? 'block' : 'none';
+    }
+
+    document.querySelectorAll('[data-ig-cp]').forEach(function (el) {
+        el.disabled = isPlat;
     });
+
+    document.querySelectorAll('[data-ig-plat]').forEach(function (el) {
+        el.disabled = !isPlat;
+    });
+
+    if (recoveryHint) {
+        recoveryHint.textContent = isPlat
+            ? '(unit = PLAT price × agreed %; quantity = MT recovered)'
+            : '(unit = agreed CP price × agreed %; quantity = MT recovered)';
+    }
+
+    recoveryUnits(null);
+}
+
+function recoveryUnits(only) {
+    var pctEl = document.querySelector('[data-ig-pct]');
+    if (!pctEl) return;
+
+    var pct = num(pctEl.value);
+    var mode = getPriceMode();
+
+    var selector = mode === 'plat'
+        ? '[data-ig-plat]'
+        : '[data-ig-cp]';
+
+    document.querySelectorAll(selector).forEach(function (priceEl) {
+
+        var k = mode === 'plat'
+            ? priceEl.getAttribute('data-ig-plat')
+            : priceEl.getAttribute('data-ig-cp');
+
+        if (only && only !== k) return;
+
+        var rate = document.querySelector('[data-ig-fuel-rate="' + k + '"]');
+
+        if (!rate || String(priceEl.value).trim() === '' || !(pct > 0)) {
+            return;
+        }
+
+        rate.value = (
+            Math.round(num(priceEl.value) * pct) / 100
+        ).toFixed(2);
+    });
+
     total();
-  }
-  document.querySelectorAll('[data-ig-cp]').forEach(function (c) { c.addEventListener('input', function () { cpUnits(c.getAttribute('data-ig-cp')); }); });
-  var pctIn = document.querySelector('[data-ig-pct]'); if (pctIn) pctIn.addEventListener('input', function () { cpUnits(null); });
+}
+
+document.querySelectorAll('[data-ig-cp]').forEach(function (el) {
+    el.addEventListener('input', function () {
+        if (getPriceMode() === 'cp') {
+            recoveryUnits(el.getAttribute('data-ig-cp'));
+        }
+    });
+});
+
+document.querySelectorAll('[data-ig-plat]').forEach(function (el) {
+    el.addEventListener('input', function () {
+        if (getPriceMode() === 'plat') {
+            recoveryUnits(el.getAttribute('data-ig-plat'));
+        }
+    });
+});
+
+var pctIn = document.querySelector('[data-ig-pct]');
+if (pctIn) {
+    pctIn.addEventListener('input', function () {
+        recoveryUnits(null);
+    });
+}
+
+priceModes.forEach(function (radio) {
+    radio.addEventListener('change', updatePriceMode);
+});
+
+updatePriceMode();
   var add = document.querySelector('[data-ig-add]');
   if (add) add.addEventListener('click', function () {
     var r = document.createElement('div');
