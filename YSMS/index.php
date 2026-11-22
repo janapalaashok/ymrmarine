@@ -545,7 +545,7 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
 
     <?php if (in_array($role, ['Admin', 'Super Admin', 'Surveyor'], true)):
         // 🌟 Need Attention: vessels whose ETA / ETB / ETC (set on the vessel page) is today, tomorrow or the
-        //    day after — a 3 x 3 table, red strongest for today. Cancelled / Missed / Completed vessels are left out.
+        //    day after — a 3 x 3 table, red strongest for today. Pending Vessels only.
         require_once 'includes/vessel_dates.php';
         vesselDatesEnsure($db);
         $naDays = [];
@@ -556,7 +556,7 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
         try {
             $q = $db->prepare("SELECT s.id, s.vessel_name, s.status, s.survey_type_ids, s.eta_date, s.etb_date, s.etc_date, st.type_name, p.port_name
                 FROM surveys s LEFT JOIN survey_types st ON st.id = s.survey_type_id LEFT JOIN ports p ON p.id = s.port_id
-                WHERE s.status NOT IN ('Cancelled','Missed','Completed') AND (s.eta_date BETWEEN ? AND ? OR s.etb_date BETWEEN ? AND ? OR s.etc_date BETWEEN ? AND ?)$dashScope
+                WHERE s.status = 'Pending Vessel' AND (s.eta_date BETWEEN ? AND ? OR s.etb_date BETWEEN ? AND ? OR s.etc_date BETWEEN ? AND ?)$dashScope
                 ORDER BY s.vessel_name ASC, s.id ASC");
             $q->execute(array_merge([$naDays[0], $naDays[2], $naDays[0], $naDays[2], $naDays[0], $naDays[2]], $dashScopeP));
             foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) {
@@ -567,7 +567,7 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
                         'id' => (int)$r['id'], 'name' => (string)$r['vessel_name'],
                         'type' => getCombinedSurveyTypeNames($db, $r['survey_type_ids'] ?? '', $r['type_name'] ?? ''),
                         'port' => (string)($r['port_name'] ?? ''),
-                        'url' => ($r['status'] === 'Pending Report' ? 'report_detail.php' : 'vessel_detail.php') . '?id=' . (int)$r['id'],
+                        'url' => 'vessel_detail.php?id=' . (int)$r['id'],
                     ];
                 }
             }
@@ -626,7 +626,7 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
                     </tbody>
                 </table>
             </div>
-            <?php if (!$naTotal): ?><div class="na-empty" data-testid="dash-na-empty">No ETA, ETB or ETC today, tomorrow or the day after.</div><?php endif; ?>
+            <?php if (!$naTotal): ?><div class="na-empty" data-testid="dash-na-empty">No pending vessel with ETA, ETB or ETC today, tomorrow or the day after.</div><?php endif; ?>
         </div>
     </div>
     <?php endif; ?>
