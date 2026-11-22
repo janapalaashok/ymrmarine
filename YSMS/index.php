@@ -544,21 +544,21 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     <?php endif; ?>
 
     <?php if (in_array($role, ['Admin', 'Super Admin', 'Surveyor'], true)):
-        // 🌟 Need Attention: vessels whose ETA / ETB / ETC (set on the vessel page) is today, tomorrow or the
-        //    day after — a 3 x 3 table, red strongest for today. Pending Vessels only.
+        // 🌟 Need Attention: vessels whose ETA / ETB / ETC / Expected Supply Date (set on the vessel page) is today,
+        //    tomorrow or the day after — a 3 x 4 table, red strongest for today. Pending Vessels only.
         require_once 'includes/vessel_dates.php';
         vesselDatesEnsure($db);
         $naDays = [];
         for ($d = 0; $d < 3; $d++) $naDays[] = date('Y-m-d', strtotime("+$d day"));
-        $naCols = ['eta' => 'eta_date', 'etb' => 'etb_date', 'etc' => 'etc_date'];
+        $naCols = ['eta' => 'eta_date', 'etb' => 'etb_date', 'etc' => 'etc_date', 'esd' => 'expected_supply_date'];
         $naGrid = [];
         foreach ($naDays as $d) foreach ($naCols as $k => $c) $naGrid[$d][$k] = [];
         try {
-            $q = $db->prepare("SELECT s.id, s.vessel_name, s.status, s.survey_type_ids, s.eta_date, s.etb_date, s.etc_date, st.type_name, p.port_name
+            $q = $db->prepare("SELECT s.id, s.vessel_name, s.status, s.survey_type_ids, s.eta_date, s.etb_date, s.etc_date, s.expected_supply_date, st.type_name, p.port_name
                 FROM surveys s LEFT JOIN survey_types st ON st.id = s.survey_type_id LEFT JOIN ports p ON p.id = s.port_id
-                WHERE s.status = 'Pending Vessel' AND (s.eta_date BETWEEN ? AND ? OR s.etb_date BETWEEN ? AND ? OR s.etc_date BETWEEN ? AND ?)$dashScope
+                WHERE s.status = 'Pending Vessel' AND (s.eta_date BETWEEN ? AND ? OR s.etb_date BETWEEN ? AND ? OR s.etc_date BETWEEN ? AND ? OR s.expected_supply_date BETWEEN ? AND ?)$dashScope
                 ORDER BY s.vessel_name ASC, s.id ASC");
-            $q->execute(array_merge([$naDays[0], $naDays[2], $naDays[0], $naDays[2], $naDays[0], $naDays[2]], $dashScopeP));
+            $q->execute(array_merge([$naDays[0], $naDays[2], $naDays[0], $naDays[2], $naDays[0], $naDays[2], $naDays[0], $naDays[2]], $dashScopeP));
             foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) {
                 foreach ($naCols as $k => $c) {
                     $v = substr((string)($r[$c] ?? ''), 0, 10);
@@ -578,7 +578,7 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     <style>
     .na-card { background: #fff; border: 1px solid var(--border-color, #e2e8f0); border-radius: 18px; box-shadow: 0 4px 16px rgba(15,23,42,.05); overflow: hidden; margin-top: 10px; }
     .na-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .na-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 560px; table-layout: fixed; }
+    .na-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 700px; table-layout: fixed; }
     .na-table th, .na-table td { text-transform: uppercase; font-weight: 800; }
     .na-table thead th { background: #0f172a; color: #fff; font-size: 13px; letter-spacing: .08em; padding: 11px 12px; text-align: center; }
     .na-table thead th:first-child { width: 128px; text-align: left; background: #1e293b; }
@@ -596,7 +596,7 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     .na-v small { display: block; font-size: 10.5px; font-weight: 700; color: #7f1d1d; margin-top: 2px; line-height: 1.3; }
     .na-empty { padding: 12px 16px; font-size: 12.5px; color: #64748b; font-weight: 600; }
     @media (max-width: 575.98px) {
-        .na-table { min-width: 480px; }
+        .na-table { min-width: 600px; }
         .na-table thead th:first-child { width: 94px; }
         .na-table tbody th { letter-spacing: 0; }
         .na-table thead th, .na-table tbody th { padding: 9px 8px; font-size: 11px; }
@@ -609,7 +609,7 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
         <div class="na-card">
             <div class="na-wrap">
                 <table class="na-table" data-testid="dash-na-table">
-                    <thead><tr><th>Day</th><th>ETA</th><th>ETB</th><th>ETC</th></tr></thead>
+                    <thead><tr><th>Day</th><th>ETA</th><th>ETB</th><th>ETC</th><th>EXP. SUPPLY</th></tr></thead>
                     <tbody>
                     <?php foreach ($naDays as $i => $d): ?>
                         <tr class="na-d<?= $i ?>">
@@ -626,7 +626,7 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
                     </tbody>
                 </table>
             </div>
-            <?php if (!$naTotal): ?><div class="na-empty" data-testid="dash-na-empty">No pending vessel with ETA, ETB or ETC today, tomorrow or the day after.</div><?php endif; ?>
+            <?php if (!$naTotal): ?><div class="na-empty" data-testid="dash-na-empty">No pending vessel with ETA, ETB, ETC or Expected Supply Date today, tomorrow or the day after.</div><?php endif; ?>
         </div>
     </div>
     <?php endif; ?>
