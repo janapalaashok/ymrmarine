@@ -89,6 +89,45 @@ include 'includes/header.php';
 .swal2-popup .inv-form .lnk { border: 0; background: none; color: #0284c7; font-weight: 700; font-size: 11.5px; padding: 0 0 0 8px; cursor: pointer; }
 @media (max-width: 1399.98px) { .at-sum.five { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 991.98px) { .at-sum.five { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ivf-pdf-preview {
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    padding: 12px 16px 16px;
+}
+
+.ivf-pdf-preview[hidden] {
+    display: none;
+}
+
+.ivf-pdf-preview-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.ivf-pdf-preview-head > div {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.ivf-pdf-preview-head i {
+    color: #dc2626;
+}
+
+.ivf-pdf-preview iframe {
+    display: block;
+    width: 100%;
+    height: 560px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: #fff;
+}
 </style>
 <div class="scroll-content at-page" data-testid="invoices-page">
 <?php $back_url = ''; $page_testid = 'invoices'; include 'includes/top_app_bar.php'; ?>
@@ -220,7 +259,74 @@ include 'includes/header.php';
                 <div class="ivf-fl"><label for="ivfScd">Survey Completed Date</label><input type="date" id="ivfScd" name="survey_completed_date" data-testid="ivf-scd"><div class="ivf-e" data-e="survey_completed_date"></div></div>
                 <div class="ivf-fl full"><label>Survey Type</label><div class="ivf-types" data-ivf-types data-testid="ivf-types"></div><div class="ivf-e" data-e="survey_type_ids"></div></div>
             </div></div>
+        <div class="ivf-sec">
+            <div class="ivf-sec-h">
+                <i class="fa-solid fa-list"></i>
+                Invoice Services
+            </div>
 
+            <div class="ivf-fl full">
+                <label for="ivfServiceDesc">Description of Service <b>*</b></label>
+                <textarea
+                    id="ivfServiceDesc"
+                    rows="2"
+                    placeholder="e.g. Offhire Survey of MV. Vessel Name at Port"
+                    data-ivf-service-desc
+                ></textarea>
+            </div>
+
+            <div class="ivf-grid">
+                <div class="ivf-fl">
+                    <label for="ivfServiceRate">Unit Price (USD) <b>*</b></label>
+                    <input
+                        id="ivfServiceRate"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        data-ivf-service-rate
+                    >
+                </div>
+
+                <div class="ivf-fl">
+                    <label for="ivfServiceQty">Quantity <b>*</b></label>
+                    <input
+                        id="ivfServiceQty"
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        value="1"
+                        data-ivf-service-qty
+                    >
+                </div>
+            </div>
+
+            <div class="ivf-grid">
+                <div class="ivf-fl">
+                    <label for="ivfTravelCost">Travel Cost</label>
+                    <input
+                        id="ivfTravelCost"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        data-ivf-travel
+                    >
+                </div>
+
+                <div class="ivf-fl">
+                    <label for="ivfLaunchCost">Launch Cost</label>
+                    <input
+                        id="ivfLaunchCost"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        data-ivf-launch
+                    >
+                </div>
+            </div>
+        </div>
         <div class="ivf-sec"><div class="ivf-sec-h"><i class="fa-solid fa-paperclip"></i> Invoice document <span style="font-weight:500;text-transform:none;letter-spacing:0;color:#64748b">(optional)</span></div>
             <div class="ivf-fl"><div class="ivf-file-cur" data-ivf-filecur hidden></div><input type="file" id="ivfFile" accept="application/pdf,.pdf" data-testid="ivf-file">
                 <div class="ivf-small">PDF only, up to <?= (int)(invoiceMaxBytes() / 1048576) ?> MB. You can also use Generate Invoice later.</div><div class="ivf-e" data-e="file"></div></div></div>
@@ -238,8 +344,72 @@ include 'includes/header.php';
                     <input type="file" id="ivfRecFile" accept="application/pdf,.pdf" data-testid="ivf-rec-file"><div class="ivf-e" data-e="rec_file"></div></div>
             </div></div>
     </div>
-    <div class="ivf-f"><button type="button" class="ivf-btn" data-ivf-close data-testid="ivf-cancel">Cancel</button>
-        <button type="submit" class="ivf-btn pri" data-ivf-save data-testid="ivf-save"><i class="fa-solid fa-floppy-disk"></i> <span>Save Invoice</span></button></div>
+        <div class="ivf-pdf-preview" data-ivf-pdf-preview hidden>
+
+        <div class="ivf-pdf-preview-head">
+            <div>
+                <i class="fa-solid fa-file-pdf"></i>
+                Invoice Preview
+            </div>
+
+            <button
+                type="button"
+                class="ivf-lnk"
+                data-ivf-preview-close
+            >
+                <i class="fa-solid fa-xmark"></i>
+                Hide Preview
+            </button>
+        </div>
+
+        <iframe
+            data-ivf-pdf-frame
+            title="Invoice PDF Preview"
+        ></iframe>
+
+    </div>
+        <div class="ivf-f">
+
+        <button
+            type="button"
+            class="ivf-btn"
+            data-ivf-close
+            data-testid="ivf-cancel"
+        >
+            Cancel
+        </button>
+
+        <button
+            type="button"
+            class="ivf-btn"
+            data-ivf-preview
+            data-testid="ivf-preview"
+        >
+            <i class="fa-solid fa-eye"></i>
+            Preview PDF
+        </button>
+
+        <button
+            type="button"
+            class="ivf-btn"
+            data-ivf-download
+            data-testid="ivf-download-pdf"
+        >
+            <i class="fa-solid fa-file-arrow-down"></i>
+            Download PDF
+        </button>
+
+        <button
+            type="submit"
+            class="ivf-btn pri"
+            data-ivf-save
+            data-testid="ivf-save"
+        >
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span>Save Invoice</span>
+        </button>
+
+    </div>
   </form>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -256,4 +426,323 @@ window.INV_CONFIG = <?= json_encode([
 </script>
 <script src="assets/js/invoices-grid.js?v=<?= @filemtime(__DIR__ . '/assets/js/invoices-grid.js') ?>"></script>
 <script src="assets/js/invoice-form.js?v=<?= @filemtime(__DIR__ . '/assets/js/invoice-form.js') ?>"></script>
+<script>
+(function () {
+
+    var form = document.querySelector('[data-ivf-form]');
+    if (!form) return;
+
+    var previewBtn = form.querySelector('[data-ivf-preview]');
+    var downloadBtn = form.querySelector('[data-ivf-download]');
+
+    var previewBox = form.querySelector('[data-ivf-pdf-preview]');
+    var previewFrame = form.querySelector('[data-ivf-pdf-frame]');
+    var previewClose = form.querySelector('[data-ivf-preview-close]');
+
+
+    function getSelectedSurveyTypes() {
+
+        var names = [];
+
+        form.querySelectorAll(
+            '[data-ivf-types] input[type="checkbox"]:checked'
+        ).forEach(function (cb) {
+
+            var label = cb.closest('label');
+
+            if (label) {
+                names.push(
+                    label.textContent.trim()
+                );
+            }
+        });
+
+        return names.join(' + ');
+    }
+
+
+    function buildPdfData(mode) {
+
+        var data = new FormData();
+
+        data.append(
+            'mode',
+            mode
+        );
+
+        data.append(
+            'invoice_no',
+            document.getElementById('ivfNo')?.value || ''
+        );
+
+        data.append(
+            'invoice_date',
+            document.getElementById('ivfDate')?.value || ''
+        );
+
+        data.append(
+            'client_id',
+            document.getElementById('ivfClient')?.value || ''
+        );
+
+        data.append(
+            'vessel_name',
+            document.getElementById('ivfVessel')?.value || ''
+        );
+
+        data.append(
+            'invoice_notes',
+            document.getElementById('ivfNotes')?.value || ''
+        );
+
+        data.append(
+            'port_name',
+            document.getElementById('ivfPort')?.value || ''
+        );
+
+        data.append(
+            'survey_type_text',
+            getSelectedSurveyTypes()
+        );
+
+
+        var completed =
+            document.getElementById('ivfScd')?.value || '';
+
+        var completedDisplay = '';
+
+        if (completed) {
+
+            var parts = completed.split('-');
+
+            if (parts.length === 3) {
+                completedDisplay =
+                    parts[2] + '-' +
+                    parts[1] + '-' +
+                    parts[0];
+            }
+        }
+
+        data.append(
+            'survey_completed_display',
+            completedDisplay
+        );
+
+
+        data.append(
+            'service_desc',
+            form.querySelector('[data-ivf-service-desc]')?.value || ''
+        );
+
+        data.append(
+            'service_rate',
+            form.querySelector('[data-ivf-service-rate]')?.value || ''
+        );
+
+        data.append(
+            'service_qty',
+            form.querySelector('[data-ivf-service-qty]')?.value || ''
+        );
+
+        data.append(
+            'travel_cost',
+            form.querySelector('[data-ivf-travel]')?.value || ''
+        );
+
+        data.append(
+            'launch_cost',
+            form.querySelector('[data-ivf-launch]')?.value || ''
+        );
+
+        return data;
+    }
+
+
+    function validatePdfFields() {
+
+        var vessel =
+            document.getElementById('ivfVessel')?.value.trim();
+
+        var client =
+            document.getElementById('ivfClient')?.value;
+
+        var desc =
+            form.querySelector('[data-ivf-service-desc]')?.value.trim();
+
+        var rate =
+            form.querySelector('[data-ivf-service-rate]')?.value;
+
+        var qty =
+            form.querySelector('[data-ivf-service-qty]')?.value;
+
+
+        if (!vessel) {
+            alert('Please enter the Vessel Name.');
+            return false;
+        }
+
+        if (!client) {
+            alert('Please choose a Client.');
+            return false;
+        }
+
+        if (!desc) {
+            alert('Please enter the Description of Service.');
+            return false;
+        }
+
+        if (rate === '') {
+            alert('Please enter the Unit Price.');
+            return false;
+        }
+
+        if (qty === '') {
+            alert('Please enter the Quantity.');
+            return false;
+        }
+
+        return true;
+    }
+
+
+    async function previewPdf() {
+
+        if (!validatePdfFields()) {
+            return;
+        }
+
+        var response = await fetch(
+            'invoice_manual_pdf.php',
+            {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'X-CSRF-Token': window.INV_CONFIG.csrf
+                },
+                body: buildPdfData('preview')
+            }
+        );
+
+
+        if (!response.ok) {
+
+            var msg = await response.text();
+
+            alert(
+                msg || 'Could not generate invoice preview.'
+            );
+
+            return;
+        }
+
+
+        var blob = await response.blob();
+
+        var oldUrl =
+            previewFrame.dataset.objectUrl || '';
+
+        if (oldUrl) {
+            URL.revokeObjectURL(oldUrl);
+        }
+
+
+        var url =
+            URL.createObjectURL(blob);
+
+        previewFrame.dataset.objectUrl = url;
+        previewFrame.src = url;
+
+        previewBox.hidden = false;
+    }
+
+
+    async function downloadPdf() {
+
+        if (!validatePdfFields()) {
+            return;
+        }
+
+
+        var response = await fetch(
+            'invoice_manual_pdf.php',
+            {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'X-CSRF-Token': window.INV_CONFIG.csrf
+                },
+                body: buildPdfData('download')
+            }
+        );
+
+
+        if (!response.ok) {
+
+            var msg = await response.text();
+
+            alert(
+                msg || 'Could not generate invoice PDF.'
+            );
+
+            return;
+        }
+
+
+        var blob = await response.blob();
+
+        var url =
+            URL.createObjectURL(blob);
+
+
+        var invoiceNo =
+            document.getElementById('ivfNo')?.value.trim()
+            || 'YMR-Invoice';
+
+
+        var a =
+            document.createElement('a');
+
+        a.href = url;
+
+        a.download =
+            invoiceNo.replace(
+                /[^A-Za-z0-9._-]+/g,
+                '_'
+            ) + '.pdf';
+
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+
+        setTimeout(function () {
+            URL.revokeObjectURL(url);
+        }, 1000);
+    }
+
+
+    previewBtn?.addEventListener(
+        'click',
+        previewPdf
+    );
+
+
+    downloadBtn?.addEventListener(
+        'click',
+        downloadPdf
+    );
+
+
+    previewClose?.addEventListener(
+        'click',
+        function () {
+            previewBox.hidden = true;
+        }
+    );
+
+})();
+</script>
 <?php include 'includes/nav.php'; include 'includes/footer.php'; ?>
