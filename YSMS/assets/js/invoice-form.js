@@ -218,6 +218,8 @@
         el.date.value = row.invoice_date || ''; el.status.value = row.status; el.amt.value = row.invoice_amount || ''; el.notes.value = row.invoice_notes || '';
         el.vessel.value = row.vessel || ''; el.report.value = row.report_no || ''; el.scd.value = row.survey_completed_ymd || '';
         el.client.value = row.client_id ? String(row.client_id) : ''; setPort(row.port_id); setTypes(row.type_ids);
+        var ms = row.manual_service || {}, keys = { service_desc: 'desc', service_rate: 'rate', service_qty: 'qty', travel_cost: 'travel', launch_cost: 'launch' };
+        svc().forEach(function (x) { var v = ms[keys[x[0]]]; if (v !== undefined && v !== '') x[1].value = v; });
         if (row.client_id && !el.client.value) fieldError('client_id', 'The client of this entry no longer exists — choose one.');
         noState();
         if (!st.recAuto) el.recNo.value = row.rec_no || '';
@@ -280,6 +282,7 @@
       client_id: el.client.value, port_id: portId() || '', survey_type_ids: typeIds().join(','), survey_completed_date: el.scd.value,
       rec_on: el.recOn.checked ? '1' : '0'
     };
+    svc().forEach(function (x) { v[x[0]] = x[1] ? x[1].value : ''; }); // Invoice Services (kept with the invoice for the PDF)
     if (el.recOn.checked) {
       v.rec_invoice_no = st.recAuto ? '' : el.recNo.value.trim(); // empty = the invoice number + B
       v.rec_invoice_date = el.recDate.value; v.rec_invoice_amount = el.recAmt.value.replace(/[,\s$]/g, '');
@@ -289,6 +292,10 @@
     Object.keys(extra || {}).forEach(function (k) { v[k] = extra[k]; });
     Object.keys(v).forEach(function (k) { d.append(k, v[k]); });
     return d;
+  }
+  function svc() {
+    return [['service_desc', $('[data-ivf-service-desc]')], ['service_rate', $('[data-ivf-service-rate]')], ['service_qty', $('[data-ivf-service-qty]')],
+      ['travel_cost', $('[data-ivf-travel]')], ['launch_cost', $('[data-ivf-launch]')]].filter(function (x) { return !!x[1]; });
   }
   function busy(on) {
     st.saving = on; el.save.disabled = on;
