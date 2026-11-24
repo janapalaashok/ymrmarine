@@ -1,0 +1,6730 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzxWNNt5E74bM6DPUFJ4ZL6B8="
+    crossorigin=""
+>
+
+<title>YMR Marine Solutions | Global Marine Survey & Inspection Solutions</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+    :root {
+    /* YMR BRAND COLOURS */
+    --brand-green: #004535;
+    --brand-green-dark: #003326;
+    --brand-blue: #00536B;
+    --brand-cream: #F7F7F2;
+    --brand-white: #FFFFFF;
+    --brand-charcoal: #192523;
+    --brand-sage: #A3B4AC;
+    --brand-border: #E3E7E5;
+    --navy: #050D1A;
+    --navy-2: #091525;
+    --navy-3: #0D1F36;
+    --ocean: #0A2B52;
+    --deep: #0E3A70;
+    --blue: #1565C0;
+    --vivid: #1976D2;
+    --sky: #1E88E5;
+    --accent: #00B4D8;
+    --teal: #00ACC1;
+    --teal-light: #4DD0E1;
+    --white: #FFFFFF;
+    --off-white: #F0F4F8;
+    --silver: #B0BEC5;
+    --muted: #607D8B;
+    --glass: rgba(255,255,255,0.05);
+    --glass-border: rgba(255,255,255,0.10);
+    --card-bg: rgba(9,21,37,0.85);
+    --section-gap: 100px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth;font-size:16px}
+    body{background:var(--navy);color:var(--white);font-family:'Inter',sans-serif;overflow-x:hidden;line-height:1.6}
+    h1,h2,h3,h4,h5{font-family:'Space Grotesk',sans-serif;letter-spacing:-0.02em}
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar{width:6px}
+    ::-webkit-scrollbar-track{background:var(--navy)}
+    ::-webkit-scrollbar-thumb{background:var(--deep);border-radius:3px}
+
+    /* =========================================
+    NAVIGATION
+    ========================================= */
+
+    #navbar {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        width: 100%;
+        height: 66px;
+        display: flex;
+        align-items: stretch;
+        justify-content: space-between;
+        padding: 0;
+        background: #ffffff;
+        border-bottom: 1px solid #DADFD9;
+        font-family: 'Inter', sans-serif;
+        box-shadow: none;
+    }
+
+    #navbar.scrolled {
+        background: #ffffff;
+        box-shadow: none;
+    }
+
+    /* BRAND */
+
+    #navbar .nav-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 0 22px;
+        background: #082B4A;
+        text-decoration: none;
+        flex-shrink: 0;
+        border: none;
+    }
+
+    #navbar .nav-logo-icon {
+        width: 32px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+    }
+
+    #navbar .nav-logo-icon svg {
+        width: 100%;
+        height: 100%;
+        color: #ffffff;
+    }
+
+    #navbar .nav-logo-text {
+        font-size: 17px;
+        font-weight: 600;
+        color: #ffffff;
+        letter-spacing: 0.04em;
+        line-height: 1.2;
+    }
+
+    #navbar .nav-logo-sub {
+        font-size: 9px;
+        font-weight: 400;
+        letter-spacing: 0.16em;
+        color: #D2E2DB;
+        text-transform: uppercase;
+        margin-top: 4px;
+    }
+
+    /* PRIMARY NAVIGATION */
+
+    #navbar .nav-links {
+        display: flex;
+        flex: 1;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 4px;
+        padding: 0 16px;
+        margin: 0;
+    }
+
+    #navbar .nav-links > a,
+    #navbar .nav-dropdown-toggle {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 100%;
+        padding: 0 18px;
+        color: #082B4A;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        white-space: nowrap;
+        text-decoration: none;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+    }
+
+    /* UNDERLINE INDICATOR */
+
+    #navbar .nav-dropdown-toggle::after,
+    #navbar .nav-links > a::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 18px;
+        right: 18px;
+        height: 3px;
+        background: #009BD3;
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.2s ease;
+    }
+
+    #navbar .nav-dropdown:hover .nav-dropdown-toggle::after,
+    #navbar .nav-dropdown:focus-within .nav-dropdown-toggle::after,
+    #navbar .nav-links > a:hover::after {
+        transform: scaleX(1);
+    }
+
+    /* DROPDOWN */
+
+    .nav-dropdown {
+        position: relative;
+        display: flex;
+        align-items: stretch;
+    }
+
+    .nav-chevron {
+        width: 6px;
+        height: 6px;
+        border-right: 1.5px solid currentColor;
+        border-bottom: 1.5px solid currentColor;
+        transform: rotate(45deg);
+        margin-top: -4px;
+        transition: transform 0.2s ease;
+    }
+
+    .nav-dropdown:hover .nav-chevron {
+        transform: rotate(225deg);
+    }
+
+    .nav-dropdown-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        min-width: 280px;
+        background: #ffffff;
+        padding: 12px 0;
+        border: 1px solid #DADFD9;
+        border-top: 3px solid #009BD3;
+    }
+
+    .nav-dropdown:hover .nav-dropdown-menu,
+    .nav-dropdown:focus-within .nav-dropdown-menu {
+        display: block;
+    }
+
+    #navbar .nav-dropdown-menu a {
+        display: block;
+        padding: 15px 24px;
+        font-size: 14px;
+        font-weight: 400;
+        color: #192523;
+        text-decoration: none;
+        transition: background 0.2s ease;
+    }
+
+    #navbar .nav-dropdown-menu a:hover {
+        background: #E8F6FC;
+        color: #009BD3;
+    }
+
+    /* UTILITY NAVIGATION */
+
+    #navbar .nav-actions {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        margin-left: auto;
+        padding: 0 12px;
+        border-left: 1px solid #DADFD9;
+    }
+
+    .nav-utility-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 18px;
+        color: #192523;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+        transition: color 0.2s ease;
+    }
+
+    .nav-utility-link:hover {
+        color: #00536B;
+    }
+
+    .nav-utility-link svg {
+        width: 15px;
+        height: 15px;
+    }
+
+    /* MOBILE BUTTON */
+
+    #navbar .hamburger {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        width: 66px;
+        flex-shrink: 0;
+        background: transparent;
+        border: none;
+        border-left: 1px solid #DADFD9;
+        cursor: pointer;
+    }
+
+    #navbar .hamburger span {
+        width: 21px;
+        height: 1.5px;
+        background: #009BD3;
+    }
+    /* =========================================
+    NEW HERO SECTION
+    ========================================= */
+
+
+    #hero {
+        position: relative;
+        min-height: 570px;
+        padding: 85px 7%;
+        background: #FFFFFF;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        color: #082B4A;
+    }
+
+    .hero-background,
+    .hero-overlay {
+        display: none;
+    }
+
+    .hero-container {
+        width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 65px;
+        align-items: center;
+    }
+
+    /* LEFT SIDE */
+
+    .hero-content {
+        position: relative;
+        z-index: 2;
+        max-width: 620px;
+    }
+
+    .hero-eyebrow {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: #009BD3;
+        margin-bottom: 25px;
+    }
+
+    .hero-title {
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(48px, 5vw, 76px);
+        font-weight: 500;
+        line-height: 1.08;
+        letter-spacing: -0.055em;
+        color: #082B4A;
+        margin-bottom: 28px;
+    }
+
+    .hero-title span {
+        color: #009BD3;
+    }
+
+    .hero-description {
+        font-size: 17px;
+        line-height: 1.85;
+        color: #607487;
+        max-width: 540px;
+        margin-bottom: 34px;
+    }
+
+    .hero-actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+
+    .hero-btn-primary,
+    .hero-btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 25px;
+        min-height: 52px;
+        padding: 15px 25px;
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        border-radius: 6px;
+        transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .hero-btn-primary {
+        background: #009BD3;
+        color: #FFFFFF;
+    }
+
+    .hero-btn-primary:hover {
+        background: #007FB0;
+        transform: translateY(-2px);
+    }
+
+    .hero-btn-secondary {
+        background: #FFFFFF;
+        color: #082B4A;
+        border: 1px solid #D8E2E9;
+    }
+
+    .hero-btn-secondary:hover {
+        background: #F5FAFD;
+    }
+
+    /* RIGHT SIDE — ANIMATED REPORT */
+
+    .hero-demo {
+        position: relative;
+        min-width: 0;
+        background: linear-gradient(145deg, #103D63, #082B4A);
+        border-radius: 16px;
+        padding: 35px;
+        min-height: 345px;
+        box-shadow: 0 24px 45px rgba(8,43,74,0.18);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .hero-demo::before {
+        content: "";
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        background: rgba(0,155,211,0.12);
+        top: -170px;
+        right: -100px;
+    }
+
+    .demo-stage {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        animation: demoFade 0.45s ease;
+    }
+
+    .demo-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 20px;
+        border-radius: 50%;
+        background: rgba(0,155,211,0.15);
+        color: #8BDEFA;
+        font-size: 28px;
+    }
+
+    .demo-stage-title {
+        font-size: 23px;
+        font-weight: 600;
+        color: #FFFFFF;
+        margin-bottom: 10px;
+    }
+
+    .demo-stage-description {
+        font-size: 14px;
+        line-height: 1.7;
+        color: #B9D2E3;
+        max-width: 350px;
+        margin: 0 auto;
+    }
+
+    .demo-report {
+        background: #FFFFFF;
+        border-radius: 10px;
+        padding: 22px;
+        max-width: 310px;
+        margin: 0 auto;
+        text-align: left;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+
+    .demo-report-brand {
+        color: #009BD3;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 18px;
+    }
+
+    .demo-report-title {
+        color: #082B4A;
+        font-size: 17px;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    .demo-report-subtitle {
+        color: #607487;
+        font-size: 12px;
+        margin-bottom: 15px;
+    }
+
+    .demo-report-line {
+        height: 7px;
+        border-radius: 4px;
+        background: #E9F1F6;
+        margin-bottom: 8px;
+    }
+
+    .demo-report-line.short {
+        width: 65%;
+    }
+
+    .demo-delivered {
+        display: inline-block;
+        margin-top: 18px;
+        padding: 10px 18px;
+        border-radius: 30px;
+        background: #009BD3;
+        color: #FFFFFF;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    /* DEMO CONTROLS */
+
+    .demo-controls {
+        position: absolute;
+        bottom: 20px;
+        left: 25px;
+        right: 25px;
+        z-index: 3;
+    }
+
+    .demo-controls-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+        color: #FFFFFF;
+        font-size: 11px;
+    }
+
+    .demo-play {
+        border: none;
+        background: rgba(255,255,255,0.15);
+        color: #FFFFFF;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+
+    .demo-progress {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 5px;
+    }
+
+    /* ANIMATED SURVEY PROGRESS BARS */
+
+    .demo-progress-segment {
+        position: relative;
+        height: 4px;
+        background: rgba(255,255,255,0.20);
+        border-radius: 3px;
+        cursor: pointer;
+        overflow: hidden;
+    }
+
+    /* Loading fill */
+
+    .demo-progress-segment::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: var(--demo-fill, 0%);
+        height: 100%;
+        background: #009BD3;
+        border-radius: 3px;
+    }
+
+    /* Completed stages */
+
+    .demo-progress-segment.completed::before {
+        width: 100%;
+    }
+
+    /* Current stage */
+
+    .demo-progress-segment.active::before {
+        background: #65D8FF;
+        box-shadow: 0 0 8px rgba(101,216,255,0.5);
+    }
+
+    /* Hover effect */
+
+    .demo-progress-segment:hover {
+        background: rgba(255,255,255,0.40);
+    }
+
+    .demo-progress-segment.active {
+        background: #009BD3;
+    }
+
+    @keyframes demoFade {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* =========================================
+    HERO STATISTICS — NEW DESIGN
+    ========================================= */
+
+    .hero-metrics {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        width: 100%;
+        background: #FFFFFF;
+        border-top: 1px solid #E1E8ED;
+        border-bottom: 1px solid #E1E8ED;
+        padding: 0 7%;
+    }
+
+    .hero-metric {
+        padding: 32px 25px;
+        border-right: 1px solid #E1E8ED;
+    }
+
+    .hero-metric:first-child {
+        padding-left: 0;
+    }
+
+    .hero-metric:last-child {
+        border-right: none;
+    }
+
+    .hero-metric-number {
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(34px, 3.2vw, 52px);
+        font-weight: 500;
+        letter-spacing: -0.05em;
+        line-height: 1.2;
+        color: #082B4A;
+        margin-bottom: 8px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .hero-metric-number span {
+        color: #009BD3;
+    }
+
+    .hero-metric-label {
+        font-size: 13px;
+        color: #607487;
+        line-height: 1.5;
+    }
+
+    /* TABLET */
+
+    @media (max-width: 900px) {
+        .hero-metrics {
+            grid-template-columns: repeat(2, 1fr);
+            padding: 0 5%;
+        }
+
+        .hero-metric {
+            padding: 25px 20px;
+            border-bottom: 1px solid #E1E8ED;
+        }
+
+        .hero-metric:nth-child(2) {
+            border-right: none;
+        }
+
+        .hero-metric:nth-child(n+3) {
+            border-bottom: none;
+        }
+    }
+
+    /* MOBILE */
+
+    @media (max-width: 500px) {
+        .hero-metrics {
+            padding: 0 20px;
+        }
+
+        .hero-metric {
+            padding: 24px 12px;
+        }
+
+        .hero-metric-number {
+            font-size: 32px;
+        }
+
+        .hero-metric-label {
+            font-size: 12px;
+        }
+    }
+
+
+    /* SECTIONS COMMON */
+    section{padding:var(--section-gap) 40px}
+    .section-tag{display:inline-block;font-size:11px;font-weight:700;color:#00a3df;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:14px;padding:6px 16px;border-radius:20px;background:rgba(0,180,216,0.1);border:1px solid rgba(0,180,216,0.2)}
+    .section-title{font-size:clamp(28px,4vw,48px);font-weight:800;line-height:1.1;margin-bottom:16px;letter-spacing:-0.02em;color:#00a3df}
+    .section-sub{font-size:17px;color:rgba(255,255,255,0.6);max-width:600px;line-height:1.7}
+    .text-grad{background:linear-gradient(135deg,#00a3df,var(--teal-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .divider-line{width:60px;height:3px;background:linear-gradient(90deg,#00a3df,transparent);border-radius:2px;margin:20px 0}
+    .centered{text-align:center}
+    .centered .section-sub{margin:0 auto}
+    .centered .divider-line{margin:20px auto}
+    .animate-in{opacity:0;transform:translateY(30px);transition:all 0.6s ease}
+    .animate-in.visible{opacity:1;transform:translateY(0)}
+    /* =========================================
+    ABOUT SECTION
+    ========================================= */
+
+    #about {
+        background: #F7F7F2;
+        padding: 100px 7%;
+        color: #192523;
+    }
+
+    .about-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .about-eyebrow {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #004535;
+        margin-bottom: 20px;
+    }
+
+    .about-heading {
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(32px, 4.5vw, 60px);
+        font-weight: 500;
+        letter-spacing: -0.04em;
+        line-height: 1.15;
+        color: #004535;
+        margin-bottom: 50px;
+    }
+
+    .about-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        gap: 80px;
+        align-items: center;
+    }
+
+    .about-photo {
+        width: 100%;
+        min-height: 480px;
+        background-color: #D2E2DB;
+        background-image: url('./about-surveyor.jpeg');
+        background-size: cover;
+        background-position: center;
+    }
+
+    .about-content h3 {
+        font-family: 'Inter', sans-serif;
+        font-size: 28px;
+        font-weight: 500;
+        color: #004535;
+        margin-bottom: 24px;
+    }
+
+    .about-content p {
+        font-size: 16px;
+        line-height: 1.85;
+        color: #52615B;
+        margin-bottom: 22px;
+    }
+
+    .about-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 40px;
+        padding-bottom: 10px;
+        margin-top: 16px;
+        color: #004535;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        border-bottom: 1px solid #004535;
+        transition: gap 0.2s ease;
+    }
+
+    .about-link:hover {
+        gap: 55px;
+    }
+    /* =========================================
+    SERVICES SECTION
+    ========================================= */
+
+    #services {
+        background: #FFFFFF;
+        padding: 100px 7%;
+        color: #192523;
+    }
+
+    .services-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .services-eyebrow {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #004535;
+        margin-bottom: 20px;
+    }
+
+    .services-heading {
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(32px, 4.5vw, 60px);
+        font-weight: 500;
+        letter-spacing: -0.04em;
+        line-height: 1.15;
+        color: #004535;
+        margin-bottom: 24px;
+    }
+
+    .services-intro {
+        font-size: 17px;
+        line-height: 1.8;
+        color: #52615B;
+        max-width: 750px;
+        margin-bottom: 50px;
+    }
+
+
+    /* SERVICE CARDS */
+
+    .service-card {
+        background: #F7F7F2;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .service-image-wrap {
+        aspect-ratio: 16 / 10;
+        overflow: hidden;
+        background: #004535;
+    }
+
+    .service-image {
+        width: 100%;
+        height: 100%;
+        background-size: cover;
+        background-position: center;
+        transition: transform 0.5s ease;
+    }
+
+    .service-card:hover .service-image {
+        transform: scale(1.045);
+    }
+
+    .service-content {
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .service-name {
+        font-family: 'Inter', sans-serif;
+        font-size: 25px;
+        font-weight: 500;
+        letter-spacing: -0.03em;
+        line-height: 1.3;
+        color: #004535;
+        margin-bottom: 16px;
+    }
+
+    .service-desc {
+        font-size: 14px;
+        line-height: 1.8;
+        color: #52615B;
+        margin-bottom: 30px;
+    }
+
+    .service-link {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: auto;
+        padding-top: 20px;
+        border-top: 1px solid #DADFD9;
+        font-size: 13px;
+        font-weight: 600;
+        color: #004535;
+    }
+
+    .service-link span {
+        font-size: 22px;
+        transition: transform 0.2s ease;
+    }
+
+    .service-card:hover .service-link span {
+        transform: translateX(5px);
+    }
+
+    /* CONSULTANCY BANNER */
+
+    .consultancy-banner {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        margin-top: 28px;
+        background: #004535;
+        color: #FFFFFF;
+        text-decoration: none;
+        overflow: hidden;
+    }
+
+    .consultancy-content {
+        padding: 45px;
+    }
+
+    .consultancy-label {
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #B7CEC4;
+        margin-bottom: 20px;
+    }
+
+    .consultancy-title {
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(26px, 3vw, 40px);
+        font-weight: 500;
+        line-height: 1.2;
+        letter-spacing: -0.03em;
+        margin-bottom: 20px;
+    }
+
+    .consultancy-desc {
+        font-size: 15px;
+        line-height: 1.8;
+        color: #D2E2DB;
+        max-width: 520px;
+        margin-bottom: 28px;
+    }
+
+    .consultancy-link {
+        display: inline-flex;
+        gap: 35px;
+        align-items: center;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #FFFFFF;
+        font-size: 14px;
+    }
+
+    .consultancy-image {
+        min-height: 300px;
+        background-color: #003326;
+        background-image: url('./service-consultancy.jpg');
+        background-size: cover;
+        background-position: center;
+    }
+
+    /* =========================================
+    INDUSTRIES SECTION
+    ========================================= */
+
+    #industries {
+        background: #004535;
+        padding: 100px 7%;
+        color: #FFFFFF;
+    }
+
+    .industries-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .industries-eyebrow {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #B7CEC4;
+        margin-bottom: 20px;
+    }
+
+    .industries-heading {
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(32px, 4.5vw, 60px);
+        font-weight: 500;
+        letter-spacing: -0.04em;
+        line-height: 1.15;
+        color: #FFFFFF;
+        margin-bottom: 50px;
+    }
+
+    .industries-layout {
+        display: grid;
+        grid-template-columns: 1fr 1.5fr;
+        gap: 70px;
+        align-items: start;
+    }
+
+    /* INDUSTRY SELECTOR */
+
+    .industry-tabs {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .industry-tab {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        width: 100%;
+        padding: 27px 24px;
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+        color: #FFFFFF;
+        font-family: 'Inter', sans-serif;
+        font-size: 20px;
+        font-weight: 400;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.25s, color 0.25s;
+    }
+
+    .industry-tab:hover {
+        background: rgba(255,255,255,0.08);
+    }
+
+    .industry-tab.active {
+        background: #F7F7F2;
+        color: #004535;
+    }
+
+    .industry-tab span {
+        font-size: 24px;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .industry-tab.active span,
+    .industry-tab:hover span {
+        opacity: 1;
+    }
+
+    /* INDUSTRY DISPLAY */
+
+    .industry-display {
+        background: #003326;
+        overflow: hidden;
+    }
+
+    .industry-photo {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background-color: #003C30;
+        background-size: cover;
+        background-position: center;
+    }
+
+    .industry-details {
+        padding: 36px;
+    }
+
+    .industry-display-title {
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(24px, 3vw, 34px);
+        font-weight: 500;
+        letter-spacing: -0.03em;
+        line-height: 1.3;
+        color: #FFFFFF;
+        margin-bottom: 18px;
+    }
+
+    .industry-display-desc {
+        color: #D2E2DB;
+        font-size: 15px;
+        line-height: 1.85;
+        margin-bottom: 28px;
+    }
+
+    .industry-display-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 40px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #FFFFFF;
+        text-decoration: none;
+        color: #FFFFFF;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .industry-display.is-changing {
+        animation: industryReveal 0.4s ease;
+    }
+
+    @keyframes industryReveal {
+        from { opacity: 0.5; }
+        to { opacity: 1; }
+    }
+
+    /* WHY US */
+    /* =========================================
+    WHY CHOOSE YMR
+    ========================================= */
+
+    #why-us {
+        background: #F7F7F2;
+        padding: 100px 7%;
+        color: #192523;
+    }
+
+    .why-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .why-eyebrow {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #004535;
+        margin-bottom: 32px;
+    }
+
+    .why-layout {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 100px;
+        align-items: start;
+    }
+
+    /* LEFT COLUMN */
+
+    .why-intro {
+        position: sticky;
+        top: 110px;
+    }
+
+    .why-heading {
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(36px, 4.5vw, 64px);
+        font-weight: 500;
+        line-height: 1.15;
+        letter-spacing: -0.045em;
+        color: #004535;
+        margin-bottom: 30px;
+    }
+
+    .why-description {
+        font-size: 17px;
+        line-height: 1.85;
+        color: #52615B;
+        max-width: 460px;
+        margin-bottom: 35px;
+    }
+
+    .why-cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 40px;
+        padding: 18px 26px;
+        background: #004535;
+        color: #FFFFFF;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: background 0.2s ease;
+    }
+
+    .why-cta:hover {
+        background: #00634C;
+    }
+
+    /* RIGHT COLUMN */
+
+    .why-principles {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .why-principle {
+        display: grid;
+        grid-template-columns: 60px 1fr;
+        gap: 20px;
+        padding: 32px 0;
+        border-bottom: 1px solid #DADFD9;
+    }
+
+    .why-principle:first-child {
+        padding-top: 0;
+    }
+
+    .why-principle:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .why-number {
+        font-family: 'Inter', sans-serif;
+        font-size: 30px;
+        font-weight: 300;
+        letter-spacing: -0.04em;
+        color: #A3B4AC;
+        line-height: 1.3;
+    }
+
+    .why-principle-title {
+        font-family: 'Inter', sans-serif;
+        font-size: 25px;
+        font-weight: 500;
+        letter-spacing: -0.025em;
+        line-height: 1.3;
+        color: #004535;
+        margin-bottom: 12px;
+    }
+
+    .why-principle-desc {
+        font-size: 15px;
+        line-height: 1.85;
+        color: #52615B;
+    }
+
+    /* =========================================
+    PORT COVERAGE
+    ========================================= */
+
+    #coverage {
+        background: #FFFFFF;
+        padding: 100px 7%;
+        color: #192523;
+    }
+
+    .coverage-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .coverage-eyebrow {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #004535;
+        margin-bottom: 20px;
+    }
+
+    .coverage-heading {
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(32px, 4.5vw, 60px);
+        font-weight: 500;
+        letter-spacing: -0.04em;
+        line-height: 1.15;
+        color: #004535;
+        margin-bottom: 24px;
+    }
+
+    .coverage-intro {
+        font-size: 17px;
+        line-height: 1.8;
+        color: #52615B;
+        max-width: 750px;
+        margin-bottom: 50px;
+    }
+
+    /* COVERAGE LAYOUT */
+
+    .coverage-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+        gap: 0;
+        align-items: stretch;
+    }
+
+    /* MAP */
+
+    .map-container {
+        background: #003326;
+        position: relative;
+        overflow: hidden;
+        min-width: 0;
+    }
+
+    .map-header {
+        padding: 24px 30px;
+        border-bottom: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .map-header h3 {
+        font-family: 'Inter', sans-serif;
+        font-size: 16px;
+        font-weight: 500;
+        color: #FFFFFF;
+    }
+
+    .map-svg-wrap {
+        position: relative;
+        padding: 20px;
+        background: #003326;
+    }
+
+    .map-svg-wrap svg {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+
+    .port-label {
+        font-size: 11px;
+        fill: #FFFFFF;
+        font-family: 'Inter', sans-serif;
+        font-weight: 500;
+    }
+
+    /* NETWORK INFORMATION */
+
+    .coverage-panel {
+        background: #004535;
+        padding: 40px;
+        color: #FFFFFF;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .coverage-panel-label {
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #B7CEC4;
+        margin-bottom: 24px;
+    }
+
+    .coverage-panel-title {
+        font-family: 'Inter', sans-serif;
+        font-size: 30px;
+        font-weight: 500;
+        letter-spacing: -0.03em;
+        line-height: 1.3;
+        margin-bottom: 20px;
+    }
+
+    .coverage-panel-desc {
+        font-size: 14px;
+        line-height: 1.8;
+        color: #D2E2DB;
+        margin-bottom: 24px;
+    }
+
+    .coverage-stat {
+        padding: 24px 0;
+        border-top: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .coverage-stat-value {
+        font-family: 'Inter', sans-serif;
+        font-size: 48px;
+        font-weight: 400;
+        letter-spacing: -0.04em;
+        line-height: 1.2;
+        color: #FFFFFF;
+    }
+
+    .coverage-stat-label {
+        font-size: 14px;
+        color: #D2E2DB;
+        margin-top: 6px;
+    }
+
+    .coverage-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        background: #F7F7F2;
+        color: #004535;
+        text-decoration: none;
+        padding: 18px 20px;
+        font-size: 14px;
+        font-weight: 500;
+        margin-top: 24px;
+        transition: background 0.2s ease;
+    }
+
+    .coverage-link:hover {
+        background: #D2E2DB;
+    }
+
+    /* CERTIFICATIONS */
+    #certifications{background:var(--navy)}
+    .certs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;max-width:1300px;margin:50px auto 0}
+    .cert-card{background:var(--card-bg);border:1px solid var(--glass-border);border-radius:14px;padding:24px;text-align:center;transition:all 0.3s;cursor:pointer}
+    .cert-card:hover{border-color:rgba(0,180,216,0.4);transform:translateY(-3px)}
+    .cert-icon{font-size:32px;margin-bottom:12px}
+    .cert-name{font-size:13px;font-weight:700;color:var(--white);margin-bottom:4px}
+    .cert-body{font-size:11.5px;color:rgba(255,255,255,0.45)}
+
+    /* PROCESS */
+    /* =========================================
+    OUR SURVEY PROCESS
+    ========================================= */
+
+    #process {
+        background: #F7F7F2;
+        padding: 100px 7%;
+        color: #192523;
+    }
+
+    .process-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .process-eyebrow {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #004535;
+        margin-bottom: 20px;
+    }
+
+    .process-heading {
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(32px, 4.5vw, 60px);
+        font-weight: 500;
+        letter-spacing: -0.04em;
+        line-height: 1.15;
+        color: #004535;
+        margin-bottom: 24px;
+    }
+
+    .process-intro {
+        font-size: 17px;
+        line-height: 1.85;
+        color: #52615B;
+        max-width: 750px;
+        margin-bottom: 70px;
+    }
+
+    /* PROCESS STEPS */
+
+    .process-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 35px;
+    }
+
+    .process-step {
+        position: relative;
+    }
+
+    .process-step-header {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .process-number {
+        font-family: 'Inter', sans-serif;
+        font-size: 52px;
+        font-weight: 300;
+        letter-spacing: -0.05em;
+        color: #004535;
+        line-height: 1;
+    }
+
+    .process-line {
+        height: 1px;
+        background: #A3B4AC;
+        flex: 1;
+    }
+
+    .process-step:last-child .process-line {
+        display: none;
+    }
+
+    .process-step-title {
+        font-family: 'Inter', sans-serif;
+        font-size: 22px;
+        font-weight: 500;
+        line-height: 1.4;
+        letter-spacing: -0.025em;
+        color: #004535;
+        margin-bottom: 16px;
+    }
+
+    .process-step-desc {
+        font-size: 14px;
+        line-height: 1.85;
+        color: #52615B;
+    }
+
+    /* PROCESS BOTTOM CTA */
+
+    .process-bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 30px;
+        border-top: 1px solid #DADFD9;
+        padding-top: 35px;
+        margin-top: 65px;
+    }
+
+    .process-bottom-text {
+        font-family: 'Inter', sans-serif;
+        font-size: 23px;
+        font-weight: 500;
+        letter-spacing: -0.025em;
+        color: #004535;
+    }
+
+    .process-cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 40px;
+        padding: 18px 26px;
+        background: #004535;
+        color: #FFFFFF;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        transition: background 0.25s ease;
+    }
+
+    .process-cta:hover {
+        background: #00634C;
+    }
+    /* TESTIMONIALS */
+    #testimonials{background:var(--navy)}
+    .testimonials-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;max-width:1300px;margin:50px auto 0}
+    .testimonial-card{background:var(--card-bg);border:1px solid var(--glass-border);border-radius:18px;padding:30px;transition:all 0.3s}
+    .testimonial-card:hover{border-color:rgba(0,180,216,0.25);transform:translateY(-3px)}
+    .quote-mark{font-size:60px;font-family:Georgia,serif;color:rgba(0,180,216,0.2);line-height:0.5;margin-bottom:20px;display:block}
+    .testimonial-text{font-size:14.5px;color:rgba(255,255,255,0.75);line-height:1.75;margin-bottom:24px;font-style:italic}
+    .testimonial-author{display:flex;align-items:center;gap:14px}
+    .author-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#00a3df,var(--vivid));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0}
+    .author-name{font-size:14px;font-weight:700;color:var(--white)}
+    .author-role{font-size:12px;color:rgba(255,255,255,0.45)}
+    .stars-row{color:#FFB800;font-size:13px;margin-bottom:16px;letter-spacing:2px}
+
+    /* CTA SECTION */
+    #cta-section{background:linear-gradient(135deg,var(--ocean) 0%,var(--deep) 50%,#0A3B82 100%);position:relative;overflow:hidden;text-align:center}
+    #cta-section::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+    .cta-content{position:relative;z-index:1;max-width:700px;margin:0 auto}
+    .cta-content h2{font-size:clamp(28px,5vw,52px);font-weight:800;margin-bottom:20px;line-height:1.1}
+    .cta-content p{font-size:18px;color:rgba(255,255,255,0.75);margin-bottom:40px;line-height:1.7}
+    .cta-buttons{display:flex;justify-content:center;gap:16px;flex-wrap:wrap}
+
+    /* =========================================
+    CONTACT & SURVEY REQUEST
+    ========================================= */
+
+    #contact {
+        background: #082B4A;
+        padding: 100px 7%;
+        color: #FFFFFF;
+    }
+
+    .contact-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .contact-eyebrow {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #B7CEC4;
+        margin-bottom: 20px;
+    }
+
+    .contact-heading {
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(32px, 4.5vw, 60px);
+        font-weight: 500;
+        letter-spacing: -0.04em;
+        line-height: 1.15;
+        color: #FFFFFF;
+        margin-bottom: 60px;
+    }
+
+    /* CONTACT LAYOUT */
+
+    .contact-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+        gap: 80px;
+        align-items: start;
+    }
+
+    /* CONTACT INFORMATION */
+
+    .contact-information {
+        position: sticky;
+        top: 110px;
+        align-self: start;
+    }
+
+    .contact-info-title {
+        font-size: 26px;
+        font-weight: 500;
+        letter-spacing: -0.025em;
+        color: #FFFFFF;
+        margin-bottom: 20px;
+    }
+
+    .contact-info-intro {
+        font-size: 15px;
+        line-height: 1.85;
+        color: #D2E2DB;
+        margin-bottom: 35px;
+    }
+
+    .contact-detail {
+        padding: 26px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.18);
+    }
+
+    .contact-detail:last-child {
+        border-bottom: none;
+    }
+
+    .contact-detail-label {
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #B7CEC4;
+        margin-bottom: 12px;
+    }
+
+    .contact-detail-value {
+        font-size: 20px;
+        font-weight: 400;
+        line-height: 1.5;
+        color: #FFFFFF;
+        overflow-wrap: anywhere;
+    }
+
+    .contact-detail-value a {
+        color: #FFFFFF;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .contact-detail-value a:hover {
+        color: #A8E6CF;
+    }
+
+    /* SURVEY REQUEST FORM */
+
+    .survey-form-panel {
+        background: #F7F7F2;
+        padding: 45px;
+        color: #082B4A;
+        min-width: 0;
+    }
+
+    .survey-form-title {
+        font-size: 30px;
+        font-weight: 500;
+        letter-spacing: -0.035em;
+        color: #082B4A;
+        margin-bottom: 12px;
+    }
+
+    .survey-form-intro {
+        font-size: 14px;
+        line-height: 1.8;
+        color: #52615B;
+        margin-bottom: 30px;
+    }
+
+    .survey-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px 20px;
+    }
+
+    .survey-field {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        min-width: 0;
+    }
+
+    .survey-field.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .survey-field label {
+        font-size: 13px;
+        font-weight: 500;
+        color: #082B4A;
+    }
+
+    .survey-field input,
+    .survey-field select,
+    .survey-field textarea {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        background: #FFFFFF;
+        border: 1px solid #D2DAD5;
+        border-radius: 0;
+        padding: 15px 14px;
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        color: #192523;
+        outline: none;
+        transition: border-color 0.2s ease;
+    }
+
+    .survey-field input:focus,
+    .survey-field select:focus,
+    .survey-field textarea:focus {
+        border-color: #004535;
+        outline: 1px solid #004535;
+    }
+
+    .survey-field input::placeholder,
+    .survey-field textarea::placeholder {
+        color: #89958F;
+    }
+
+    .survey-field textarea {
+        min-height: 130px;
+        resize: vertical;
+    }
+
+    .survey-form-note {
+        font-size: 12px;
+        line-height: 1.7;
+        color: #52615B;
+        margin-top: 22px;
+        margin-bottom: 22px;
+    }
+
+    .survey-submit {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        width: 100%;
+        padding: 20px 24px;
+        border: none;
+        border-radius: 0;
+        background: #009BD3;
+        color: #FFFFFF;
+        font-family: 'Inter', sans-serif;
+        font-size: 15px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .survey-submit:hover {
+        background:  #007FB0;
+    }
+
+    .survey-submit span {
+        font-size: 20px;
+    }
+
+    .survey-form-status {
+        font-size: 13px;
+        line-height: 1.7;
+        color: #52615B;
+        margin-top: 16px;
+    }
+
+    .survey-form-status:empty {
+        display: none;
+    }
+    /* =========================================
+    FOOTER
+    ========================================= */
+
+    #footer {
+        background:  #082B4A;
+        padding: 75px 7% 28px;
+        color: #FFFFFF;
+    }
+
+    .footer-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .footer-layout {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr 1.2fr 1fr;
+        gap: 60px;
+        padding-bottom: 60px;
+    }
+
+    /* FOOTER BRAND */
+
+    .footer-brand-logo {
+        display: inline-block;
+        margin-bottom: 25px;
+        text-decoration: none;
+    }
+
+    .footer-brand-logo img {
+        display: block;
+        width: 190px;
+        max-width: 100%;
+        height: auto;
+    }
+
+    .footer-brand-desc {
+        font-size: 14px;
+        line-height: 1.85;
+        color: #B7CEC4;
+        max-width: 320px;
+        margin-bottom: 25px;
+    }
+
+    .footer-location {
+        font-size: 13px;
+        color: #B7CEC4;
+        line-height: 1.8;
+    }
+
+    /* FOOTER COLUMNS */
+
+    .footer-column {
+        min-width: 0;
+    }
+
+    .footer-column-title {
+        font-family: 'Inter', sans-serif;
+        font-size: 15px;
+        font-weight: 600;
+        color: #FFFFFF;
+        margin-bottom: 26px;
+    }
+
+    .footer-nav-links {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .footer-nav-links a {
+        font-size: 14px;
+        line-height: 1.6;
+        color: #B7CEC4;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .footer-nav-links a:hover {
+        color: #FFFFFF;
+    }
+
+    /* FOOTER CONTACT */
+
+    .footer-contact-block {
+        margin-top: 35px;
+    }
+
+    .footer-contact-label {
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: #B7CEC4;
+        margin-bottom: 15px;
+    }
+
+    .footer-contact-block a {
+        display: block;
+        color: #FFFFFF;
+        font-size: 15px;
+        line-height: 1.8;
+        text-decoration: none;
+        overflow-wrap: anywhere;
+    }
+
+    .footer-contact-block a:hover {
+        color: #A8E6CF;
+    }
+
+    /* FOOTER BOTTOM */
+
+    .footer-bottom-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 30px;
+        padding-top: 28px;
+        border-top: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .footer-copyright {
+        font-size: 12px;
+        line-height: 1.8;
+        color: #B7CEC4;
+    }
+
+    .footer-legal-links {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 28px;
+    }
+
+    .footer-legal-links a {
+        font-size: 12px;
+        color: #B7CEC4;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .footer-legal-links a:hover {
+        color: #FFFFFF;
+    }
+
+    /* BACK TO TOP */
+
+    .footer-back-top {
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .footer-back-top span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: 1px solid rgba(255,255,255,0.25);
+        color: #FFFFFF;
+        font-size: 18px;
+        transition: background 0.25s ease,
+                    color 0.25s ease;
+    }
+
+    .footer-back-top:hover span {
+        background: #F7F7F2;
+        color: #004535;
+    }
+    /* MOBILE NAV */
+
+    #mobile-menu {
+        display: none;
+        position: fixed;
+        top: 72px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--brand-white);
+        z-index: 999;
+        flex-direction: column;
+        padding: 24px 28px;
+        overflow-y: auto;
+    }
+
+    #mobile-menu.open {
+        display: flex;
+    }
+
+    #mobile-menu a {
+        display: block;
+        color: var(--brand-charcoal);
+        text-decoration: none;
+        font-size: 19px;
+        font-weight: 500;
+        padding: 20px 0;
+        border-bottom: 1px solid var(--brand-border);
+    }
+
+    #mobile-menu a:hover {
+        color: var(--brand-green);
+    }
+
+    .mobile-actions {
+        margin-top: 30px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    #mobile-menu .mobile-cta {
+        background: var(--brand-green);
+        color: white;
+        padding: 18px 24px;
+        font-size: 16px;
+    }
+
+    /* RESPONSIVE */
+    @media(max-width:1100px){
+    .about-grid{grid-template-columns:1fr;gap:40px}
+    .footer-grid{grid-template-columns:1fr 1fr}
+    .hero-stats{position:static;transform:none;flex-direction:row;flex-wrap:wrap;justify-content:flex-start;margin-top:40px;animation:fadeInUp 1s 0.4s ease both}
+    }
+    @media(max-width:900px){
+    :root{--section-gap:70px}
+    section{padding:var(--section-gap) 24px}
+    #navbar{padding:0 24px}
+    #hero{padding:0 24px}
+    .nav-links,.nav-contact-links,.btn-nav-cta{display:none}
+    .hamburger{display:flex}
+    .contact-grid{grid-template-columns:1fr}
+    .counters-row{grid-template-columns:repeat(2,1fr)}
+    .process-steps::before{display:none}
+    }
+    @media(max-width:600px){
+    .footer-grid{grid-template-columns:1fr}
+    .hero-stats{flex-direction:column}
+    .form-row{grid-template-columns:1fr}
+    .counters-row{grid-template-columns:1fr 1fr}
+    .footer-bottom{flex-direction:column;text-align:center}
+    }
+
+    /* WHATSAPP FLOAT */
+    .float-wa{position:fixed;bottom:24px;right:24px;z-index:900;width:52px;height:52px;border-radius:50%;background:#00a3df;display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;box-shadow:0 8px 25px rgba(37,211,102,0.4);transition:all 0.3s;text-decoration:none}
+    .float-wa:hover{transform:scale(1.1);box-shadow:0 12px 35px rgba(37,211,102,0.6)}
+
+    /* NAVIGATION RESPONSIVE OVERRIDES */
+
+    html {
+        scroll-padding-top: 66px;
+    }
+
+    #navbar,
+    #navbar * {
+        box-sizing: border-box;
+    }
+
+    #mobile-menu {
+        top: 66px;
+        padding: 24px 28px;
+        box-sizing: border-box;
+    }
+
+    #navbar a:focus-visible,
+    #navbar button:focus-visible {
+        outline: 2px solid #00536B;
+        outline-offset: -4px;
+    }
+
+    @media (max-width: 1050px) {
+
+        #navbar {
+            height: 66px;
+            padding: 0;
+        }
+
+        #navbar .nav-logo {
+            padding: 0 18px;
+        }
+
+        #navbar .nav-links,
+        #navbar .nav-actions {
+            display: none;
+        }
+
+        #navbar .hamburger {
+            display: flex;
+        }
+
+    }
+
+    @media (min-width: 1051px) {
+
+        #mobile-menu.open {
+            display: none;
+        }
+
+    }
+
+    /* HERO RESPONSIVE */
+
+    @media (max-width: 900px) {
+
+        #hero {
+            min-height: 80vh;
+            padding: 80px 6%;
+        }
+
+        .hero-background {
+            background-position: 65% center;
+        }
+
+        .hero-title {
+            font-size: clamp(38px, 7vw, 60px);
+        }
+
+        .hero-desc {
+            font-size: 16px;
+        }
+
+        .hero-metrics {
+            grid-template-columns: repeat(2, 1fr);
+            padding: 24px;
+        }
+
+        .hero-metric {
+            padding: 24px;
+            border-bottom: 1px solid #DADFD9;
+        }
+
+        .hero-metric:nth-child(2) {
+            border-right: none;
+        }
+
+        .hero-metric:nth-child(n+3) {
+            border-bottom: none;
+        }
+
+    }
+
+    @media (max-width: 600px) {
+
+        #hero {
+            min-height: 75vh;
+            padding: 70px 24px;
+        }
+
+        .hero-eyebrow {
+            font-size: 10px;
+            margin-bottom: 20px;
+        }
+
+        .hero-title {
+            font-size: 40px;
+        }
+
+        .hero-ctas {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .hero-btn {
+            width: 100%;
+        }
+
+        .hero-overlay {
+            background: rgba(0, 25, 20, 0.65);
+        }
+
+        .hero-metric-label {
+            font-size: 12px;
+        }
+
+        .hero-metric-value {
+            font-size: 34px;
+        }
+
+    }
+
+    /* SERVICES RESPONSIVE */
+
+    @media (max-width: 1100px) {
+
+        .services-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+    }
+
+    @media (max-width: 900px) {
+
+        #services {
+            padding: 70px 6%;
+        }
+
+        .consultancy-banner {
+            grid-template-columns: 1fr;
+        }
+
+        .consultancy-image {
+            min-height: 280px;
+        }
+
+    }
+
+    @media (max-width: 600px) {
+
+        #services {
+            padding: 60px 24px;
+        }
+
+        .services-grid {
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+
+        .service-content {
+            padding: 24px;
+        }
+
+        .service-name {
+            font-size: 23px;
+        }
+
+        .consultancy-content {
+            padding: 30px 24px;
+        }
+
+        .consultancy-image {
+            min-height: 220px;
+        }
+
+        .services-heading br,
+        .consultancy-title br {
+            display: none;
+        }
+
+    }
+    #services {
+        background: #FFFFFF !important;
+    }
+
+    #services::before {
+        display: none;
+    }
+
+    /* WHY CHOOSE YMR RESPONSIVE */
+
+    @media (max-width: 1100px) {
+
+        .why-layout {
+            gap: 60px;
+        }
+
+    }
+
+    @media (max-width: 900px) {
+
+        #why-us {
+            padding: 70px 6%;
+        }
+
+        .why-layout {
+            grid-template-columns: 1fr;
+            gap: 50px;
+        }
+
+        .why-intro {
+            position: static;
+        }
+
+        .why-description {
+            max-width: 100%;
+        }
+
+    }
+
+    @media (max-width: 600px) {
+
+        #why-us {
+            padding: 60px 24px;
+        }
+
+        .why-layout {
+            gap: 40px;
+        }
+
+        .why-heading {
+            font-size: 38px;
+        }
+
+        .why-description {
+            font-size: 15px;
+        }
+
+        .why-principle {
+            grid-template-columns: 36px 1fr;
+            gap: 16px;
+            padding: 24px 0;
+        }
+
+        .why-number {
+            font-size: 24px;
+        }
+
+        .why-principle-title {
+            font-size: 21px;
+        }
+
+        .why-principle-desc {
+            font-size: 14px;
+        }
+
+    }
+
+    /* PORT COVERAGE RESPONSIVE */
+
+    @media (max-width: 1100px) {
+
+        .coverage-layout {
+            grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+        }
+
+        .coverage-panel {
+            padding: 30px;
+        }
+
+    }
+
+    @media (max-width: 900px) {
+
+        #coverage {
+            padding: 70px 6%;
+        }
+
+        .coverage-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .coverage-panel {
+            padding: 36px;
+        }
+
+    }
+
+    @media (max-width: 600px) {
+
+        #coverage {
+            padding: 60px 24px;
+        }
+
+        .map-header {
+            padding: 20px;
+        }
+
+        .map-svg-wrap {
+            padding: 8px;
+        }
+
+        .coverage-panel {
+            padding: 28px 24px;
+        }
+
+        .coverage-stat-value {
+            font-size: 40px;
+        }
+
+    }
+
+
+    /* =========================================
+    MAP BRAND COLOURS
+    ========================================= */
+
+    /* Ocean */
+    #coverage svg rect[fill="#040E1E"] {
+        fill: #003326;
+        rx: 0;
+    }
+
+    /* Landmass */
+    #coverage svg path[fill="#0A2B52"] {
+        fill: #527D6C;
+        stroke: #A3B4AC;
+    }
+
+    /* Major port markers */
+    #coverage svg circle[fill="#00ACC1"] {
+        fill: #4DD0E1;
+    }
+
+    /* Secondary port markers */
+    #coverage svg circle[fill="#1E88E5"] {
+        fill: #A8E6CF;
+    }
+
+    /* Animated glow */
+    #coverage svg stop[stop-color="#00ACC1"] {
+        stop-color: #4DD0E1;
+    }
+
+    /* Major port labels */
+    #coverage svg text[fill="#4DD0E1"] {
+        fill: #FFFFFF;
+    }
+
+    /* Secondary port labels */
+    #coverage svg text[fill="#90CAF9"] {
+        fill: #D2E2DB;
+    }
+
+    /* Ocean names */
+    #coverage svg text[fill="#1565C0"] {
+        fill: #A3B4AC;
+        opacity: 0.65;
+    }
+
+    /* Legend background */
+    #coverage svg rect[rx="8"] {
+        fill: #00291F;
+        stroke: #527D6C;
+        rx: 0;
+    }
+
+    /* Legend text */
+    #coverage svg text[fill="rgba(255,255,255,0.4)"] {
+        fill: #A3B4AC;
+    }
+
+    /* SURVEY PROCESS RESPONSIVE */
+
+    @media (max-width: 1100px) {
+
+        .process-grid {
+            gap: 22px;
+        }
+
+        .process-number {
+            font-size: 44px;
+        }
+
+        .process-step-title {
+            font-size: 19px;
+        }
+
+    }
+
+    @media (max-width: 900px) {
+
+        #process {
+            padding: 70px 6%;
+        }
+
+        .process-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 40px;
+        }
+
+        .process-intro {
+            margin-bottom: 45px;
+        }
+
+        .process-bottom {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .process-line {
+            display: none;
+        }
+
+    }
+
+    @media (max-width: 600px) {
+
+        #process {
+            padding: 60px 24px;
+        }
+
+        .process-heading br {
+            display: none;
+        }
+
+        .process-intro {
+            font-size: 15px;
+            margin-bottom: 35px;
+        }
+
+        .process-grid {
+            grid-template-columns: 1fr;
+            gap: 0;
+        }
+
+        .process-step {
+            display: grid;
+            grid-template-columns: 55px minmax(0, 1fr);
+            column-gap: 20px;
+            padding: 28px 0;
+            border-bottom: 1px solid #DADFD9;
+        }
+
+        .process-step-header {
+            grid-row: 1 / 3;
+            margin-bottom: 0;
+            align-items: flex-start;
+        }
+
+        .process-number {
+            font-size: 36px;
+        }
+
+        .process-step-title {
+            font-size: 21px;
+            margin-bottom: 10px;
+        }
+
+        .process-step-desc {
+            grid-column: 2;
+        }
+
+        .process-step:last-child {
+            border-bottom: none;
+        }
+
+        .process-bottom {
+            margin-top: 30px;
+        }
+
+        .process-bottom-text {
+            font-size: 22px;
+        }
+
+    }
+    /* CONTACT RESPONSIVE */
+
+    @media (max-width: 1100px) {
+
+        .contact-layout {
+            gap: 45px;
+        }
+
+        .survey-form-panel {
+            padding: 35px;
+        }
+
+    }
+
+    @media (max-width: 900px) {
+
+        #contact {
+            padding: 70px 6%;
+        }
+
+        .contact-layout {
+            grid-template-columns: 1fr;
+            gap: 50px;
+        }
+
+    }
+
+    @media (max-width: 600px) {
+
+        #contact {
+            padding: 60px 24px;
+        }
+
+        .contact-heading {
+            margin-bottom: 35px;
+        }
+
+        .contact-heading br {
+            display: none;
+        }
+
+        .survey-form-panel {
+            padding: 24px;
+        }
+
+        .survey-form-grid {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .survey-form-title {
+            font-size: 26px;
+        }
+
+        .contact-detail-value {
+            font-size: 18px;
+        }
+
+        .survey-field input,
+        .survey-field select,
+        .survey-field textarea {
+            font-size: 16px;
+        }
+
+    }
+
+    /* CONTACT STICKY RESPONSIVE */
+
+    @media (max-width: 900px) {
+
+        .contact-information {
+            position: static;
+        }
+
+    }
+
+    /* ANIMATED STATISTICS */
+
+    .stat-counter {
+        font-variant-numeric: tabular-nums;
+        display: inline-block;
+        white-space: nowrap;
+    }
+
+    /* =========================================
+    HERO + STATS — FIT FIRST SCREEN
+    ========================================= */
+
+    @media (min-width: 1001px) {
+
+        /* Navigation height */
+        :root {
+            --nav-height: 58px;
+            --stats-height: 140px;
+        }
+
+        /* Hero occupies remaining screen height */
+        #hero {
+            height: calc(100svh - var(--nav-height) - var(--stats-height));
+            min-height: 0;
+            padding: 30px 7%;
+            box-sizing: border-box;
+        }
+
+        /* Keep hero content vertically centered */
+        .hero-container {
+            height: 100%;
+            align-items: center;
+        }
+
+        /* Slightly reduce headline */
+        .hero-title {
+            font-size: clamp(46px, 4.2vw, 68px);
+            margin-bottom: 22px;
+        }
+
+        .hero-eyebrow {
+            margin-bottom: 20px;
+        }
+
+        .hero-description {
+            margin-bottom: 28px;
+        }
+
+        /* Adjust animated panel */
+        .hero-demo {
+            min-height: 300px;
+        }
+
+        /* Statistics occupy a fixed height */
+        .hero-metrics {
+            height: var(--stats-height);
+            box-sizing: border-box;
+            align-items: stretch;
+        }
+
+        .hero-metric {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding-top: 15px;
+            padding-bottom: 15px;
+        }
+
+        .hero-metric-number {
+            font-size: clamp(34px, 3vw, 48px);
+        }
+
+    }
+
+    /* SHORT DESKTOP SCREENS */
+
+    @media (min-width: 1001px) and (max-height: 700px) {
+
+        #hero {
+            padding-top: 15px;
+            padding-bottom: 15px;
+        }
+
+        .hero-title {
+            font-size: 48px;
+        }
+
+        .hero-demo {
+            min-height: 270px;
+        }
+
+        .hero-description {
+            margin-bottom: 18px;
+        }
+
+    }
+
+    /* =========================================
+    HERO — LARGER ANIMATED SLIDESHOW
+    ========================================= */
+
+    @media (min-width: 1001px) {
+
+        .hero-container {
+            grid-template-columns: 0.9fr 1.1fr;
+            gap: 55px;
+        }
+
+        .hero-demo {
+            min-height: 400px;
+            padding: 34px 34px 86px;
+            border-radius: 16px;
+        }
+
+        .demo-icon {
+            width: 75px;
+            height: 75px;
+            font-size: 34px;
+        }
+
+        .demo-stage-title {
+            font-size: 26px;
+        }
+
+        .demo-stage-description {
+            font-size: 15px;
+            max-width: 400px;
+        }
+
+        .demo-report {
+            max-width: 370px;
+            padding: 28px;
+        }
+
+        .demo-report-title {
+            font-size: 19px;
+        }
+
+        .demo-controls {
+            bottom: 24px;
+        }
+    }
+
+    /* =========================================
+    HERO — VESSEL BACKGROUND
+    ========================================= */
+
+    #hero {
+        position: relative;
+
+        background-image:
+            linear-gradient(
+                90deg,
+                rgba(5, 35, 65, 0.82) 0%,
+                rgba(5, 35, 65, 0.65) 38%,
+                rgba(5, 35, 65, 0.12) 75%,
+                rgba(5, 35, 65, 0.05) 100%
+            ),
+            url("hero-vessel.jpeg");
+
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+    /* Small heading above the title */
+    .hero-eyebrow {
+        color: #7DDEFF;
+    }
+
+    /* Main heading */
+    .hero-title {
+        color: #FFFFFF;
+        text-shadow: 0 2px 12px rgba(0, 20, 40, 0.18);
+    }
+
+    /* Highlighted word */
+    .hero-title span {
+        color: #00B8F0;
+    }
+
+    /* Description */
+    .hero-description {
+        color: #E4F2FA;
+        font-weight: 400;
+        text-shadow: 0 1px 6px rgba(0, 20, 40, 0.2);
+    }
+    /* Keep hero content above the background */
+
+    .hero-container {
+        position: relative;
+        z-index: 2;
+    }
+
+    @media (min-width: 1001px) and (max-height: 750px) {
+
+        .hero-demo {
+            height: 300px;
+            padding: 30px;
+        }
+
+        .demo-report {
+            padding: 20px;
+        }
+
+        .demo-icon {
+            width: 60px;
+            height: 60px;
+        }
+
+        .demo-stage-title {
+            font-size: 22px;
+        }
+
+    }
+
+    /* =========================================
+    SERVICES — NEW BLUE DESIGN
+    ========================================= */
+
+    #services.services-section {
+        background: #EAF6FC;
+        padding: 100px 7%;
+        color: #082B4A;
+    }
+
+    .services-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    /* SECTION HEADING */
+
+    .services-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 60px;
+        margin-bottom: 55px;
+    }
+
+    .services-heading-left {
+        flex: 1;
+    }
+
+    .services-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        color: #082B4A;
+        margin-bottom: 25px;
+    }
+
+    .services-eyebrow > span:first-child {
+        color: #009BD3;
+    }
+
+    .services-line {
+        width: 35px;
+        height: 1px;
+        background: #9BB7C9;
+    }
+
+    .services-heading h2 {
+        font-size: clamp(38px, 4vw, 64px);
+        font-weight: 400;
+        line-height: 1.1;
+        letter-spacing: -0.05em;
+        color: #082B4A;
+    }
+
+    .services-heading h2 strong {
+        font-weight: 700;
+    }
+
+    .services-intro {
+        max-width: 340px;
+        font-size: 15px;
+        line-height: 1.8;
+        color: #536D80;
+        margin-bottom: 5px;
+    }
+
+    /* SERVICES GRID */
+
+    .services-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 20px;
+    }
+
+    /* CARDS */
+
+    .service-card {
+        grid-column: span 2;
+        background: #FFFFFF;
+        border: 1px solid #D7E8F1;
+        border-radius: 12px;
+        min-height: 330px;
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        transition:
+            transform 0.25s ease,
+            box-shadow 0.25s ease,
+            border-color 0.25s ease;
+    }
+
+    .service-card-large {
+        grid-column: span 3;
+        min-height: 350px;
+    }
+
+    .service-card:hover {
+        transform: translateY(-5px);
+        border-color: #8DCFEA;
+        box-shadow: 0 18px 35px rgba(8,43,74,0.08);
+    }
+
+    .service-card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .service-number {
+        font-size: 54px;
+        font-weight: 300;
+        letter-spacing: -0.06em;
+        color: #009BD3;
+    }
+
+    .service-arrow {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #D3E2EA;
+        border-radius: 50%;
+        color: #082B4A;
+        font-size: 18px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .service-card:hover .service-arrow {
+        background: #009BD3;
+        color: #FFFFFF;
+        border-color: #009BD3;
+    }
+
+    /* CARD CONTENT */
+
+    .service-card-content h3 {
+        font-size: 23px;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        color: #082B4A;
+        margin-bottom: 15px;
+    }
+
+    .service-card-content p {
+        font-size: 14px;
+        line-height: 1.75;
+        color: #607487;
+        margin-bottom: 22px;
+    }
+
+    .service-tags {
+        display: flex;
+        gap: 7px;
+        flex-wrap: wrap;
+    }
+
+    .service-tags span {
+        padding: 5px 9px;
+        background: #EAF6FC;
+        color: #005A9C;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 4px;
+    }
+
+    /* FINAL CARD */
+
+    .service-card-final {
+        grid-column: span 3;
+    }
+
+    /* ENQUIRY CARD */
+
+    .services-enquiry-card {
+        grid-column: span 3;
+        background: #082B4A;
+        color: #FFFFFF;
+        border-radius: 12px;
+        padding: 38px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .services-enquiry-card > span {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        color: #7DDEFF;
+        margin-bottom: 20px;
+    }
+
+    .services-enquiry-card h3 {
+        font-size: 35px;
+        font-weight: 600;
+        line-height: 1.15;
+        letter-spacing: -0.04em;
+        margin-bottom: 18px;
+    }
+
+    .services-enquiry-card p {
+        font-size: 14px;
+        line-height: 1.7;
+        color: #B9D2E3;
+        margin-bottom: 28px;
+    }
+
+    .services-enquiry-card a {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 18px;
+        background: #009BD3;
+        color: #FFFFFF;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .services-enquiry-card a:hover {
+        background: #007FB0;
+    }
+
+    /* TABLET */
+
+    @media (max-width: 1000px) {
+
+        #services.services-section {
+            padding: 75px 5%;
+        }
+
+        .services-heading {
+            gap: 30px;
+        }
+
+        .service-card,
+        .service-card-large,
+        .service-card-final,
+        .services-enquiry-card {
+            grid-column: span 3;
+        }
+
+    }
+
+    /* MOBILE */
+
+    @media (max-width: 650px) {
+
+        #services.services-section {
+            padding: 65px 22px;
+        }
+
+        .services-heading {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 20px;
+            margin-bottom: 35px;
+        }
+
+        .services-heading h2 {
+            font-size: 40px;
+        }
+
+        .services-grid {
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .service-card,
+        .service-card-large,
+        .service-card-final,
+        .services-enquiry-card {
+            grid-column: auto;
+            min-height: 300px;
+        }
+
+        .service-card {
+            padding: 25px;
+        }
+
+        .service-number {
+            font-size: 45px;
+        }
+
+        .services-enquiry-card {
+            padding: 30px;
+        }
+
+    }
+
+    /* =========================================
+    SERVICES — FINAL SPACING REFINEMENTS
+    ========================================= */
+
+    /* Fix overlapping introduction */
+    .services-intro {
+        flex: 0 0 340px;
+        width: 340px;
+        max-width: 100%;
+        line-height: 1.8;
+        letter-spacing: normal;
+        word-spacing: normal;
+        white-space: normal;
+        text-align: left;
+    }
+
+    /* Make heading layout more balanced */
+    .services-heading {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        align-items: end;
+        gap: 60px;
+    }
+
+    /* Reduce excessive card height */
+    .service-card {
+        min-height: 290px;
+        padding: 30px;
+    }
+
+    .service-card-large {
+        min-height: 310px;
+    }
+
+    /* Keep card content grouped naturally */
+    .service-card-content {
+        margin-top: 35px;
+    }
+
+    /* Improve text spacing */
+    .service-card-content h3 {
+        margin-bottom: 12px;
+        line-height: 1.3;
+    }
+
+    .service-card-content p {
+        margin-bottom: 18px;
+        line-height: 1.7;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 900px) {
+        .services-heading {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .services-intro {
+            width: 100%;
+            max-width: 520px;
+            flex: initial;
+        }
+    }
+
+    @media (max-width: 650px) {
+        .service-card,
+        .service-card-large {
+            min-height: 270px;
+        }
+
+        .service-card-content {
+            margin-top: 25px;
+        }
+    }
+
+    /* =========================================
+    GLOBAL COVERAGE SECTION
+    ========================================= */
+
+    #global-coverage {
+        background: #F5FAFD;
+        padding: 90px 7%;
+        color: #082B4A;
+    }
+
+    .global-coverage-container {
+        max-width: 1400px;
+        margin: auto;
+    }
+
+    .global-coverage-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 50px;
+        margin-bottom: 40px;
+    }
+
+    .coverage-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+
+        color: #009BD3;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        margin-bottom: 20px;
+    }
+
+    .global-coverage-heading h2 {
+        font-size: clamp(36px, 4vw, 60px);
+        line-height: 1.12;
+        letter-spacing: -0.045em;
+        font-weight: 500;
+    }
+
+    .global-coverage-heading h2 span {
+        color: #009BD3;
+    }
+
+    .global-coverage-heading p {
+        max-width: 350px;
+        color: #607487;
+        line-height: 1.8;
+        font-size: 15px;
+    }
+
+    .global-coverage-layout {
+        display: grid;
+        grid-template-columns: 1.7fr 1fr;
+        gap: 20px;
+        align-items: stretch;
+    }
+
+    .global-map-wrapper {
+        min-width: 0;
+        overflow: hidden;
+        border-radius: 14px;
+        border: 1px solid #D7E8F1;
+        background: #EAF6FC;
+    }
+
+    #ymrWorldMap {
+        width: 100%;
+        height: 460px;
+        position: relative;
+        z-index: 1;
+        overflow: hidden;
+    }
+
+    /* Circular flag markers */
+
+    .ymr-map-flag {
+        background: #FFFFFF;
+        border: 3px solid #FFFFFF;
+        border-radius: 50%;
+        width: 42px;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 25px;
+        box-shadow: 0 3px 12px rgba(8,43,74,0.22);
+        transition: transform 0.2s ease;
+    }
+
+    .ymr-map-flag:hover {
+        transform: scale(1.15);
+    }
+
+    .ymr-map-flag.selected {
+        border-color: #009BD3;
+        box-shadow: 0 0 0 5px rgba(0,155,211,0.18);
+    }
+
+    /* Information panel */
+
+    .global-coverage-panel {
+        background: #082B4A;
+        color: #FFFFFF;
+        border-radius: 14px;
+        padding: 34px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .coverage-panel-label {
+        color: #7DDEFF;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        font-weight: 700;
+        margin-bottom: 20px;
+    }
+
+    .global-coverage-panel h3 {
+        font-size: 34px;
+        margin-bottom: 12px;
+    }
+
+    .global-coverage-panel > p {
+        color: #B9D2E3;
+        font-size: 14px;
+        line-height: 1.7;
+        margin-bottom: 25px;
+    }
+
+    .coverage-country-list {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 30px;
+    }
+
+    .coverage-country {
+        border: 1px solid rgba(255,255,255,0.15);
+        background: rgba(255,255,255,0.05);
+        color: #FFFFFF;
+        padding: 12px 6px;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: center;
+        font-family: inherit;
+        font-size: 12px;
+        transition: 0.2s ease;
+    }
+
+    .coverage-country:hover,
+    .coverage-country.active {
+        background: #009BD3;
+        border-color: #009BD3;
+    }
+
+    .coverage-country-flag {
+        display: block;
+        font-size: 25px;
+        margin-bottom: 6px;
+    }
+
+    .coverage-enquiry-btn {
+        margin-top: auto;
+        display: block;
+        background: #009BD3;
+        color: #FFFFFF;
+        text-align: center;
+        padding: 15px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .coverage-enquiry-btn:hover {
+        background: #007FB0;
+    }
+
+    .global-coverage-note {
+        margin-top: 20px;
+        font-size: 12px;
+        color: #607487;
+    }
+
+    /* Map styling */
+
+    #ymrWorldMap{
+        background: #EAF6FC;
+    }
+
+    #ymrWorldMap .leaflet-control-attribution {
+        font-size: 9px;
+    }
+
+    /* Responsive */
+
+    @media (max-width: 1000px) {
+        .global-coverage-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .global-coverage-heading {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+    }
+
+    @media (max-width: 600px) {
+        #global-coverage {
+            padding: 65px 22px;
+        }
+
+        #ymrWorldMap {
+            height: 350px;
+        }
+
+        .global-coverage-panel {
+            padding: 25px;
+        }
+
+        .coverage-country-list {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+        #ymrWorldMap .leaflet-marker-pane img {
+            max-width: none !important;
+    }
+
+    /* =========================================
+    LEAFLET MAP CSS FIX
+    ========================================= */
+
+    #ymrWorldMap {
+        position: relative;
+        width: 100%;
+        height: 460px;
+        overflow: hidden;
+        z-index: 1;
+        background: #EAF6FC;
+    }
+
+    /* Prevent global image styling from affecting map tiles */
+    #ymrWorldMap .leaflet-tile-pane img {
+        max-width: none !important;
+        max-height: none !important;
+        object-fit: fill !important;
+    }
+
+    /* Location pointer */
+    .ymr-location-pin {
+        width: 34px;
+        height: 34px;
+        background: #009BD3;
+        border: 3px solid #FFFFFF;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ymr-location-dot {
+        width: 10px;
+        height: 10px;
+        background: #FFFFFF;
+        border-radius: 50%;
+    }
+
+    /* Mobile */
+    @media (max-width: 600px) {
+        #ymrWorldMap {
+            height: 350px;
+        }
+    }
+
+    /* =========================================
+    FIX LEAFLET BROKEN MAP TILES
+    ========================================= */
+
+    #ymrWorldMap {
+        width: 100% !important;
+        height: 560px !important;
+        overflow: hidden !important;
+        background: #EAF6FC;
+    }
+
+
+
+    /* Prevent global image rules from affecting map tiles */
+    #ymrWorldMap img.leaflet-tile {
+        width: 256px !important;
+        height: 256px !important;
+        max-width: none !important;
+        max-height: none !important;
+        object-fit: fill !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Prevent global transforms and transitions */
+    #ymrWorldMap .leaflet-tile {
+        transition: none !important;
+        animation: none !important;
+    }
+
+    /* Keep Leaflet controls above the map */
+    #ymrWorldMap .leaflet-control-container {
+        position: relative;
+        z-index: 1000;
+    }
+        
+    /* =========================================
+    HOW AN ATTENDANCE RUNS
+    ========================================= */
+
+    #attendance-process {
+        width: 100%;
+        padding: 85px 7% 95px;
+
+        background: linear-gradient(
+            135deg,
+            #367DA8 0%,
+            #22618E 100%
+        );
+    }
+
+    .attendance-container {
+        width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+        /* SECTION LABEL */
+
+    .attendance-section-label {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 30px;
+
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: #082B4A;
+    }
+
+    .attendance-label-line {
+        width: 30px;
+        height: 1px;
+        background: #082B4A;
+        opacity: 0.6;
+    }
+
+    /* HEADING */
+
+    .attendance-heading {
+        font-size: clamp(34px, 3.8vw, 52px);
+        font-weight: 500;
+        line-height: 1.15;
+        letter-spacing: -1.5px;
+
+        color: #082B4A;
+
+        margin: 0 0 48px;
+    }
+
+    /* CARDS GRID */
+
+    .attendance-steps {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    /* INDIVIDUAL CARD */
+
+    .attendance-card {
+        background: rgba(255, 255, 255, 0.90);
+        border-radius: 14px;
+
+        padding: 32px 28px 40px;
+        min-height: 240px;
+
+        transition:
+            transform 0.3s ease,
+            box-shadow 0.3s ease,
+            background 0.3s ease;
+    }
+
+    .attendance-card:hover {
+        transform: translateY(-7px);
+        background: #FFFFFF;
+        box-shadow: 0 18px 35px rgba(0, 30, 60, 0.15);
+    }
+
+    /* STEP NUMBER */
+
+    .attendance-step-number {
+        display: block;
+
+        font-size: 13px;
+        font-weight: 700;
+        color: #17636B;
+
+        margin-bottom: 15px;
+    }
+
+    /* SHORT LINE */
+
+    .attendance-card-line {
+        display: block;
+
+        width: 34px;
+        height: 2px;
+        background: #17636B;
+
+        margin-bottom: 30px;
+    }
+
+    /* CARD HEADING */
+
+    .attendance-card h3 {
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.3;
+
+        color: #082B4A;
+
+        margin: 0 0 14px;
+    }
+
+    /* CARD DESCRIPTION */
+
+    .attendance-card p {
+        font-size: 14px;
+        line-height: 1.7;
+        color: #52677A;
+
+        margin: 0;
+    }
+
+    /* =========================================
+    TABLET
+    ========================================= */
+
+    @media (max-width: 992px) {
+
+        #attendance-process {
+            padding-left: 6%;
+            padding-right: 6%;
+        }
+
+        .attendance-steps {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .attendance-card {
+            min-height: 220px;
+        }
+    }
+
+    /* =========================================
+    MOBILE
+    ========================================= */
+
+    @media (max-width: 600px) {
+
+        #attendance-process {
+            padding: 65px 24px 75px;
+        }
+
+
+        .attendance-heading {
+            font-size: 34px;
+            letter-spacing: -0.8px;
+            margin-bottom: 35px;
+        }
+
+        .attendance-heading br {
+            display: none;
+        }
+
+        .attendance-steps {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .attendance-card {
+            min-height: auto;
+            padding: 28px;
+        }
+
+        .attendance-card-line {
+            margin-bottom: 24px;
+        }
+
+        .attendance-card h3 {
+            font-size: 21px;
+        }
+    }
+
+    /* =====================================
+    SERVICE CARDS — LIGHT BLUE BACKGROUND
+    ===================================== */
+
+    /* Default service card background */
+    #services .service-card {
+        background: #D7F0FC;
+        border: 1px solid #C5E5F5;
+        transition:
+            background 0.3s ease,
+            border-color 0.3s ease,
+            transform 0.3s ease,
+            box-shadow 0.3s ease;
+    }
+
+    /* Hover effect */
+    #services .service-card:hover {
+        background: #D7F0FC;
+        border-color: #009BD3;
+        transform: translateY(-5px);
+        box-shadow: 0 12px 30px rgba(0, 91, 156, 0.10);
+    }
+
+    /* Keep the text dark navy */
+    #services .service-card h3 {
+        color: #082B4A;
+    }
+
+    /* Keep the descriptions readable */
+    #services .service-card p {
+        color: #009BD3;
+    }
+
+    /* =====================================
+    CLIENT TESTIMONIALS
+    ===================================== */
+
+    #testimonials {
+        background: #123F69;
+        padding: 95px 7% 105px;
+        color: #FFFFFF;
+    }
+
+    .testimonials-container {
+        width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    /* LABEL */
+
+    .testimonials-label {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: #83B7D3;
+        margin-bottom: 25px;
+    }
+
+    .testimonials-line {
+        width: 26px;
+        height: 1px;
+        background: #83B7D3;
+    }
+
+    /* HEADING */
+
+    .testimonials-heading {
+        font-size: clamp(36px, 4vw, 56px);
+        font-weight: 400;
+        letter-spacing: -1.5px;
+        margin: 0 0 42px;
+        line-height: 1.2;
+    }
+
+    .testimonials-heading span {
+        color: #009BD3;
+    }
+
+    /* LAYOUT */
+
+    .testimonials-layout {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 20px;
+        align-items: stretch;
+    }
+
+    /* FEATURE CARD */
+
+    .testimonial-feature {
+        position: relative;
+        background: #FFFFFF;
+        color: #082B4A;
+        border-radius: 14px;
+        padding: 42px;
+        min-height: 365px;
+        overflow: hidden;
+
+        display: flex;
+        flex-direction: column;
+    }
+
+    .testimonial-stars {
+        color: #F5B800;
+        font-size: 20px;
+        letter-spacing: 4px;
+        margin-bottom: 24px;
+    }
+
+    .testimonial-quote-mark {
+        position: absolute;
+        top: -65px;
+        right: 0;
+        font-size: 260px;
+        line-height: 1;
+        font-family: Georgia, serif;
+        color: #EAF6FC;
+        pointer-events: none;
+    }
+
+    .testimonial-quote {
+        position: relative;
+        z-index: 1;
+        font-size: clamp(20px, 2vw, 27px);
+        line-height: 1.5;
+        font-weight: 400;
+        margin: 0 0 28px;
+        max-width: 570px;
+    }
+
+    /* AUTHOR */
+
+    .testimonial-author {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: auto;
+    }
+
+    .testimonial-avatar {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background: #009BD3;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .testimonial-name {
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .testimonial-role {
+        font-size: 12px;
+        color: #66839A;
+        margin-top: 3px;
+    }
+
+    /* DOTS */
+
+    .testimonial-dots {
+        display: flex;
+        gap: 9px;
+        margin-top: 28px;
+    }
+
+    .testimonial-dot {
+        width: 7px;
+        height: 7px;
+        padding: 0;
+        border: 0;
+        border-radius: 10px;
+        background: #B8CDD9;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .testimonial-dot.active {
+        width: 28px;
+        background: #009BD3;
+    }
+
+    /* CLIENT LIST */
+
+    .testimonial-client-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .testimonial-client {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        width: 100%;
+        flex: 1;
+
+        padding: 18px 20px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(255,255,255,0.05);
+        color: white;
+        text-align: left;
+        cursor: pointer;
+
+        transition: all 0.3s ease;
+    }
+
+    .testimonial-client:hover {
+        background: rgba(255,255,255,0.12);
+    }
+
+    .testimonial-client.active {
+        background: rgba(255,255,255,0.17);
+        border-color: rgba(255,255,255,0.25);
+    }
+
+    .client-avatar {
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.12);
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .testimonial-client strong {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .testimonial-client small {
+        display: block;
+        font-size: 12px;
+        color: #B0C9DA;
+        margin-top: 3px;
+    }
+
+    /* RESPONSIVE */
+
+    @media (max-width: 900px) {
+        .testimonials-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .testimonial-client-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        #testimonials {
+            padding: 65px 0;
+        }
+
+        .testimonial-feature {
+            padding: 28px;
+        }
+
+        .testimonial-client-list {
+            grid-template-columns: 1fr;
+        }
+
+        .testimonial-quote {
+            font-size: 20px;
+        }
+
+        .testimonials-heading {
+            font-size: 38px;
+        }
+    }
+
+    .footer-watermark {
+        width: 100%;
+        margin: 35px 0 20px;
+
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(90px, 13vw, 190px);
+        font-weight: 800;
+        line-height: 0.9;
+
+        letter-spacing: -0.07em;
+        text-align: center;
+        white-space: nowrap;
+
+        background: linear-gradient(
+            to bottom,
+            rgba(255, 255, 255, 0.12) 0%,
+            rgba(255, 255, 255, 0.07) 35%,
+            rgba(255, 255, 255, 0.025) 70%,
+            rgba(255, 255, 255, 0.005) 100%
+        );
+
+        -webkit-background-clip: text;
+        background-clip: text;
+
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+
+        user-select: none;
+        pointer-events: none;
+        overflow: hidden;
+    }
+    @media (max-width: 600px) {
+        .footer-watermark {
+            font-size: 17vw;
+            margin: 25px 0 18px;
+            letter-spacing: -0.06em;
+        }
+    }
+
+    /* =========================================
+   ATTENDANCE — HORIZONTAL TIMELINE
+========================================= */
+
+#attendance-process {
+    width: 100%;
+    padding: 90px 5% 100px;
+    box-sizing: border-box;
+
+    background: linear-gradient(
+        135deg,
+        #367DA8 0%,
+        #22618E 100%
+    );
+
+    overflow: hidden;
+}
+
+#attendance-process .attendance-container {
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+/* SECTION LABEL */
+
+#attendance-process .attendance-section-label {
+    color: #BCEEFF;
+    margin-bottom: 26px;
+}
+
+#attendance-process .attendance-label-line {
+    background: #BCEEFF;
+    opacity: 1;
+}
+
+/* HEADING */
+
+#attendance-process .attendance-heading {
+    font-size: clamp(34px, 3.8vw, 52px);
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: -1.5px;
+
+    color: #FFFFFF;
+    margin: 0 0 70px;
+}
+
+#attendance-process .attendance-heading strong {
+    font-weight: 700;
+    color: #BCEEFF;
+}
+
+/* TIMELINE GRID */
+
+#attendance-process .attendance-timeline {
+    position: relative;
+
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+
+    gap: 0;
+}
+
+/* CONNECTING LINE */
+
+#attendance-process .timeline-track {
+    position: absolute;
+
+    top: 29px;
+    left: 12.5%;
+    right: 12.5%;
+
+    height: 2px;
+
+    background: rgba(255, 255, 255, 0.25);
+}
+
+#attendance-process .timeline-progress {
+    width: 100%;
+    height: 100%;
+
+    background: linear-gradient(
+        90deg,
+        #FFFFFF,
+        #65D8FF
+    );
+
+    box-shadow: 0 0 12px rgba(101, 216, 255, 0.5);
+}
+
+/* INDIVIDUAL STEP */
+
+#attendance-process .timeline-step {
+    position: relative;
+    z-index: 1;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    padding: 0 24px;
+    text-align: center;
+}
+
+/* NUMBERED CIRCLE */
+
+#attendance-process .timeline-node {
+    width: 60px;
+    height: 60px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 2px solid #BCEEFF;
+    border-radius: 50%;
+    box-sizing: border-box;
+
+    background: #286B97;
+    color: #FFFFFF;
+
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 1px;
+
+    margin-bottom: 35px;
+
+    transition:
+        background 0.35s ease,
+        color 0.35s ease,
+        box-shadow 0.35s ease,
+        transform 0.35s ease;
+}
+
+/* STEP ICONS */
+
+#attendance-process .timeline-icon {
+    width: 76px;
+    height: 76px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 18px;
+
+    color: #BCEEFF;
+
+    margin-bottom: 24px;
+
+    transition:
+        transform 0.35s ease,
+        background 0.35s ease,
+        border-color 0.35s ease;
+}
+
+#attendance-process .timeline-icon svg {
+    width: 36px;
+    height: 36px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* STEP HEADING */
+
+#attendance-process .timeline-step h3 {
+    font-size: clamp(20px, 1.8vw, 26px);
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.5px;
+
+    color: #FFFFFF;
+    margin: 0 0 16px;
+
+    transition: color 0.35s ease;
+}
+
+/* STEP DESCRIPTION */
+
+#attendance-process .timeline-step p {
+    font-size: 14px;
+    line-height: 1.85;
+    font-weight: 400;
+
+    color: #E2F0F8;
+    max-width: 250px;
+
+    margin: 0;
+    text-align: center;
+}
+
+/* HOVER EFFECTS */
+
+#attendance-process .timeline-step:hover .timeline-node {
+    background: #BCEEFF;
+    color: #082B4A;
+
+    box-shadow: 0 0 25px rgba(101, 216, 255, 0.45);
+    transform: scale(1.1);
+}
+
+#attendance-process .timeline-step:hover .timeline-icon {
+    transform: translateY(-6px);
+    background: rgba(255, 255, 255, 0.16);
+    border-color: #BCEEFF;
+}
+
+#attendance-process .timeline-step:hover h3 {
+    color: #BCEEFF;
+}
+
+/* =========================================
+   SCROLL ANIMATION
+========================================= */
+
+#attendance-process.timeline-ready .timeline-progress {
+    width: 0;
+    transition: width 1.8s ease-in-out;
+}
+
+#attendance-process.timeline-ready .timeline-step {
+    opacity: 0;
+    transform: translateY(24px);
+
+    transition:
+        opacity 0.7s ease,
+        transform 0.7s ease;
+}
+
+#attendance-process.timeline-visible .timeline-progress {
+    width: 100%;
+}
+
+#attendance-process.timeline-visible .timeline-step {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#attendance-process .timeline-step:nth-of-type(1) {
+    transition-delay: 0.1s;
+}
+
+#attendance-process .timeline-step:nth-of-type(2) {
+    transition-delay: 0.5s;
+}
+
+#attendance-process .timeline-step:nth-of-type(3) {
+    transition-delay: 0.9s;
+}
+
+#attendance-process .timeline-step:nth-of-type(4) {
+    transition-delay: 1.3s;
+}
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (max-width: 992px) {
+
+    #attendance-process {
+        padding: 80px 6%;
+    }
+
+    #attendance-process .timeline-step {
+        padding: 0 12px;
+    }
+
+    #attendance-process .timeline-step p {
+        font-size: 13px;
+    }
+}
+
+/* =========================================
+   MOBILE — VERTICAL TIMELINE
+========================================= */
+
+@media (max-width: 700px) {
+
+    #attendance-process {
+        padding: 65px 24px 75px;
+    }
+
+    #attendance-process .attendance-heading {
+        font-size: 34px;
+        margin-bottom: 45px;
+    }
+
+    #attendance-process .attendance-heading br {
+        display: none;
+    }
+
+    #attendance-process .attendance-timeline {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    #attendance-process .timeline-track {
+        top: 25px;
+        bottom: 0;
+        left: 24px;
+        right: auto;
+
+        width: 2px;
+        height: auto;
+    }
+
+    #attendance-process .timeline-progress {
+        width: 100%;
+        height: 100%;
+    }
+
+    #attendance-process .timeline-step {
+        align-items: flex-start;
+        text-align: left;
+
+        padding: 0 0 0 80px;
+    }
+
+    #attendance-process .timeline-node {
+        position: absolute;
+        top: 0;
+        left: 0;
+
+        width: 50px;
+        height: 50px;
+
+        font-size: 16px;
+        margin: 0;
+    }
+
+    #attendance-process .timeline-icon {
+        width: 58px;
+        height: 58px;
+        margin-bottom: 18px;
+    }
+
+    #attendance-process .timeline-icon svg {
+        width: 28px;
+        height: 28px;
+    }
+
+    #attendance-process .timeline-step h3 {
+        font-size: 23px;
+    }
+
+    #attendance-process .timeline-step p {
+        max-width: 100%;
+        font-size: 14px;
+        text-align: left;
+    }
+
+    #attendance-process.timeline-ready .timeline-progress {
+        width: 100%;
+        height: 0;
+        transition: height 1.8s ease-in-out;
+    }
+
+    #attendance-process.timeline-visible .timeline-progress {
+        height: 100%;
+    }
+}
+
+/* ACCESSIBILITY */
+
+@media (prefers-reduced-motion: reduce) {
+
+    #attendance-process *,
+    #attendance-process *::before,
+    #attendance-process *::after {
+        transition: none !important;
+        animation: none !important;
+    }
+
+    #attendance-process.timeline-ready .timeline-step {
+        opacity: 1;
+        transform: none;
+    }
+
+    #attendance-process.timeline-ready .timeline-progress {
+        width: 100%;
+        height: 100%;
+    }
+}
+
+/* ATTENDANCE — SCREEN ALIGNMENT */
+
+#attendance-process .attendance-heading {
+    font-size: clamp(36px, 3.8vw, 60px);
+    margin-bottom: 65px;
+}
+
+#attendance-process .timeline-step {
+    padding: 0 25px;
+}
+
+#attendance-process .timeline-step p {
+    font-size: 16px;
+    line-height: 1.8;
+    max-width: 320px;
+}
+
+#attendance-process .timeline-step h3 {
+    font-size: 26px;
+}
+
+#attendance-process .timeline-icon {
+    width: 90px;
+    height: 90px;
+}
+
+#attendance-process .timeline-icon svg {
+    width: 42px;
+    height: 42px;
+}
+
+@media (max-width: 700px) {
+    #attendance-process .timeline-step {
+        padding: 0 0 0 80px;
+    }
+
+    #attendance-process .timeline-step p {
+        font-size: 14px;
+    }
+
+    #attendance-process .timeline-step h3 {
+        font-size: 23px;
+    }
+
+    #attendance-process .timeline-icon {
+        width: 58px;
+        height: 58px;
+    }
+
+    #attendance-process .timeline-icon svg {
+        width: 28px;
+        height: 28px;
+    }
+}
+/* =========================================
+   GLOBAL PAGE WIDTH & ALIGNMENT
+========================================= */
+
+:root {
+    --site-content-width: 1600px;
+    --site-side-padding: 5%;
+}
+
+.wrap {
+    width: 100%;
+    max-width: var(--site-content-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 0;
+    padding-right: 0;
+    box-sizing: border-box;
+}
+
+main > section {
+    padding-left: var(--site-side-padding);
+    padding-right: var(--site-side-padding);
+    box-sizing: border-box;
+}
+
+/* TABLET */
+
+@media (max-width: 1000px) {
+    :root {
+        --site-side-padding: 6%;
+    }
+}
+
+/* MOBILE */
+
+@media (max-width: 700px) {
+    :root {
+        --site-side-padding: 24px;
+    }
+}
+
+/* =========================================
+   SECTION CONTAINER ALIGNMENT
+========================================= */
+
+.attendance-container,
+.testimonials-container,
+.coverage-container,
+.services-container,
+.contact-container,
+.footer-container {
+    width: 100%;
+    max-width: var(--site-content-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 0;
+    padding-right: 0;
+    box-sizing: border-box;
+}
+
+/* FOOTER ALIGNMENT */
+
+footer {
+    padding-left: var(--site-side-padding);
+    padding-right: var(--site-side-padding);
+    box-sizing: border-box;
+}
+
+/* =========================================
+   SHARED FOOTER ALIGNMENT
+========================================= */
+
+footer {
+    width: 100%;
+    padding-left: 5%;
+    padding-right: 5%;
+    box-sizing: border-box;
+}
+
+footer .wrap,
+footer .footer-container {
+    width: 100%;
+    max-width: 1600px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 0;
+    padding-right: 0;
+    box-sizing: border-box;
+}
+
+@media (max-width: 1000px) {
+    footer {
+        padding-left: 6%;
+        padding-right: 6%;
+    }
+}
+
+@media (max-width: 700px) {
+    footer {
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+}
+
+/* PROGRESS BAR — BACKGROUND FIX */
+
+.demo-progress-segment,
+.demo-progress-segment.active,
+.demo-progress-segment.completed {
+    background: rgba(255, 255, 255, 0.15) !important;
+    box-shadow: none;
+    overflow: hidden;
+}
+
+/* Loading portion */
+
+.demo-progress-segment::before {
+    background: #009BD3;
+    width: var(--demo-fill, 0%);
+}
+
+/* Currently loading bar */
+
+.demo-progress-segment.active::before {
+    background: #65D8FF;
+}
+
+/* Completed bar */
+
+.demo-progress-segment.completed::before {
+    width: 100%;
+    background: #009BD3;
+}
+
+    </style>
+    </head>
+    <body>
+
+    <!-- NAVBAR -->
+
+    <nav id="navbar" aria-label="Main navigation">
+
+        <!-- COMPANY BRAND -->
+
+        <a href="#" class="nav-logo">
+
+            <div class="nav-logo-icon">
+                <svg viewBox="0 0 48 48"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true">
+
+                    <circle cx="24" cy="7" r="4"/>
+                    <path d="M24 11V43"/>
+                    <path d="M16 17H32"/>
+                    <path d="M5 30C5 47 43 47 43 30"/>
+                    <path d="M2 35L5 29L12 32"/>
+                    <path d="M36 32L43 29L46 35"/>
+
+                </svg>
+            </div>
+
+            <div>
+                <div class="nav-logo-text">YMR MARINE</div>
+                <div class="nav-logo-sub">Solutions LLP</div>
+            </div>
+
+        </a>
+
+
+        <!-- PRIMARY NAVIGATION -->
+
+        <div class="nav-links">
+
+            <!-- ABOUT US -->
+
+            <div class="nav-dropdown">
+
+                <button type="button" class="nav-dropdown-toggle">
+                    About Us
+                    <span class="nav-chevron"></span>
+                </button>
+
+                <div class="nav-dropdown-menu">
+                    <a href="about.html">Our Company</a>
+                    <a href="about.html#team">Why YMR</a>
+                    <a href="about.html#why-ymr">Get in Touch</a>
+                </div>
+
+            </div>
+            <a href="#services">
+                Services
+            </a>
+
+            <a href="#global-coverage">
+                Global Coverage
+            </a>
+
+            <a href="#attendance-process">
+                How We Work
+            </a>
+
+            <a href="#testimonials">
+                Testimonials
+            </a>
+
+            
+
+            
+
+
+           
+
+        </div>
+
+
+        <!-- UTILITY NAVIGATION -->
+
+        <div class="nav-actions">
+
+            <a href="EMPLOYEE_LOGIN_URL" class="nav-utility-link">
+
+                Login
+
+                <svg viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    aria-hidden="true">
+
+                    <circle cx="12" cy="12" r="9"/>
+                    <circle cx="12" cy="9" r="3"/>
+                    <path d="M6.5 18C6.5 12 17.5 12 17.5 18"/>
+
+                </svg>
+
+            </a>
+
+            <a href="#contact" class="nav-utility-link">
+
+                Contact Us
+
+                <svg viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    aria-hidden="true">
+
+                    <rect x="3" y="5" width="18" height="14"/>
+                    <path d="M3 5L12 13L21 5"/>
+
+                </svg>
+
+            </a>
+
+        </div>
+
+
+        <!-- MOBILE TOGGLE -->
+
+        <button type="button"
+                class="hamburger"
+                id="hamburgerBtn"
+                aria-label="Toggle navigation"
+                aria-expanded="false"
+                aria-controls="mobile-menu"
+                onclick="toggleMenu()">
+
+            <span></span>
+            <span></span>
+            <span></span>
+
+        </button>
+
+    </nav>
+
+
+    <!-- MOBILE MENU -->
+
+    <div id="mobile-menu">
+
+        <a href="about.html" onclick="toggleMenu()">
+            About Us
+        </a>
+
+        <a href="#services" onclick="toggleMenu()">
+            Services
+        </a>
+
+        <a href="#global-coverage" onclick="toggleMenu()">
+            Global Coverage
+        </a>
+
+        <a href="#attendance-process" onclick="toggleMenu()">
+            How We Work
+        </a>
+
+        <a href="#testimonials" onclick="toggleMenu()">
+            Testimonials
+        </a>
+
+
+        <div class="mobile-actions">
+
+            <a href="#contact"
+            class="mobile-cta"
+            onclick="toggleMenu()">
+                Request a Survey →
+            </a>
+
+            <a href="tel:+919820482713">
+                Call Operations
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- =========================================
+        HERO SECTION
+    ========================================= -->
+
+    <section id="hero">
+
+        <div class="hero-container">
+
+            <!-- LEFT SIDE -->
+
+            <div class="hero-content">
+
+                <div class="hero-eyebrow">
+                    Independent Marine Surveyors
+                </div>
+
+                <h1 class="hero-title">
+                    Marine surveys,<br>
+                    done <span>right.</span>
+                </h1>
+
+                <p class="hero-description">
+                    Bunker surveys and pre-purchase inspections,
+                    along with draft, cargo, condition and
+                    on/off-hire surveys — attended by experienced
+                    surveyors and reported without delay.
+                </p>
+
+                <div class="hero-actions">
+
+                    <a href="#contact" class="hero-btn-primary">
+                        Request a Survey
+                        <span>→</span>
+                    </a>
+
+                    <a href="#services" class="hero-btn-secondary">
+                        Our Services
+                    </a>
+
+                </div>
+
+            </div>
+
+
+            <!-- RIGHT SIDE — ANIMATED DEMO -->
+
+            <div class="hero-demo" aria-label="Survey process animation">
+
+                <div id="demoStage" class="demo-stage">
+
+                    <div class="demo-icon">✉</div>
+
+                    <h3 class="demo-stage-title">
+                        Survey Request Received
+                    </h3>
+
+                    <p class="demo-stage-description">
+                        Your survey requirements are received
+                        by our operations team.
+                    </p>
+
+                </div>
+
+
+                <!-- ANIMATION CONTROLS -->
+
+                <div class="demo-controls">
+
+                    <div class="demo-controls-top">
+
+                        <button
+                            type="button"
+                            class="demo-play"
+                            id="demoPlay"
+                            aria-label="Pause animation">
+                            ❚❚
+                        </button>
+
+                        <span id="demoStepLabel">
+                            1. Survey request received
+                        </span>
+
+                        <span>How it works</span>
+
+                    </div>
+
+                    <div class="demo-progress" id="demoProgress">
+
+                        <div class="demo-progress-segment active"></div>
+                        <div class="demo-progress-segment"></div>
+                        <div class="demo-progress-segment"></div>
+                        <div class="demo-progress-segment"></div>
+                        <div class="demo-progress-segment"></div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- COMPANY STATISTICS -->
+
+    <!-- HERO STATISTICS -->
+
+    <div class="hero-metrics">
+
+        <div class="hero-metric">
+            <div class="hero-metric-number">
+                <span class="stat-counter" data-target="4000">4,000</span><span>+</span>
+            </div>
+            <div class="hero-metric-label">Surveys Completed</div>
+        </div>
+
+        <div class="hero-metric">
+            <div class="hero-metric-number">
+                <span class="stat-counter" data-target="120">120</span><span>+</span>
+            </div>
+            <div class="hero-metric-label">Ports Covered</div>
+        </div>
+
+        <div class="hero-metric">
+            <div class="hero-metric-number">
+                <span class="stat-counter" data-target="50">50</span><span>+</span>
+            </div>
+            <div class="hero-metric-label">Clients Served</div>
+        </div>
+
+        <div class="hero-metric">
+            <div class="hero-metric-number">
+                <span class="stat-counter" data-target="20">20</span><span>+</span>
+            </div>
+            <div class="hero-metric-label">Years of Experience</div>
+        </div>
+
+    </div>
+
+    <!-- =========================================
+        GLOBAL COVERAGE
+    ========================================= -->
+
+    <section id="global-coverage">
+
+        <div class="global-coverage-container">
+            
+            <div class="global-coverage-heading">
+                <div>
+                    
+                    <div class="coverage-eyebrow">
+                        <span>01</span>
+                        <span class="attendance-label-line"></span>
+                        <span>GLOBAL REACH · LOCAL EXPERTISE</span>
+                    </div>
+
+                    <h2>
+                        Wherever your vessel goes,<br>
+                        <span>we're here to assist.</span>
+                    </h2>
+                </div>
+
+                <p>
+                    Marine surveying support across key maritime
+                    countries and regions, coordinated through
+                    our operations team.
+                </p>
+            </div>
+
+            <div class="global-coverage-layout">
+
+                <div class="global-map-wrapper">
+                    <div id="ymrWorldMap"
+                        aria-label="Interactive map of YMR Marine coverage">
+                    </div>
+                </div>
+
+                <div class="global-coverage-panel">
+
+                    <span class="coverage-panel-label">
+                        OUR COVERAGE
+                    </span>
+
+                    <h3 id="selectedCoverageName">
+                        India
+                    </h3>
+
+                    <p id="selectedCoverageDescription">
+                        Marine surveying support across Indian ports.
+                    </p>
+
+                    <div class="coverage-country-list"
+                        id="coverageCountryList">
+                    </div>
+
+                    <a href="#contact" class="coverage-enquiry-btn">
+                        Enquire About a Port →
+                    </a>
+
+                </div>
+
+            </div>
+
+            <p class="global-coverage-note">
+                Coverage is subject to port location, survey scope
+                and surveyor availability. Contact our operations
+                team to confirm attendance.
+            </p>
+
+        </div>
+
+    </section>
+
+    <!-- =========================================
+        SERVICES SECTION
+    ========================================= -->
+
+    <section id="services" class="services-section">
+
+        <div class="services-container">
+
+            <!-- SECTION HEADING -->
+
+            <div class="services-heading">
+
+                <div class="services-heading-left">
+
+                    <div class="services-eyebrow">
+                        <span>02</span>
+                        <span class="services-line"></span>
+                        SERVICES
+                    </div>
+
+                    <h2>
+                        Surveys that hold up<br>
+                        <strong>when it matters.</strong>
+                    </h2>
+
+                </div>
+
+                <p class="services-intro">
+                    Owners, operators and charterers instruct us
+                    when a figure has to stand — in a charter-party
+                    claim, at a sale, or at the end of a hire.
+                </p>
+
+            </div>
+
+
+            <!-- SERVICES GRID -->
+
+            <div class="services-grid">
+
+                <!-- SERVICE 01 -->
+
+                <article class="service-card service-card-large">
+
+                    <div class="service-card-top">
+                        <span class="service-number">01</span>
+                        <a href="#contact" class="service-arrow" aria-label="Enquire about Bunker Survey">→</a>
+                    </div>
+
+                    <div class="service-card-content">
+
+                        <h3>Bunker Survey</h3>
+
+                        <p>
+                            Quantity of bunkers received during bunkering,
+                            ROB at delivery and redelivery, and consumption
+                            checks — with temperature and density
+                            applied correctly.
+                        </p>
+
+                        <div class="service-tags">
+                            <span>Delivery</span>
+                            <span>ROB</span>
+                            <span>On / off-hire</span>
+                        </div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- SERVICE 02 -->
+
+                <article class="service-card service-card-large">
+
+                    <div class="service-card-top">
+                        <span class="service-number">02</span>
+                        <a href="#contact" class="service-arrow" aria-label="Enquire about Pre-Purchase Inspection">→</a>
+                    </div>
+
+                    <div class="service-card-content">
+
+                        <h3>Pre-Purchase Inspection</h3>
+
+                        <p>
+                            Independent technical and commercial due
+                            diligence before you buy: hull, machinery,
+                            class and statutory status, records and
+                            history, with photographs.
+                        </p>
+
+                        <div class="service-tags">
+                            <span>Hull</span>
+                            <span>Machinery</span>
+                            <span>Class</span>
+                        </div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- SERVICE 03 -->
+
+                <article class="service-card">
+
+                    <div class="service-card-top">
+                        <span class="service-number">03</span>
+                        <a href="#contact" class="service-arrow" aria-label="Enquire about Draft Survey">→</a>
+                    </div>
+
+                    <div class="service-card-content">
+
+                        <h3>Draft Survey</h3>
+
+                        <p>
+                            Cargo weight determined from systematic
+                            draft readings, with trim and list
+                            accounted for — the industry-standard
+                            method for bulk commodities.
+                        </p>
+
+                        <div class="service-tags">
+                            <span>Initial</span>
+                            <span>Final</span>
+                            <span>Bulk</span>
+                        </div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- SERVICE 04 -->
+
+                <article class="service-card">
+
+                    <div class="service-card-top">
+                        <span class="service-number">04</span>
+                        <a href="#contact" class="service-arrow" aria-label="Enquire about Cargo Survey">→</a>
+                    </div>
+
+                    <div class="service-card-content">
+
+                        <h3>Cargo Survey</h3>
+
+                        <p>
+                            Inspection, tally and condition of bulk,
+                            breakbulk, container and project cargo
+                            at load and discharge.
+                        </p>
+
+                        <div class="service-tags">
+                            <span>Load</span>
+                            <span>Discharge</span>
+                            <span>Tally</span>
+                        </div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- SERVICE 05 -->
+
+                <article class="service-card">
+
+                    <div class="service-card-top">
+                        <span class="service-number">05</span>
+                        <a href="#contact" class="service-arrow" aria-label="Enquire about Condition Survey">→</a>
+                    </div>
+
+                    <div class="service-card-content">
+
+                        <h3>Condition Survey</h3>
+
+                        <p>
+                            Hull, machinery and equipment condition
+                            assessments for P&amp;I, insurance or
+                            acquisition purposes.
+                        </p>
+
+                        <div class="service-tags">
+                            <span>P&amp;I</span>
+                            <span>Insurance</span>
+                        </div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- SERVICE 06 -->
+
+                <article class="service-card service-card-final">
+
+                    <div class="service-card-top">
+                        <span class="service-number">06</span>
+                        <a href="#contact" class="service-arrow" aria-label="Enquire about On-Hire / Off-Hire Survey">→</a>
+                    </div>
+
+                    <div class="service-card-content">
+
+                        <h3>On-Hire / Off-Hire Survey</h3>
+
+                        <p>
+                            Independent documentation of vessel
+                            condition and remaining bunkers at
+                            delivery or redelivery.
+                        </p>
+
+                        <div class="service-tags">
+                            <span>Delivery</span>
+                            <span>Redelivery</span>
+                            <span>ROB</span>
+                        </div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- ENQUIRY CARD -->
+
+                <div class="services-enquiry-card">
+
+                    <span>NEED A SURVEY?</span>
+
+                    <h3>
+                        Tell us where<br>
+                        and when.
+                    </h3>
+
+                    <p>
+                        Share your vessel, port and requirements.
+                        Our team will coordinate the next steps.
+                    </p>
+
+                    <a href="#contact">
+                        Request a Survey
+                        <span>↗</span>
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- =========================================
+        03 — HOW AN ATTENDANCE RUNS
+    ========================================= -->
+
+    <section id="attendance-process">
+
+        <div class="attendance-container">
+
+            <div class="attendance-section-label">
+                <span>03</span>
+                <span class="attendance-label-line"></span>
+                <span>HOW AN ATTENDANCE RUNS</span>
+            </div>
+
+            <h2 class="attendance-heading">
+                From your instruction to a<br>
+                <strong>report you can rely on.</strong>
+            </h2>
+
+            <div class="attendance-timeline">
+
+                <!-- CONNECTING LINE -->
+
+                <div class="timeline-track" aria-hidden="true">
+                    <div class="timeline-progress"></div>
+                </div>
+
+                <!-- STEP 1 -->
+
+                <article class="timeline-step">
+
+                    <div class="timeline-node">01</div>
+
+                    <div class="timeline-icon">
+                        <svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5">
+                            <rect x="5" y="4" width="14" height="17" rx="2"/>
+                            <rect x="9" y="2" width="6" height="4" rx="1"/>
+                            <path d="M8 11h8M8 15h8M8 18h5"/>
+                        </svg>
+                    </div>
+
+                    <h3>Instruction</h3>
+
+                    <p>
+                        Vessel, port, timing and scope —
+                        delivery, ROB or both.
+                    </p>
+
+                </article>
+
+                <!-- STEP 2 -->
+
+                <article class="timeline-step">
+
+                    <div class="timeline-node">02</div>
+
+                    <div class="timeline-icon">
+                        <svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 2v4M5 12V6h14v6"/>
+                            <path d="M12 9l10 5-4 6H6l-4-6z"/>
+                            <path d="M12 9v11M2 22h20"/>
+                        </svg>
+                    </div>
+
+                    <h3>Attendance</h3>
+
+                    <p>
+                        The surveyor boards at the agreed
+                        time and reviews tank tables
+                        and documents.
+                    </p>
+
+                </article>
+
+                <!-- STEP 3 -->
+
+                <article class="timeline-step">
+
+                    <div class="timeline-node">03</div>
+
+                    <div class="timeline-icon">
+                        <svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5">
+                            <rect x="5" y="2" width="14" height="20" rx="2"/>
+                            <rect x="8" y="5" width="8" height="4" rx="1"/>
+                            <path d="M8 13h2M14 13h2M8 17h2M14 17h2"/>
+                        </svg>
+                    </div>
+
+                    <h3>Calculation</h3>
+
+                    <p>
+                        Volumes corrected for temperature
+                        and density; figures agreed or
+                        noted with ship's staff.
+                    </p>
+
+                </article>
+
+                <!-- STEP 4 -->
+
+                <article class="timeline-step">
+
+                    <div class="timeline-node">04</div>
+
+                    <div class="timeline-icon">
+                        <svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5">
+                            <path d="M14 2H5v20h14V7z"/>
+                            <path d="M14 2v5h5"/>
+                            <path d="M8 14l3 3 5-6"/>
+                        </svg>
+                    </div>
+
+                    <h3>Report</h3>
+
+                    <p>
+                        A structured survey report,
+                        issued promptly after attendance.
+                    </p>
+
+                </article>
+
+            </div>
+
+        </div>
+
+    </section>
+        <!-- =====================================
+            04 — CLIENT TESTIMONIALS
+        ===================================== -->
+
+        <section id="testimonials" class="testimonials-section">
+
+        <div class="testimonials-container">
+
+            <div class="testimonials-label">
+            <span>04</span>
+            <span class="testimonials-line"></span>
+            <span>TESTIMONIALS</span>
+            </div>
+
+            <h2 class="testimonials-heading">
+            What our clients say<span>.</span>
+            </h2>
+
+            <div class="testimonials-layout">
+
+            <!-- MAIN TESTIMONIAL -->
+            <div class="testimonial-feature">
+
+                <div class="testimonial-stars">★★★★★</div>
+
+                <div class="testimonial-quote-mark">“</div>
+
+                <p id="testimonialQuote" class="testimonial-quote"></p>
+
+                <div class="testimonial-author">
+
+                <div id="testimonialAvatar" class="testimonial-avatar"></div>
+
+                <div>
+                    <div id="testimonialName" class="testimonial-name"></div>
+                    <div id="testimonialRole" class="testimonial-role"></div>
+                </div>
+
+                </div>
+
+                <div class="testimonial-dots">
+                <button onclick="showTestimonial(0)" class="testimonial-dot"></button>
+                <button onclick="showTestimonial(1)" class="testimonial-dot"></button>
+                <button onclick="showTestimonial(2)" class="testimonial-dot"></button>
+                <button onclick="showTestimonial(3)" class="testimonial-dot"></button>
+                </div>
+
+            </div>
+
+            <!-- CLIENT LIST -->
+            <div class="testimonial-client-list">
+
+                <button class="testimonial-client" onclick="showTestimonial(0)">
+                <span class="client-avatar">SS</span>
+                <span>
+                    <strong>Sathisha Setty</strong>
+                    <small>Operation Manager</small>
+                </span>
+                </button>
+
+                <button class="testimonial-client" onclick="showTestimonial(1)">
+                <span class="client-avatar">KS</span>
+                <span>
+                    <strong>Kodanda Sriram</strong>
+                    <small>Vessel Operator, Aequor Shipping</small>
+                </span>
+                </button>
+
+                <button class="testimonial-client" onclick="showTestimonial(2)">
+                <span class="client-avatar">AK</span>
+                <span>
+                    <strong>Arun Kumar</strong>
+                    <small>Director, Sunrise Maritime</small>
+                </span>
+                </button>
+
+                <button class="testimonial-client" onclick="showTestimonial(3)">
+                <span class="client-avatar">SV</span>
+                <span>
+                    <strong>Suresh Venkat</strong>
+                    <small>Chartering Manager, Indo Bulk Carriers</small>
+                </span>
+                </button>
+
+            </div>
+
+            </div>
+
+        </div>
+
+
+    </section>
+    
+
+        <!-- CERTIFICATIONS 
+    <section id="certifications">
+    <div class="centered animate-in">
+        <div class="section-tag">Accreditations</div>
+        <h2 class="section-title">Certifications &amp; <span class="text-grad">Memberships</span></h2>
+        <div class="divider-line"></div>
+        <p class="section-sub">Our credentials reflect our commitment to the highest standards in marine survey practice worldwide.</p>
+    </div>
+    <div class="certs-grid animate-in">
+        <div class="cert-card"><div class="cert-icon">🏅</div><div class="cert-name">ISO 9001:2015</div><div class="cert-body">Quality Management System Certified</div></div>
+        <div class="cert-card"><div class="cert-icon">⚓</div><div class="cert-name">IIMS Member</div><div class="cert-body">International Institute of Marine Surveying</div></div>
+        <div class="cert-card"><div class="cert-icon">🌐</div><div class="cert-name">IMCA</div><div class="cert-body">International Marine Contractors Association</div></div>
+        <div class="cert-card"><div class="cert-icon">🛡️</div><div class="cert-name">DGS Approved</div><div class="cert-body">Directorate General of Shipping, India</div></div>
+        <div class="cert-card"><div class="cert-icon">📋</div><div class="cert-name">BIMCO</div><div class="cert-body">Baltic & International Maritime Council</div></div>
+        <div class="cert-card"><div class="cert-icon">🔬</div><div class="cert-name">FSSAI</div><div class="cert-body">Food Commodity Inspection Authorization</div></div>
+        <div class="cert-card"><div class="cert-icon">⚖️</div><div class="cert-name">Court Approved</div><div class="cert-body">Expert witness recognized in Indian High Courts</div></div>
+        <div class="cert-card"><div class="cert-icon">🌊</div><div class="cert-name">P&I Accepted</div><div class="cert-body">Approved by major P&I clubs worldwide</div></div>
+    </div>
+    </section> -->
+
+    <!-- OUR SURVEY PROCESS -->
+
+    
+    <!-- TESTIMONIALS 
+    <section id="testimonials">
+    <div class="centered animate-in">
+        <div class="section-tag">Client Testimonials</div>
+        <h2 class="section-title">What Our <span class="text-grad">Clients Say</span></h2>
+        <div class="divider-line"></div>
+    </div>
+    <div class="testimonials-grid animate-in">
+        <div class="testimonial-card">
+        <div class="stars-row">★★★★★</div>
+        <span class="quote-mark">"</span>
+        <p class="testimonial-text">OceanGuard has been our go-to surveyor at Vizag port for the past 6 years. Their draft survey accuracy is unmatched and their reports hold up in any dispute. Extremely professional team.</p>
+        <div class="testimonial-author"><div class="author-avatar">RS</div><div><div class="author-name">Rajeev Sharma</div><div class="author-role">Operations Head, BHP Billiton Shipping — Mumbai</div></div></div>
+        </div>
+        <div class="testimonial-card">
+        <div class="stars-row">★★★★★</div>
+        <span class="quote-mark">"</span>
+        <p class="testimonial-text">We needed an emergency P&I survey on a cargo damage claim at Chennai port at 2 AM. OceanGuard had a surveyor on site within 90 minutes. That kind of response saves deals.</p>
+        <div class="testimonial-author"><div class="author-avatar">PK</div><div><div class="author-name">Priya Kumar</div><div class="author-role">Marine Claims Manager, GIC Re — Chennai</div></div></div>
+        </div>
+        <div class="testimonial-card">
+        <div class="stars-row">★★★★★</div>
+        <span class="quote-mark">"</span>
+        <p class="testimonial-text">Their pre-shipment inspection service has saved us from several costly disputes with overseas buyers. Thorough, fast, and independent. Exactly what an exporter needs.</p>
+        <div class="testimonial-author"><div class="author-avatar">AM</div><div><div class="author-name">Anil Mehta</div><div class="author-role">Director, Mehta Steels Export — Mundra</div></div></div>
+        </div>
+    </div>
+    </section> -->
+
+
+
+    <!-- CONTACT -->
+
+    <section id="contact">
+
+        <div class="contact-container">
+
+            <div class="contact-eyebrow">
+                
+                
+                Get in Touch
+            </div>
+
+            <h2 class="contact-heading">
+                Wherever you need us,<br>
+                we're ready to assist.
+            </h2>
+
+            <div class="contact-layout">
+
+                <!-- CONTACT INFORMATION -->
+
+                <div class="contact-information">
+
+                    <h3 class="contact-info-title">
+                        Contact Our Team
+                    </h3>
+
+                    <p class="contact-info-intro">
+                        Whether you have an upcoming survey,
+                        require technical assistance or would
+                        like to discuss your maritime requirements,
+                        our team is here to assist.
+                    </p>
+
+                    <div class="contact-detail">
+
+                        <div class="contact-detail-label">
+                            Operations &amp; Enquiries
+                        </div>
+
+                        <div class="contact-detail-value">
+                            <a href="mailto:ops@ymrmarine.com">
+                                ops@ymrmarine.com
+                            </a>
+                        </div>
+
+                    </div>
+
+                    <div class="contact-detail">
+
+                        <div class="contact-detail-label">
+                            Telephone
+                        </div>
+
+                        <div class="contact-detail-value">
+                            <a href="tel:+919820482713">
+                                +91 98204 82713
+                            </a>
+                        </div>
+
+                    </div>
+
+                    <div class="contact-detail">
+
+                        <div class="contact-detail-label">
+                            Head Office
+                        </div>
+
+                        <div class="contact-detail-value">
+                            YMR Marine Solutions LLP<br>
+                            Mumbai, Maharashtra<br>
+                            India
+                        </div>
+
+                    </div>
+
+                    <div class="contact-detail">
+
+                        <div class="contact-detail-label">
+                            Operational Support
+                        </div>
+
+                        <div class="contact-detail-value">
+                            24 Hours / 7 Days
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- SURVEY REQUEST FORM -->
+
+                <div class="survey-form-panel">
+
+                    <h3 class="survey-form-title">
+                        Request a Survey
+                    </h3>
+
+                    <p class="survey-form-intro">
+                        Please provide your requirements below.
+                        Our operations team will review your
+                        enquiry and coordinate further assistance.
+                    </p>
+
+                    <form id="surveyRequestForm">
+
+                        <div class="survey-form-grid">
+
+                            <div class="survey-field">
+
+                                <label for="surveyName">
+                                    Full Name *
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="surveyName"
+                                    name="full_name"
+                                    autocomplete="name"
+                                    placeholder="Your full name"
+                                    required>
+
+                            </div>
+
+                            <div class="survey-field">
+
+                                <label for="surveyCompany">
+                                    Company Name *
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="surveyCompany"
+                                    name="company"
+                                    autocomplete="organization"
+                                    placeholder="Company name"
+                                    required>
+
+                            </div>
+
+                            <div class="survey-field">
+
+                                <label for="surveyEmail">
+                                    Email Address *
+                                </label>
+
+                                <input
+                                    type="email"
+                                    id="surveyEmail"
+                                    name="email"
+                                    autocomplete="email"
+                                    placeholder="name@company.com"
+                                    required>
+
+                            </div>
+
+                            <div class="survey-field">
+
+                                <label for="surveyPhone">
+                                    Phone Number
+                                </label>
+
+                                <input
+                                    type="tel"
+                                    id="surveyPhone"
+                                    name="phone"
+                                    autocomplete="tel"
+                                    placeholder="+91">
+
+                            </div>
+
+                            <div class="survey-field full-width">
+
+                                <label for="surveyService">
+                                    Service Required *
+                                </label>
+
+                                <select
+                                    id="surveyService"
+                                    name="service"
+                                    required>
+
+                                    <option value="">
+                                        Select a service
+                                    </option>
+
+                                    <option>Bunker Quantity Survey</option>
+
+                                    <option>Draft Survey</option>
+
+                                    <option>Cargo Survey &amp; Inspection</option>
+
+                                    <option>Pre-Purchase Survey</option>
+
+                                    <option>Vessel Condition Survey</option>
+
+                                    <option>On-Hire / Off-Hire Survey</option>
+
+                                    <option>P&amp;I Survey</option>
+
+                                    <option>Pre-Shipment Inspection</option>
+
+                                    <option>Damage Assessment</option>
+
+                                    <option>Port Captain Services</option>
+
+                                    <option>Maritime Consultancy</option>
+
+                                    <option>Multiple Services</option>
+
+                                    <option>Other Requirements</option>
+
+                                </select>
+
+                            </div>
+
+                            <div class="survey-field">
+
+                                <label for="surveyVessel">
+                                    Vessel Name
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="surveyVessel"
+                                    name="vessel"
+                                    placeholder="MV / MT">
+
+                            </div>
+
+                            <div class="survey-field">
+
+                                <label for="surveyPort">
+                                    Port / Location
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="surveyPort"
+                                    name="port"
+                                    placeholder="Port of attendance">
+
+                            </div>
+
+                            <div class="survey-field full-width">
+
+                                <label for="surveyDate">
+                                    Expected Date of Attendance
+                                </label>
+
+                                <input
+                                    type="date"
+                                    id="surveyDate"
+                                    name="attendance_date">
+
+                            </div>
+
+                            <div class="survey-field full-width">
+
+                                <label for="surveyMessage">
+                                    Additional Requirements
+                                </label>
+
+                                <textarea
+                                    id="surveyMessage"
+                                    name="message"
+                                    placeholder="Please describe your survey requirements, vessel schedule or any specific instructions."></textarea>
+
+                            </div>
+
+                        </div>
+
+                        <p class="survey-form-note">
+                            * Required fields. The information
+                            provided will be used to respond
+                            to your enquiry.
+                        </p>
+
+                        <button
+                            type="submit"
+                            class="survey-submit">
+
+                            Submit Survey Request
+                            <span>→</span>
+
+                        </button>
+
+                        <p class="survey-form-status"
+                        id="surveyFormStatus"
+                        role="status">
+                        </p>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+    <!-- =========================================
+     YMR MARINE — SHARED FOOTER
+========================================= -->
+
+<footer id="footer">
+
+    <div class="footer-container">
+
+        <div class="footer-layout">
+
+            <!-- COLUMN 1 — COMPANY BRAND -->
+
+            <div class="footer-brand">
+
+                <a href="ymr7.html#hero" class="footer-brand-logo">
+
+                    <img
+                        src="./ymr_logo.png"
+                        alt="YMR Marine Solutions LLP">
+
+                </a>
+
+                <p class="footer-brand-desc">
+                    Independent marine surveys, inspections
+                    and maritime consultancy services.
+                    Delivering expertise, integrity and
+                    confidence across the maritime industry.
+                </p>
+
+            </div>
+
+
+            <!-- COLUMN 2 — COMPANY -->
+
+            <div class="footer-column">
+
+                <h3 class="footer-column-title">
+                    Company
+                </h3>
+
+                <ul class="footer-nav-links">
+
+                    <li>
+                        <a href="about.html#company">About Us</a>
+                    </li>
+
+                    <li>
+                        <a href="about.html#team">Our Team</a>
+                    </li>
+
+                    <li>
+                        <a href="about.html#why-ymr">Why YMR</a>
+                    </li>
+
+                    <li>
+                        <a href="ymr7.html#services">Our Services</a>
+                    </li>
+
+                    <li>
+                        <a href="ymr7.html#testimonials">Our Clients</a>
+                    </li>
+
+                </ul>
+
+            </div>
+
+
+            <!-- COLUMN 3 — QUICK ACCESS -->
+
+            <div class="footer-column">
+
+                <h3 class="footer-column-title">
+                    Quick Access
+                </h3>
+
+                <ul class="footer-nav-links">
+
+                    <li>
+                        <a href="ymr7.html#contact">Request a Survey</a>
+                    </li>
+
+                    <li>
+                        <a href="ymr7.html#global-coverage">Find a Port</a>
+                    </li>
+
+                    <li>
+                        <a href="ymr7.html#attendance-process">Our Survey Process</a>
+                    </li>
+
+                    <li>
+                        <a href="ymr7.html#contact">Contact Us</a>
+                    </li>
+
+                </ul>
+
+            </div>
+
+
+            <!-- COLUMN 4 — CONTACT -->
+
+            <div class="footer-column footer-contact-column">
+
+                <h3 class="footer-column-title">
+                    Get in Touch
+                </h3>
+
+                <div class="footer-contact-block">
+
+                    <a href="mailto:ops@ymrmarine.com">
+                        ops@ymrmarine.com
+                    </a>
+
+                    <a href="tel:+919820482713">
+                        +91 98204 82713
+                    </a>
+
+                </div>
+
+                <div class="footer-location">
+
+                    YMR Marine Solutions LLP<br>
+                    Mumbai, Maharashtra, India
+
+                </div>
+
+                <div class="footer-availability">
+
+                    <span class="footer-status-dot"></span>
+                    Available 24/7
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- FADING BRAND WATERMARK -->
+
+        <div class="footer-watermark" aria-hidden="true">
+            YMR MARINE
+        </div>
+
+
+        <!-- BOTTOM BAR -->
+
+        <div class="footer-bottom-bar">
+
+            <div class="footer-copyright">
+
+                &copy; <span id="footerYear">2026</span>
+                YMR Marine Solutions LLP.
+                All rights reserved.
+
+            </div>
+
+            <div class="footer-legal-links">
+
+                <a href="ymr7.html#hero">
+                    Back to Home
+                    <span>↑</span>
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</footer>
+    <!-- WHATSAPP FLOAT -->
+    <a href="https://wa.me/+919820482713" class="float-wa" title="Chat on WhatsApp">➤</a>
+
+    <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin="">
+    </script>
+
+    <script>
+
+    // Navbar scroll effect
+    window.addEventListener('scroll', () => {
+    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
+    });
+
+    // Mobile menu
+    function toggleMenu() {
+        const menu = document.getElementById('mobile-menu');
+        const button = document.getElementById('hamburgerBtn');
+
+        const isOpen = menu.classList.toggle('open');
+
+        button.setAttribute('aria-expanded', String(isOpen));
+    }
+
+    // Animate on scroll
+    const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+        if(entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 80);
+        observer.unobserve(entry.target);
+        }
+    });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+
+    // Counter animation
+    function animateLegacyCounter(el, target, suffix='') {
+    const duration = 2000;
+    const start = performance.now();
+    const update = (now) => {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(eased * target);
+        el.textContent = current.toLocaleString() + (target >= 100 ? '+' : '');
+        if(progress < 1) requestAnimationFrame(update);
+    };
+    requestAnimationFrame(update);
+    }
+
+    const counterObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if(entry.isIntersecting) {
+        const el = entry.target;
+        const target = parseInt(el.dataset.target);
+        animateLegacyCounter(el, target);
+        counterObserver.unobserve(el);
+        }
+    });
+    }, { threshold: 0.5 });
+    document.querySelectorAll('.counter-val[data-target]').forEach(el => counterObserver.observe(el));
+
+    // Form submit
+    function handleSubmit() {
+    const btn = document.querySelector('.btn-submit');
+    btn.textContent = '✓ Request Sent — We\'ll contact you within 2 hours';
+    btn.style.background = 'linear-gradient(135deg,#00897B,#00695C)';
+    btn.disabled = true;
+    }
+
+    // INDUSTRY SELECTOR
+
+    const industryData = [
+
+        {
+            title: "Shipping & Ship Management",
+            image: "./industry-shipping.jpg",
+            description: "Supporting shipowners, charterers and vessel managers with independent marine surveys, vessel inspections and technical expertise throughout the operational lifecycle of a vessel."
+        },
+
+        {
+            title: "Commodity Trading",
+            image: "./industry-commodity.jpg",
+            description: "Providing independent cargo quantity and condition assessments to support commodity traders, importers and exporters in protecting their commercial interests."
+        },
+
+        {
+            title: "Oil & Gas",
+            image: "./industry-oilgas.jpg",
+            description: "Supporting maritime fuel and energy operations through bunker quantity surveys, vessel inspections and independent operational assessments."
+        },
+
+        {
+            title: "Ports & Terminals",
+            image: "./industry-ports.jpg",
+            description: "Delivering cargo supervision, marine inspections and port captain services to support efficient and reliable port and terminal operations."
+        },
+
+        {
+            title: "Marine Insurance",
+            image: "./industry-insurance.jpg",
+            description: "Providing independent factual assessments, condition surveys and damage documentation to assist insurers and maritime stakeholders in evaluating claims and risks."
+        },
+
+        {
+            title: "Logistics & Freight",
+            image: "./industry-logistics.jpg",
+            description: "Supporting freight forwarders and logistics providers through independent cargo inspections, condition assessments and loading and discharge supervision."
+        }
+
+    ];
+
+    function selectIndustry(index, button) {
+
+        const industry = industryData[index];
+
+        if (!industry) return;
+
+        document.querySelectorAll('.industry-tab').forEach(tab => {
+            tab.classList.remove('active');
+            tab.setAttribute('aria-pressed', 'false');
+        });
+
+        button.classList.add('active');
+        button.setAttribute('aria-pressed', 'true');
+
+        document.getElementById('industryTitle').textContent =
+            industry.title;
+
+        document.getElementById('industryDescription').textContent =
+            industry.description;
+
+        document.getElementById('industryPhoto').style.backgroundImage =
+            `url('${industry.image}')`;
+
+        const display = document.getElementById('industryDisplay');
+
+        display.classList.remove('is-changing');
+
+        void display.offsetWidth;
+
+        display.classList.add('is-changing');
+
+    }
+
+    // =========================================
+    // SURVEY REQUEST FORM
+    // =========================================
+
+    document.getElementById('surveyRequestForm')
+        .addEventListener('submit', function(event) {
+
+            event.preventDefault();
+
+            const data = new FormData(this);
+
+            const subject =
+                "Survey Enquiry - " +
+                data.get('company');
+
+            const body = [
+                "Dear YMR Marine Operations Team,",
+                "",
+                "Please find our survey requirements below:",
+                "",
+                "Full Name: " + data.get('full_name'),
+                "Company: " + data.get('company'),
+                "Email: " + data.get('email'),
+                "Phone: " + (data.get('phone') || "Not provided"),
+                "Service: " + data.get('service'),
+                "Vessel: " + (data.get('vessel') || "Not provided"),
+                "Port: " + (data.get('port') || "Not provided"),
+                "Expected Attendance: " +
+                    (data.get('attendance_date') || "To be confirmed"),
+                "",
+                "Additional Requirements:",
+                data.get('message') || "None",
+                "",
+                "Kind regards,",
+                data.get('full_name')
+            ].join('\r\n');
+
+            window.location.href =
+                "mailto:ops@ymrmarine.com" +
+                "?subject=" + encodeURIComponent(subject) +
+                "&body=" + encodeURIComponent(body);
+
+            document.getElementById('surveyFormStatus')
+                .textContent =
+                "Please send the prepared enquiry from your email application, or contact our operations team directly.";
+
+        });
+
+    // =========================================
+    // ANIMATED STATISTICS COUNTER
+    // =========================================
+
+    const statCounters = document.querySelectorAll('.stat-counter');
+
+    function animateCounter(counter) {
+
+        const target = Number(counter.dataset.target);
+        const duration = 2200;
+        const startTime = performance.now();
+
+        function updateCounter(currentTime) {
+
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+
+            // Gradually slow down towards the final number
+            const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+            const currentValue = Math.floor(target * easedProgress);
+
+            counter.textContent =
+                currentValue.toLocaleString('en-US');
+
+            if (progress < 1) {
+
+                requestAnimationFrame(updateCounter);
+
+            } else {
+
+                counter.textContent =
+                    target.toLocaleString('en-US');
+
+            }
+
+        }
+
+        requestAnimationFrame(updateCounter);
+
+    }
+
+    const statsObserver = new IntersectionObserver((entries) => {
+
+        entries.forEach(entry => {
+
+            if (entry.isIntersecting) {
+
+                if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                    animateCounter(entry.target);
+                }
+
+                statsObserver.unobserve(entry.target);
+
+            }
+
+        });
+
+    }, {
+        threshold: 0.2
+    });
+
+    statCounters.forEach(counter => {
+        statsObserver.observe(counter);
+    });
+
+    // =========================================
+    // HERO SURVEY DEMO ANIMATION
+    // =========================================
+
+    const demoStages = [
+        {
+            title: "Survey Request Received",
+            description: "Your survey requirements are received by our operations team.",
+            icon: "✉",
+            label: "1. Survey request received"
+        },
+        {
+            title: "Surveyor Assigned",
+            description: "An experienced marine surveyor is coordinated for the required port and schedule.",
+            icon: "⚓",
+            label: "2. Surveyor assigned"
+        },
+        {
+            title: "Survey in Progress",
+            description: "Our surveyor attends the vessel, performs the inspection and records findings.",
+            icon: "◉",
+            label: "3. Survey in progress"
+        },
+        {
+            title: "Report Prepared",
+            description: "Survey observations and supporting documentation are compiled into a report.",
+            icon: "▤",
+            label: "4. Report prepared"
+        },
+        {
+            title: "Report Delivered",
+            description: "The completed survey report is delivered to the client.",
+            icon: "✓",
+            label: "5. Report delivered",
+            report: true
+        }
+    ];
+
+    let demoIndex = 0;
+    let demoPlaying = true;
+    let demoInterval;
+
+    const demoDuration = 3000;
+
+    let demoElapsed = 0;
+    let demoLastTime = null;
+
+    const demoStage = document.getElementById('demoStage');
+    const demoStepLabel = document.getElementById('demoStepLabel');
+    const demoPlay = document.getElementById('demoPlay');
+    const demoSegments = document.querySelectorAll('.demo-progress-segment');
+
+    function renderDemoStage(index) {
+
+        const stage = demoStages[index];
+
+        if (stage.report) {
+
+            demoStage.innerHTML = `
+                <div class="demo-report">
+                    <div class="demo-report-brand">
+                        YMR MARINE SOLUTIONS
+                    </div>
+
+                    <div class="demo-report-title">
+                        Bunker Survey Report
+                    </div>
+
+                    <div class="demo-report-subtitle">
+                        Sample survey document
+                    </div>
+
+                    <div class="demo-report-line"></div>
+                    <div class="demo-report-line"></div>
+                    <div class="demo-report-line short"></div>
+                </div>
+
+                <div class="demo-delivered">
+                    ✓ Delivered to your inbox
+                </div>
+            `;
+
+        } else {
+
+            demoStage.innerHTML = `
+                <div class="demo-icon">${stage.icon}</div>
+                <h3 class="demo-stage-title">${stage.title}</h3>
+                <p class="demo-stage-description">${stage.description}</p>
+            `;
+
+        }
+
+        demoStage.style.animation = 'none';
+        void demoStage.offsetWidth;
+        demoStage.style.animation = 'demoFade 0.45s ease';
+
+        demoStepLabel.textContent = stage.label;
+
+        demoElapsed = 0;
+        demoLastTime = null;
+
+        demoSegments.forEach((segment, i) => {
+
+            segment.classList.toggle('completed', i < index);
+            segment.classList.toggle('active', i === index);
+
+            segment.style.setProperty(
+                '--demo-fill',
+                i < index ? '100%' : '0%'
+            );
+
+        });
+
+    }
+
+    function nextDemoStage() {
+
+        demoIndex = (demoIndex + 1) % demoStages.length;
+
+        renderDemoStage(demoIndex);
+
+    }
+
+
+    /* UPDATE LOADING BAR */
+
+    function updateDemoProgress(timestamp) {
+
+        if (!demoPlaying) return;
+
+        if (demoLastTime === null) {
+            demoLastTime = timestamp;
+        }
+
+        demoElapsed += timestamp - demoLastTime;
+        demoLastTime = timestamp;
+
+        const progress = Math.min(
+            demoElapsed / demoDuration,
+            1
+        );
+
+        demoSegments[demoIndex].style.setProperty(
+            '--demo-fill',
+            `${progress * 100}%`
+        );
+
+        if (progress >= 1) {
+            nextDemoStage();
+        }
+
+        demoInterval = requestAnimationFrame(
+            updateDemoProgress
+        );
+
+    }
+
+
+    /* START OR RESUME ANIMATION */
+
+    function startDemo() {
+
+        cancelAnimationFrame(demoInterval);
+
+        demoLastTime = null;
+
+        demoInterval = requestAnimationFrame(
+            updateDemoProgress
+        );
+
+    }
+
+
+    /* PAUSE ANIMATION */
+
+    function stopDemo() {
+
+        cancelAnimationFrame(demoInterval);
+
+        demoLastTime = null;
+
+}
+
+    demoPlay.addEventListener('click', () => {
+
+        demoPlaying = !demoPlaying;
+
+        if (demoPlaying) {
+            startDemo();
+            demoPlay.textContent = '❚❚';
+            demoPlay.setAttribute('aria-label', 'Pause animation');
+        } else {
+            stopDemo();
+            demoPlay.textContent = '▶';
+            demoPlay.setAttribute('aria-label', 'Play animation');
+        }
+
+    });
+
+    demoSegments.forEach((segment, index) => {
+        segment.addEventListener('click', () => {
+            demoIndex = index;
+            renderDemoStage(index);
+
+            if (demoPlaying) {
+                startDemo();
+            }
+        });
+    });
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        demoPlaying = false;
+        demoPlay.textContent = '▶';
+        demoPlay.setAttribute('aria-label', 'Play animation');
+    } else {
+        startDemo();
+    }
+
+
+    /* =========================================
+       YMR INTERACTIVE WORLD COVERAGE MAP
+       ========================================= */
+    (function () {
+        const mapElement = document.getElementById('ymrWorldMap');
+        const countryList = document.getElementById('coverageCountryList');
+        const nameElement = document.getElementById('selectedCoverageName');
+        const descriptionElement = document.getElementById('selectedCoverageDescription');
+
+        if (!mapElement || !countryList || !nameElement || !descriptionElement || typeof L === 'undefined') return;
+
+        const coverageLocations = [
+            { name: 'India', flag: '🇮🇳', lat: 20.5937, lng: 78.9629, description: 'Marine surveying support across Indian ports.' },
+            { name: 'Malaysia', flag: '🇲🇾', lat: 4.2105, lng: 101.9758, description: 'Survey coordination for Malaysian port operations.' },
+            { name: 'Philippines', flag: '🇵🇭', lat: 12.8797, lng: 121.7740, description: 'Marine surveying support in the Philippines.' },
+            { name: 'Sri Lanka', flag: '🇱🇰', lat: 7.8731, lng: 80.7718, description: 'Survey coordination for Sri Lankan ports.' },
+            { name: 'Bangladesh', flag: '🇧🇩', lat: 23.6850, lng: 90.3563, description: 'Marine survey support for Bangladesh.' },
+            { name: 'Indonesia', flag: '🇮🇩', lat: -0.7893, lng: 113.9213, description: 'Survey coordination across Indonesian maritime locations.' },
+            { name: 'Middle East', flag: '🌍', lat: 25.2048, lng: 55.2708, description: 'Survey support coordinated across selected Middle Eastern ports.' },
+            { name: 'China', flag: '🇨🇳', lat: 35.8617, lng: 104.1954, description: 'Marine surveying coordination for Chinese ports.' },
+            { name: 'Africa', flag: '🌍', lat: -1.2921, lng: 36.8219, description: 'Survey support coordinated across selected African locations.' }
+        ];
+
+        const map = L.map('ymrWorldMap', {
+            scrollWheelZoom: false,
+            zoomControl: true,
+            worldCopyJump: true,
+            zoomSnap: 0.25
+        });
+
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri',
+            maxZoom: 18
+        }).addTo(map);
+
+        const pointerIcon = L.divIcon({
+            className: 'ymr-pointer-wrapper',
+            html: '<div class="ymr-location-pin"><div class="ymr-location-dot"></div></div>',
+            iconSize: [34, 46],
+            iconAnchor: [17, 46]
+        });
+
+        const bounds = L.latLngBounds(coverageLocations.map(loc => [loc.lat, loc.lng]));
+        let activeMarker = null;
+
+        function selectCoverage(index, moveMap = true) {
+            const location = coverageLocations[index];
+            if (!location) return;
+
+            nameElement.textContent = location.name;
+            descriptionElement.textContent = location.description;
+
+            if (activeMarker) map.removeLayer(activeMarker);
+            activeMarker = L.marker([location.lat, location.lng], { icon: pointerIcon }).addTo(map);
+            activeMarker.bindTooltip(location.name, {
+                permanent: true,
+                direction: 'top',
+                offset: [0, -35]
+            });
+
+            countryList.querySelectorAll('.coverage-country').forEach((button, buttonIndex) => {
+                const selected = buttonIndex === index;
+                button.classList.toggle('active', selected);
+                button.setAttribute('aria-pressed', String(selected));
+            });
+
+            if (moveMap) {
+                map.flyTo([location.lat, location.lng], 4, {
+                    animate: true,
+                    duration: 1.2
+                });
+            }
+        }
+
+        countryList.innerHTML = '';
+        coverageLocations.forEach((location, index) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'coverage-country';
+            button.setAttribute('aria-pressed', 'false');
+            button.innerHTML = `<span class="coverage-country-flag">${location.flag}</span><span>${location.name}</span>`;
+            button.addEventListener('click', () => selectCoverage(index));
+            countryList.appendChild(button);
+        });
+
+        /// Start with all nine coverage locations in view
+        // and India's pin visible.
+
+        map.fitBounds(bounds, {
+            padding: [40, 40],
+            maxZoom: 3,
+            animate: false
+        });
+
+        selectCoverage(0, false);
+
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 500);
+
+        // Recalculate dimensions after the page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                map.invalidateSize();
+
+                map.fitBounds(bounds, {
+                    padding: [40, 40],
+                    maxZoom: 3,
+                    animate: false
+                });
+            }, 200);
+        }, { once: true });
+
+        })();
+</script>
+
+<script>
+/* =====================================
+   TESTIMONIAL SWITCHER
+===================================== */
+
+const testimonials = [
+    {
+        name: "Sathisha Setty",
+        role: "Operation Manager",
+        initials: "SS",
+        quote: "Add Sathisha Setty's verified testimonial here."
+    },
+    {
+        name: "Kodanda Sriram",
+        role: "Vessel Operator, Aequor Shipping",
+        initials: "KS",
+        quote: "Add Kodanda Sriram's verified testimonial here."
+    },
+    {
+        name: "Arun Kumar",
+        role: "Director, Sunrise Maritime",
+        initials: "AK",
+        quote: "The pre-purchase inspection saved us from a costly mistake. YMR’s surveyor flagged structural concerns our own team had missed."
+    },
+    {
+        name: "Suresh Venkat",
+        role: "Chartering Manager, Indo Bulk Carriers",
+        initials: "SV",
+        quote: "Add Suresh Venkat's verified testimonial here."
+    }
+];
+
+function showTestimonial(index) {
+
+    const testimonial = testimonials[index];
+
+    document.getElementById("testimonialQuote").textContent =
+        testimonial.quote;
+
+    document.getElementById("testimonialName").textContent =
+        testimonial.name;
+
+    document.getElementById("testimonialRole").textContent =
+        testimonial.role;
+
+    document.getElementById("testimonialAvatar").textContent =
+        testimonial.initials;
+
+    document.querySelectorAll(".testimonial-client")
+        .forEach((button, i) => {
+            button.classList.toggle("active", i === index);
+        });
+
+    document.querySelectorAll(".testimonial-dot")
+        .forEach((dot, i) => {
+            dot.classList.toggle("active", i === index);
+        });
+}
+
+/* Show Arun Kumar initially, matching the screenshot */
+showTestimonial(2);
+</script>
+
+<script>
+
+/* ATTENDANCE TIMELINE ANIMATION */
+
+(function () {
+
+    const section = document.getElementById(
+        "attendance-process"
+    );
+
+    if (!section) return;
+
+    if (!("IntersectionObserver" in window)) return;
+
+    if (
+        window.matchMedia(
+            "(prefers-reduced-motion: reduce)"
+        ).matches
+    ) return;
+
+    section.classList.add("timeline-ready");
+
+    const observer = new IntersectionObserver(
+        (entries) => {
+
+            entries.forEach(entry => {
+
+                if (entry.isIntersecting) {
+
+                    section.classList.add(
+                        "timeline-visible"
+                    );
+
+                    observer.unobserve(section);
+                }
+
+            });
+
+        },
+        {
+            threshold: 0.15
+        }
+    );
+
+    observer.observe(section);
+
+})();
+
+</script>
+
+</body>
+</html>
