@@ -15,10 +15,12 @@
     noAuto: $('[data-ivf-noauto]'), date: $('#ivfDate'), status: $('#ivfStatus'), amt: $('#ivfAmt'), notes: $('#ivfNotes'),
     vessel: $('#ivfVessel'), client: $('#ivfClient'), report: $('#ivfReport'), port: $('#ivfPort'), ports: $('#ivfPorts'), scd: $('#ivfScd'),
     types: $('[data-ivf-types]'), linkRow: $('[data-ivf-linkrow]'), linkQ: $('#ivfLinkQ'), res: $('[data-ivf-res]'), linked: $('[data-ivf-linked]'),
-    linkedTxt: $('[data-ivf-linkedtxt]'), file: $('#ivfFile'), fileCur: $('[data-ivf-filecur]'), save: $('[data-ivf-save]'), reqDate: $('[data-req-date]')
+    linkedTxt: $('[data-ivf-linkedtxt]'), file: $('#ivfFile'), fileCur: $('[data-ivf-filecur]'), save: $('[data-ivf-save]'), reqDate: $('[data-req-date]'),
+    recOn: $('#ivfRecOn'), rec: $('[data-ivf-rec]'), recNo: $('#ivfRecNo'), recHint: $('[data-ivf-rechint]'), recReset: $('[data-ivf-recreset]'),
+    recDate: $('#ivfRecDate'), recAmt: $('#ivfRecAmt'), recFile: $('#ivfRecFile'), recFileCur: $('[data-ivf-recfilecur]')
   };
   var lists = null, listsP = null;
-  var st = { mode: 'add', row: null, auto: true, next: null, survey: null, saving: false, rid: '', lastFocus: null };
+  var st = { mode: 'add', row: null, auto: true, next: null, survey: null, saving: false, rid: '', lastFocus: null, recAuto: true };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function toast(icon, title) { if (window.Swal) Swal.fire({ toast: true, position: 'top-end', icon: icon, title: title, showConfirmButton: false, timer: 3200, timerProgressBar: true }); }
@@ -86,10 +88,10 @@
 
   // ---------- invoice number ----------
   function noState() {
-    var auto = st.mode === 'add' && st.auto;
-    el.badge.textContent = auto ? 'Auto · next in series' : (el.no.value.trim() ? 'Manual' : 'Not assigned');
-    el.badge.className = 'ivf-badge' + (auto ? '' : el.no.value.trim() ? ' man' : ' none');
-    el.noAuto.hidden = auto || (st.mode === 'edit' && !!(st.row && st.row.invoice_no));
+    // the invoice number is typed by hand (no automatic series)
+    el.badge.textContent = el.no.value.trim() ? 'Manual' : 'Not assigned';
+    el.badge.className = 'ivf-badge' + (el.no.value.trim() ? ' man' : ' none');
+    el.noAuto.hidden = true;
   }
   function fillAuto() {
     if (st.next === null) return;
@@ -132,6 +134,30 @@
     if (st.mode === 'add' && st.auto) fetchNext(); else checkNoSoon();
   });
 
+  // ---------- recovery invoice (optional) ----------
+  // Its number is the invoice number + "B" until it is typed differently (then it stays as typed).
+  function recUsual() { var v = el.no.value.replace(/\s+/g, '').toUpperCase(); return v ? v + 'B' : ''; }
+  function recSync() {
+    el.rec.hidden = !el.recOn.checked;
+    if (st.recAuto) el.recNo.value = recUsual();
+    el.recReset.hidden = st.recAuto;
+    el.recHint.textContent = st.recAuto
+      ? (el.recNo.value ? 'The invoice number + B. ' + (/^\d+B$/.test(el.recNo.value) ? 'The client code is added when saving. ' : '') + 'Type here to use a different number.' : 'Fills in as the invoice number + B — or type the number.')
+      : 'Typed number — it must not be used by another invoice.';
+  }
+  el.recOn.addEventListener('change', function () {
+    if (el.recOn.checked && !el.recDate.value) el.recDate.value = el.date.value || today();
+    recSync();
+    if (el.recOn.checked) setTimeout(function () { el.recNo.focus(); }, 30);
+  });
+  el.recNo.addEventListener('input', function () {
+    st.recAuto = el.recNo.value.replace(/\s+/g, '').toUpperCase() === recUsual() && recUsual() !== '';
+    el.recReset.hidden = st.recAuto;
+    el.recHint.textContent = st.recAuto ? 'The invoice number + B.' : 'Typed number — it must not be used by another invoice.';
+  });
+  el.recReset.addEventListener('click', function () { st.recAuto = true; recSync(); });
+  el.no.addEventListener('input', function () { if (st.recAuto) recSync(); });
+
   // ---------- link to a survey (Add only) ----------
   var searchSeq = 0;
   var search = debounce(function () {
@@ -166,7 +192,7 @@
   function open(row) {
     if (st.saving) return;
     st.lastFocus = document.activeElement;
-    st.mode = row ? 'edit' : 'add'; st.row = row || null; st.auto = !row; st.survey = null; st.next = null; st.rid = rid();
+    st.mode = row ? 'edit' : 'add'; st.row = row || null; st.auto = false; st.survey = null; st.next = null; st.rid = rid();
     form.reset(); clearErrors(); setTypes([]);
     el.title.textContent = row ? 'Edit Invoice' : 'Add Invoice';
     el.sub.textContent = row ? (row.manual ? 'Manual entry' : 'From Pending Reports') + (row.invoice_no ? ' · ' + row.invoice_no : '') : 'Manual entry — not linked to Pending Reports';
@@ -174,6 +200,12 @@
     el.linkRow.hidden = !!row; el.linked.hidden = true; el.linkQ.parentNode.hidden = false; el.res.hidden = true;
     el.reqDate.hidden = !!row;
     el.fileCur.hidden = !(row && row.has_file);
+    st.recAuto = !(row && row.rec_no_custom);
+    el.recOn.checked = !!(row && (row.has_rec_entry || row.has_rec));
+    el.recOn.disabled = !!(row && row.has_rec); // a stored recovery PDF: the recovery invoice stays
+    el.recDate.value = row && row.rec_date ? row.rec_date : ''; el.recAmt.value = row && row.rec_amount ? row.rec_amount : '';
+    el.recFileCur.hidden = !(row && row.has_rec);
+    if (row && row.has_rec) el.recFileCur.innerHTML = '<i class="fa-solid fa-file-pdf" style="color:#dc2626"></i> ' + esc(row.rec_file_name || 'recovery-invoice.pdf') + ' — choose a file only to replace it.';
     if (row && row.has_file) el.fileCur.innerHTML = '<i class="fa-solid fa-file-pdf" style="color:#dc2626"></i> ' + esc(row.file_name || 'invoice.pdf') + ' — choose a file only to replace it.';
     el.no.value = ''; el.hint.className = 'hint'; el.hint.textContent = row ? '' : 'Getting the next number…';
     noState();
@@ -186,12 +218,16 @@
         el.date.value = row.invoice_date || ''; el.status.value = row.status; el.amt.value = row.invoice_amount || ''; el.notes.value = row.invoice_notes || '';
         el.vessel.value = row.vessel || ''; el.report.value = row.report_no || ''; el.scd.value = row.survey_completed_ymd || '';
         el.client.value = row.client_id ? String(row.client_id) : ''; setPort(row.port_id); setTypes(row.type_ids);
+        var ms = row.manual_service || {}, keys = { service_desc: 'desc', service_rate: 'rate', service_qty: 'qty', travel_cost: 'travel', launch_cost: 'launch' };
+        svc().forEach(function (x) { var v = ms[keys[x[0]]]; if (v !== undefined && v !== '') x[1].value = v; });
         if (row.client_id && !el.client.value) fieldError('client_id', 'The client of this entry no longer exists — choose one.');
         noState();
-        fetchNext().catch(function () {});
+        if (!st.recAuto) el.recNo.value = row.rec_no || '';
+        recSync();
       } else {
         el.date.value = today(); el.status.value = (C.statuses || [])[0] || '';
-        fetchNext().catch(function (e) { el.hint.className = 'hint bad'; el.hint.textContent = e.message; });
+        el.no.value = ''; el.hint.className = 'hint'; el.hint.textContent = 'Type the invoice number (e.g. YMR-BB-962, or only 962 — the client code is added).'; noState();
+        recSync();
       }
       el.save.disabled = false;
       setTimeout(function () { if (!box.hidden && !form.contains(document.activeElement)) (row ? el.amt : el.vessel).focus(); }, 60); // never steal focus from a field already in use
@@ -225,6 +261,17 @@
     var f = el.file.files[0];
     if (f && !/\.pdf$/i.test(f.name)) e.file = 'Only PDF files can be attached.';
     else if (f && f.size > (C.maxMb || 20) * 1048576) e.file = 'The PDF must be smaller than ' + C.maxMb + ' MB.';
+    if (el.recOn.checked) {
+      if (!el.recNo.value.trim()) e.rec_invoice_no = 'Enter the recovery invoice number (or the invoice number first).';
+      else if (!/^[A-Za-z0-9][A-Za-z0-9\-\/\s]*[A-Za-z0-9]$/.test(el.recNo.value.trim())) e.rec_invoice_no = 'Letters, digits and - only (e.g. YMR-BB-968B).';
+      else if (el.no.value.trim() && el.recNo.value.replace(/\s+/g, '').toUpperCase() === el.no.value.replace(/\s+/g, '').toUpperCase()) e.rec_invoice_no = 'The recovery invoice number must be different from the invoice number.';
+      if (!el.recDate.value) e.rec_invoice_date = 'Choose the recovery invoice date.';
+      var ra = el.recAmt.value.replace(/[,\s$]/g, '');
+      if (ra !== '' && (isNaN(+ra) || +ra < 0)) e.rec_invoice_amount = 'Amount must be a number of 0 or more.';
+      var rf = el.recFile.files[0];
+      if (rf && !/\.pdf$/i.test(rf.name)) e.rec_file = 'Only PDF files can be attached.';
+      else if (rf && rf.size > (C.maxMb || 20) * 1048576) e.rec_file = 'The PDF must be smaller than ' + C.maxMb + ' MB.';
+    }
     return e;
   }
   function payload(extra) {
@@ -232,13 +279,23 @@
     var v = {
       a: st.mode === 'add' ? 'create' : 'update', invoice_no: el.no.value.trim(), invoice_date: el.date.value, invoice_status: el.status.value,
       invoice_amount: el.amt.value.replace(/[,\s$]/g, ''), invoice_notes: el.notes.value, vessel_name: el.vessel.value, report_number: el.report.value,
-      client_id: el.client.value, port_id: portId() || '', survey_type_ids: typeIds().join(','), survey_completed_date: el.scd.value
+      client_id: el.client.value, port_id: portId() || '', survey_type_ids: typeIds().join(','), survey_completed_date: el.scd.value,
+      rec_on: el.recOn.checked ? '1' : '0'
     };
+    svc().forEach(function (x) { v[x[0]] = x[1] ? x[1].value : ''; }); // Invoice Services (kept with the invoice for the PDF)
+    if (el.recOn.checked) {
+      v.rec_invoice_no = st.recAuto ? '' : el.recNo.value.trim(); // empty = the invoice number + B
+      v.rec_invoice_date = el.recDate.value; v.rec_invoice_amount = el.recAmt.value.replace(/[,\s$]/g, '');
+    }
     if (st.mode === 'add') { v.no_auto = st.auto ? '1' : '0'; v.shown_no = el.no.value.trim(); v.request_id = st.rid; if (st.survey) v.survey_id = st.survey.id; }
     else v.id = st.row.id;
     Object.keys(extra || {}).forEach(function (k) { v[k] = extra[k]; });
     Object.keys(v).forEach(function (k) { d.append(k, v[k]); });
     return d;
+  }
+  function svc() {
+    return [['service_desc', $('[data-ivf-service-desc]')], ['service_rate', $('[data-ivf-service-rate]')], ['service_qty', $('[data-ivf-service-qty]')],
+      ['travel_cost', $('[data-ivf-travel]')], ['launch_cost', $('[data-ivf-launch]')]].filter(function (x) { return !!x[1]; });
   }
   function busy(on) {
     st.saving = on; el.save.disabled = on;
@@ -274,9 +331,15 @@
     });
   }
   function upload(row) {
-    var f = el.file.files[0]; if (!f) return Promise.resolve(true);
-    var d = new FormData(); d.append('a', 'upload'); d.append('id', row.id); d.append('invoice_pdf', f);
-    return post(d).then(function (r) { if (!r.ok) throw new Error(r.error || 'The PDF was not stored.'); return true; });
+    var f = el.file.files[0], rf = el.recOn.checked ? el.recFile.files[0] : null;
+    var one = function (a, field, file, what) {
+      if (!file) return Promise.resolve(null);
+      var d = new FormData(); d.append('a', a); d.append('id', row.id); d.append(field, file);
+      return post(d).then(function (r) { if (!r.ok) throw new Error(what + ': ' + (r.error || 'not stored.')); return r.row; });
+    };
+    return one('upload', 'invoice_pdf', f, 'Invoice PDF').then(function (r1) {
+      return one('upload_rec', 'rec_pdf', rf, 'Recovery invoice PDF').then(function (r2) { if (r2 || r1) Object.assign(row, r2 || r1); return true; });
+    });
   }
   form.addEventListener('submit', function (ev) {
     ev.preventDefault();

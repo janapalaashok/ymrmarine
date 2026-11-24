@@ -140,7 +140,7 @@ function ledgerBaseSql(PDO $db, string $today): string {
              FROM invoices i
              WHERE i.deleted_at IS NULL AND (i.file_path IS NOT NULL OR EXISTS (SELECT 1 FROM invoice_payments ip WHERE ip.invoice_id = i.id AND ip.kind = 'invoice'))
              UNION ALL
-             SELECT i.id, 'recovery', CONCAT(COALESCE(i.invoice_no, ''), 'B'), i.rec_invoice_date, i.rec_invoice_amount,
+             SELECT i.id, 'recovery', COALESCE(NULLIF(i.rec_invoice_no, ''), CONCAT(COALESCE(i.invoice_no, ''), 'B')), i.rec_invoice_date, i.rec_invoice_amount,
                     i.rec_file_path, i.rec_file_name, i.survey_id, i.vessel_name, i.report_number,
                     i.own_details, i.client_id, i.port_id
              FROM invoices i

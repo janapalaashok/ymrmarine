@@ -62,7 +62,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $card_success = 'File uploaded successfully.';
             try {
                 $label = ($card_type === 'business_card') ? 'Business Card' : 'ID Card';
-                $sid = (int)($_POST['surveyor_id'] ?? 0);
+                // The surveyor the card was uploaded for (the forms send user_id; surveyor_id is
+                // kept for any older form that sends it).
+                $sid = (int)($_POST['surveyor_id'] ?? 0) ?: $target_user_id;
                 if ($sid > 0) {
                     createNotification($db, $sid, $label . ' uploaded',
                         'Admin uploaded your ' . $label . '. Open Profile to download.',

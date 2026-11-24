@@ -241,7 +241,17 @@ function ensurePortsCountryColumn(PDO $db): void {
  * Returns null for a name that's already an anchorage (avoids "X Anchorage
  * Anchorage" if this ever runs against its own output).
  */
+/** Port names and countries are kept in capitals, single-spaced ("VISAKHAPATNAM PORT", "INDIA"). */
+function portCaps(?string $s): string {
+    return mb_strtoupper(trim((string)preg_replace('/\s+/u', ' ', (string)$s)), 'UTF-8');
+}
+
 function buildAnchorageName(string $portName): ?string {
+    $caps = trim($portName) !== '' && mb_strtoupper(trim($portName), 'UTF-8') === trim($portName);
+    $a = buildAnchorageNameRaw($portName);
+    return $a !== null && $caps ? mb_strtoupper($a, 'UTF-8') : $a; // "CHENNAI PORT" -> "CHENNAI ANCHORAGE"
+}
+function buildAnchorageNameRaw(string $portName): ?string {
     $name = trim($portName);
     if ($name === '' || stripos($name, 'anchorage') !== false) return null;
     if (preg_match('/^Port of\s+(.+)$/i', $name, $m)) {

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../config.dart';
 import '../ui.dart';
 import 'lists.dart';
 
@@ -22,6 +23,9 @@ List<AppAction> allActions(Map<String, dynamic> me) {
     if (c('assign')) AppAction('assign', role == 'Client' ? 'Request survey' : 'Assign vessel', Icons.add_rounded, blue, '#/assign'),
     if (c('report_generator')) const AppAction('word', 'Word report', Icons.description_outlined, orange, 'report_generator.php'),
     if (c('survey_reports')) const AppAction('surveyreports', 'Survey reports', Icons.fact_check_outlined, green, 'survey_reports.php'),
+    // the survey report made in Flutter (offline too) — staging app only for now
+    if (!Cfg.isLive && role != 'Client')
+      const AppAction('srnative', 'Survey Report', Icons.edit_note_rounded, sky, 'survey_report_public.php'),
     if (c('live_survey')) const AppAction('livesr', 'Live survey reports', Icons.sensors_rounded, red, 'live_survey_reports.php'),
     if (c('recovery')) const AppAction('recovery', 'Recovery', Icons.local_gas_station_outlined, sky, '#/recovery'),
     if (c('chat')) const AppAction('chat', 'Team chat', Icons.forum_outlined, purple, '#/chat'),

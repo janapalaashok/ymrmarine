@@ -192,10 +192,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES) && 
             if ($v['status'] !== 'new') { $result['failed'][] = ['row' => $v['row'], 'name' => $v['name'], 'error' => implode(' ', $v['messages'])]; continue; }
             try {
                 $db->beginTransaction();
-                $ins->execute([$v['name'], $v['country']]);
+                $ins->execute([portCaps($v['name']), portCaps($v['country'])]);
                 $added = $ins->rowCount() > 0;
                 if ($v['anchorage'] !== null) {
-                    $ins->execute([$v['anchorage'], $v['country']]);
+                    $ins->execute([portCaps($v['anchorage']), portCaps($v['country'])]);
                     if ($ins->rowCount() > 0) $result['anchorages']++;
                 }
                 $db->commit();

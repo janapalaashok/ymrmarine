@@ -13,6 +13,11 @@ $is_client_role = (($_SESSION['role'] ?? '') === 'Client');
 // request, no surveyor is chosen here — the Admin assigns one (includes/sales.php).
 $is_sales_role = (($_SESSION['role'] ?? '') === 'Sales');
 $is_requester = $is_client_role || $is_sales_role;
+// 🌟 Completed Vessel Entry (Admin): this same form, with the survey dates, recovery and report
+// files, saves an already-completed survey straight into Completed Vessels
+// (includes/completed_entry.php). Opened from Admin Controls → Completed Surveys → "Add Completed Vessel".
+$completed_mode = (($_SESSION['role'] ?? '') === 'Admin') && (($_GET['completed'] ?? $_POST['completed_entry'] ?? '') === '1') && empty($_GET['edit_id']);
+if ($completed_mode) require_once __DIR__ . '/includes/completed_entry.php';
 
 $db = getDB();
 $error = '';
@@ -279,8 +284,34 @@ if ($edit_id > 0) {
     $edit_attachments = getSurveyAttachments($db, $edit_id, $edit_survey['attachment_path'] ?? '');
 }
 
+$ce_dupes = [];
+if ($completed_mode && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once 'includes/completed_entry.php';
+    $ce = completedEntryValidate($db, $_POST);
+    if ($ce['errors']) {
+        $error = implode('<br>', array_map('sanitize', $ce['errors']));
+    } elseif ($ce['dupes'] && ($_POST['confirm_duplicate'] ?? '') !== '1') {
+        $ce_dupes = $ce['dupes'];
+        $error = 'Possible duplicate:<br>' . implode('<br>', array_map('sanitize', $ce['dupes'])) . '<br><b>Tick "Save anyway" below if this is a different survey.</b>';
+    } else {
+        $res = completedEntryInsert($db, $ce['v'], (int)$_SESSION['user_id'], (string)($_SESSION['full_name'] ?? $_SESSION['username'] ?? 'Admin'));
+        if (!$res['ok']) {
+            $error = sanitize($res['error']);
+        } else {
+            $fs = ['saved' => [], 'rejected' => []];
+            try { $fs = completedEntrySaveFiles($db, $res['id'], $_FILES); } catch (Throwable $e) { error_log('completed entry files: ' . $e->getMessage()); $fs['rejected'][] = 'files'; }
+            error_log(sprintf('completed entry: user %d added survey %d (%s)', (int)$_SESSION['user_id'], $res['id'], $res['report_number']));
+            $_SESSION['flash_msg'] = 'Completed vessel added (' . $res['report_number'] . ')' . ($fs['saved'] ? ' with ' . count($fs['saved']) . ' file(s)' : '') . '.'
+                . ($fs['rejected'] ? ' Not saved (file type not allowed or upload failed): ' . implode(', ', $fs['rejected']) . '.' : '');
+            $_SESSION['flash_type'] = $fs['rejected'] ? 'warning' : 'success';
+            header('Location: completed_detail.php?id=' . $res['id']);
+            exit;
+        }
+    }
+}
+
 // ఫార్మ్ సబ్మిషన్ ప్రాసెస్
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed_mode) {
     // 🌟 Present (and a real existing survey, and Admin) only when this
     // submission is an edit of an existing assignment rather than a brand
     // new one — see the branch at the bottom of this block.
@@ -859,14 +890,15 @@ include 'includes/header.php';
     .searchable-select.open .ss-panel { display: block; }
     .searchable-select .ss-search-wrap {
         position: relative;
-        padding: 8px 10px;
+        padding: 8px 15px;
         border-bottom: 1px solid var(--border-color);
     }
     .ss-country-wrap select.ss-country-filter {
         width: 100%;
         border: 1px solid var(--border-color);
         border-radius: 8px;
-        padding: 8px 10px 8px 32px;
+        margin-right: 6px;
+        padding: 8px 10px 8px 42px;
         font-size: 12.5px;
         background: #f8fafc;
         color: var(--text-dark);
@@ -880,7 +912,7 @@ include 'includes/header.php';
     }
     .searchable-select .ss-search-wrap i {
         position: absolute;
-        left: 18px;
+        left: 27px;
         top: 50%;
         transform: translateY(-50%);
         color: #94a3b8;
@@ -890,7 +922,7 @@ include 'includes/header.php';
         width: 100%;
         border: 1px solid var(--border-color);
         border-radius: 8px;
-        padding: 8px 10px 8px 30px;
+        padding: 8px 10px 8px 34px;
         font-size: 13px;
         background: #f8fafc;
         outline: none;
@@ -1087,10 +1119,16 @@ include 'includes/header.php';
         .ss-multi .ss-option.ss-selected { background: #F3EEFE !important; color: #5B2DEE !important; }
         .ss-multi .ss-option-checkbox { accent-color: #5B2DEE !important; }
         .searchable-select .ss-search-input, .ss-country-wrap select.ss-country-filter {
-            border: 1.5px solid #e2e8f0 !important; border-radius: 10px !important; background: #F8FAFC !important;
+            border: 1.5px solid #e2e8f0 !important; border-radius: 10px !important ;background: #F8FAFC !important;
+        }
+        #assignVesselForm .searchable-select .ss-country-wrap select.ss-country-filter {
+            padding-left: 27px !important;
         }
         .searchable-select .ss-search-input:focus {
             outline: none !important; border-color: #A78BFA !important; background: #fff !important;
+        }
+        #assignVesselForm .searchable-select .ss-search-input {
+            padding:10px 230px 10px 32px !important;
         }
 
         .blue-action-btn {
@@ -1341,6 +1379,9 @@ include 'includes/header.php';
     #assignVesselForm .searchable-select .ss-option.ss-selected { background: #F3EEFE !important; color: #5B2DEE !important; }
     #assignVesselForm .ss-multi .ss-option-checkbox { accent-color: #7C3AED !important; }
     #assignVesselForm .searchable-select .ss-search-input { border-radius: 12px !important; }
+    /* keep the search / country text clear of its icon (the desktop .form-group-custom input rule sets 14px !important) */
+    .searchable-select .ss-search-wrap .ss-search-input,
+    .searchable-select .ss-search-wrap select.ss-country-filter { padding-left: 34px !important; }
 
     /* file input as a drop zone */
     #assignVesselForm input[type="file"][name="assignment_attachment[]"] {
@@ -1388,8 +1429,8 @@ include 'includes/header.php';
 <link rel="stylesheet" href="assets/css/app-pages.css?v=<?= @filemtime(__DIR__ . '/assets/css/app-pages.css') ?>">
 
 <?php
-$page_title = $edit_mode ? 'Edit Vessel Assignment' : ($is_requester ? 'Request Survey' : 'Assign New Vessel');
-$back_url = $edit_mode ? 'vessel_detail.php?id=' . (int)$edit_id : ($is_sales_role ? 'sales_dashboard.php' : 'index.php');
+$page_title = $completed_mode ? 'Add Completed Vessel' : ($edit_mode ? 'Edit Vessel Assignment' : ($is_requester ? 'Request Survey' : 'Assign New Vessel'));
+$back_url = $completed_mode ? 'admin_controls.php?tab=completed_surveys' : ($edit_mode ? 'vessel_detail.php?id=' . (int)$edit_id : ($is_sales_role ? 'sales_dashboard.php' : 'index.php'));
 $page_testid = 'assign-vessel';
 include 'includes/top_app_bar.php';
 ?>
@@ -1399,8 +1440,8 @@ include 'includes/top_app_bar.php';
         <i class="fa-solid fa-ship vdd-hero-icon-bg" aria-hidden="true"></i>
         <div class="vdd-hero-ship"><i class="fa-solid fa-ship"></i></div>
         <div>
-            <div class="vdd-hero-title"><?= $edit_mode ? 'Edit Vessel Assignment' : ($is_requester ? 'Request Survey' : 'Assign New Vessel') ?></div>
-            <div class="vdd-hero-sub"><?= $edit_mode ? 'Update this vessel\'s survey assignment' : ($is_sales_role ? 'Request a survey for a client — the office assigns the surveyor' : 'Assign a vessel to a client, port, survey type and surveyor') ?></div>
+            <div class="vdd-hero-title" data-testid="av-hero-title"><?= $completed_mode ? 'Add Completed Vessel' : ($edit_mode ? 'Edit Vessel Assignment' : ($is_requester ? 'Request Survey' : 'Assign New Vessel')) ?></div>
+            <div class="vdd-hero-sub"><?= $completed_mode ? 'Enter a survey that is already completed — it is saved straight into Completed Vessels' : ($edit_mode ? 'Update this vessel\'s survey assignment' : ($is_sales_role ? 'Request a survey for a client — the office assigns the surveyor' : 'Assign a vessel to a client, port, survey type and surveyor')) ?></div>
         </div>
     </div>
 
@@ -1434,31 +1475,40 @@ include 'includes/top_app_bar.php';
     // form below so every field (including the client/port searchable
     // selects and the survey-type/surveyor multi-selects) opens already
     // showing the existing assignment's current values.
-    $edit_client_id = $edit_mode ? (int)($edit_survey['client_id'] ?? 0) : 0;
+    $prefill_mode = $edit_mode;
+    if ($completed_mode && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Completed Vessel Entry sent back with an error: show what was typed / chosen
+        $prefill_mode = true;
+        $edit_survey = ['vessel_name' => (string)($_POST['vessel_name'] ?? ''), 'client_id' => (int)($_POST['client_id'] ?? 0), 'port_id' => (int)($_POST['port_id'] ?? 0),
+            'survey_type_ids' => (string)($_POST['survey_type_ids'] ?? ''), 'agent_name' => (string)($_POST['agent_name'] ?? ''), 'remarks' => (string)($_POST['remarks'] ?? ''), 'report_number' => ''];
+        $edit_surveyor_ids = array_values(array_filter(array_map('intval', explode(',', (string)($_POST['surveyor_ids'] ?? '')))));
+    }
+    $edit_client_id = $prefill_mode ? (int)($edit_survey['client_id'] ?? 0) : 0;
     $edit_client_name = '';
-    if ($edit_mode) {
+    if ($prefill_mode) {
         foreach ($clients as $c) {
             if ((int)$c['id'] === $edit_client_id) { $edit_client_name = $c['company_name']; break; }
         }
     }
-    $edit_port_id = $edit_mode ? (int)($edit_survey['port_id'] ?? 0) : 0;
+    $edit_port_id = $prefill_mode ? (int)($edit_survey['port_id'] ?? 0) : 0;
     $edit_port_name = '';
-    if ($edit_mode) {
+    if ($prefill_mode) {
         foreach ($ports as $p) {
             if ((int)$p['id'] === $edit_port_id) { $edit_port_name = $p['port_name']; break; }
         }
     }
-    $edit_type_ids = $edit_mode ? array_values(array_unique(array_filter(array_map('intval', explode(',', (string)($edit_survey['survey_type_ids'] ?? '')))))) : [];
+    $edit_type_ids = $prefill_mode ? array_values(array_unique(array_filter(array_map('intval', explode(',', (string)($edit_survey['survey_type_ids'] ?? '')))))) : [];
     ?>
     <!-- Assignment Form -->
-    <form action="assign_vessel.php<?= $edit_mode ? '?edit_id=' . (int)$edit_id : '' ?>" method="POST" id="assignVesselForm" enctype="multipart/form-data"><?= csrf_field() ?>
+    <form action="assign_vessel.php<?= $completed_mode ? '?completed=1' : ($prefill_mode ? '?edit_id=' . (int)$edit_id : '') ?>" method="POST" id="assignVesselForm" enctype="multipart/form-data"<?= $completed_mode ? ' data-completed-entry="1"' : '' ?>><?= csrf_field() ?>
+        <?php if ($completed_mode): ?><input type="hidden" name="completed_entry" value="1"><?php endif; ?>
         <?php if ($edit_mode): ?><input type="hidden" name="edit_id" value="<?= (int)$edit_id ?>"><?php endif; ?>
         <div class="form-box-custom avm-form" style="padding-top:20px;">
             <div class="avm-card">
                 <div class="avm-grid">
             <div class="form-group-custom" id="vesselNameField">
                 <label for="vessel_name"><i class="fa-solid fa-ship vdd-field-icon"></i> Vessel Name *</label>
-                <input type="text" name="vessel_name" id="vessel_name" value="<?= $edit_mode ? sanitize($edit_survey['vessel_name']) : '' ?>" placeholder="e.g. MV Pacific Dawn" required autocomplete="off" inputmode="text" style="font-size:16px;min-height:48px;">
+                <input type="text" name="vessel_name" id="vessel_name" value="<?= $prefill_mode ? sanitize($edit_survey['vessel_name']) : '' ?>" placeholder="e.g. MV Pacific Dawn" required autocomplete="off" inputmode="text" style="font-size:16px;min-height:48px;">
             </div>
 
                         <?php if ($is_client_role): ?>
@@ -1480,7 +1530,7 @@ include 'includes/top_app_bar.php';
                 <label><i class="fa-solid fa-building vdd-field-icon"></i> Client Name *</label>
                 <div class="searchable-select" data-ss-root="client">
                     <button type="button" class="ss-trigger" data-testid="client-select-trigger">
-                        <span class="ss-trigger-text<?= ($edit_mode && $edit_client_id) ? '' : ' placeholder' ?>" data-placeholder="Select Client" style="color:#64748b !important;font-weight:500;font-size:14px;"><?= ($edit_mode && $edit_client_id) ? sanitize($edit_client_name) : 'Select Client' ?></span>
+                        <span class="ss-trigger-text<?= ($prefill_mode && $edit_client_id) ? '' : ' placeholder' ?>" data-placeholder="Select Client" style="color:#64748b !important;font-weight:500;font-size:14px;"><?= ($prefill_mode && $edit_client_id) ? sanitize($edit_client_name) : 'Select Client' ?></span>
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
                     <div class="ss-panel">
@@ -1490,7 +1540,7 @@ include 'includes/top_app_bar.php';
                         </div>
                         <ul class="ss-options" data-testid="client-options-list">
                             <?php foreach($clients as $client): ?>
-                                <li class="ss-option<?= ($edit_mode && (int)$client['id'] === $edit_client_id) ? ' ss-selected' : '' ?>" data-value="<?= $client['id'] ?>" data-name="<?= strtolower(sanitize($client['company_name'])) ?>" data-short="<?= sanitize(strtoupper(trim($client['short_code'] ?? ''))) ?>"><?= sanitize($client['company_name']) ?><?php if (!empty($client['short_code'])): ?> <span style="color:#64748b;font-weight:600;">(<?= sanitize(strtoupper($client['short_code'])) ?>)</span><?php endif; ?></li>
+                                <li class="ss-option<?= ($prefill_mode && (int)$client['id'] === $edit_client_id) ? ' ss-selected' : '' ?>" data-value="<?= $client['id'] ?>" data-name="<?= strtolower(sanitize($client['company_name'])) ?>" data-short="<?= sanitize(strtoupper(trim($client['short_code'] ?? ''))) ?>"><?= sanitize($client['company_name']) ?><?php if (!empty($client['short_code'])): ?> <span style="color:#64748b;font-weight:600;">(<?= sanitize(strtoupper($client['short_code'])) ?>)</span><?php endif; ?></li>
                             <?php endforeach; ?>
                             <?php if (!$is_sales_role): ?><li class="ss-option ss-option-other" data-value="__add_new__"><i class="fa-solid fa-plus"></i> Add New Client</li><?php endif; ?>
                         </ul>
@@ -1499,7 +1549,7 @@ include 'includes/top_app_bar.php';
                 <select name="client_id" id="clientSelect" class="ss-hidden-select" tabindex="-1" aria-hidden="true">
                     <option value="">Select Client</option>
                     <?php foreach($clients as $client): ?>
-                        <option value="<?= $client['id'] ?>"<?= ($edit_mode && (int)$client['id'] === $edit_client_id) ? ' selected' : '' ?>><?= sanitize($client['company_name']) ?></option>
+                        <option value="<?= $client['id'] ?>"<?= ($prefill_mode && (int)$client['id'] === $edit_client_id) ? ' selected' : '' ?>><?= sanitize($client['company_name']) ?></option>
                     <?php endforeach; ?>
                 </select>
                 <div class="ss-add-new-box" id="addNewBox-client" data-add-module="clients" data-ss-root="client" style="display:none;">
@@ -1516,9 +1566,10 @@ include 'includes/top_app_bar.php';
             <!-- Report Number: shown only after client selected — YMR/{SHORT}/{YYYY}/{MM}/{NNNN}.
                  In edit mode this shows the assignment's existing (fixed) number instead of a
                  live preview — editing never generates a new one. -->
-            <div class="form-group-custom avm-span-2" id="reportNumberGroup" style="<?= ($edit_mode && !empty($edit_survey['report_number'])) ? '' : 'display:none;' ?>">
+            <?php if (!$completed_mode): ?>
+            <div class="form-group-custom avm-span-2" id="reportNumberGroup" style="<?= ($prefill_mode && !empty($edit_survey['report_number'])) ? '' : 'display:none;' ?>">
                 <label><i class="fa-solid fa-hashtag vdd-field-icon"></i> Report Number <?php if (!$edit_mode): ?><span class="text-muted fw-normal">(auto)</span><?php endif; ?></label>
-                <input type="text" id="reportNumberPreview" value="<?= $edit_mode ? sanitize($edit_survey['report_number'] ?? '') : '' ?>" readonly
+                <input type="text" id="reportNumberPreview" value="<?= $prefill_mode ? sanitize($edit_survey['report_number'] ?? '') : '' ?>" readonly
                        style="background:#f1f5f9; color:#0b1e46; font-weight:700; letter-spacing:0.5px; cursor:default;"
                        data-testid="report-number-preview" placeholder="Select client to generate">
                 <?php if (!$edit_mode): ?>
@@ -1527,25 +1578,43 @@ include 'includes/top_app_bar.php';
                 </div>
                 <?php endif; ?>
             </div>
+            <?php endif; ?>
 
 
 <div class="form-group-custom">
                 <label><i class="fa-solid fa-people-group vdd-field-icon"></i> Agent Name *</label>
-                <input type="text" name="agent_name" value="<?= $edit_mode ? sanitize($edit_survey['agent_name']) : '' ?>" placeholder="e.g. Oceanus Agencies" required>
+                <input type="text" name="agent_name" value="<?= $prefill_mode ? sanitize($edit_survey['agent_name']) : '' ?>" placeholder="e.g. Oceanus Agencies" required>
             </div>
 
 
+            <?php if ($completed_mode): $cePost = fn($k) => sanitize((string)($_POST[$k] ?? '')); ?>
+            <div class="form-group-custom">
+                <label><i class="fa-solid fa-hashtag vdd-field-icon"></i> Report Number <span class="text-muted fw-normal" style="font-size:10.5px;">(optional — blank = automatic)</span></label>
+                <input type="text" name="report_number" value="<?= $cePost('report_number') ?>" maxlength="60" placeholder="YMR/AS/<?= date('Y') ?>/<?= date('m') ?>/0001" data-testid="ce-report-number">
+            </div>
+            <div class="form-group-custom avm-span-2">
+                <div class="ce-dates">
+                    <div><label><i class="fa-solid fa-calendar-plus vdd-field-icon"></i> Survey Assigned Date *</label>
+                        <input type="date" name="assign_date" value="<?= $cePost('assign_date') ?>" max="<?= date('Y-m-d') ?>" required data-testid="ce-assign-date"></div>
+                    <div><label><i class="fa-solid fa-calendar-check vdd-field-icon"></i> Survey Completed Date *</label>
+                        <input type="date" name="completed_date" value="<?= $cePost('completed_date') ?>" max="<?= date('Y-m-d') ?>" required data-testid="ce-completed-date"></div>
+                    <div><label><i class="fa-solid fa-file-circle-check vdd-field-icon"></i> Report Completed Date *</label>
+                        <input type="date" name="report_date" value="<?= $cePost('report_date') ?>" max="<?= date('Y-m-d') ?>" required data-testid="ce-report-date"></div>
+                </div>
+            </div>
+            <?php else: ?>
             <div class="form-group-custom">
                 <label><i class="fa-solid fa-calendar-day vdd-field-icon"></i> Appointment Date *</label>
-                <input type="date" name="appointment_date" value="<?= $edit_mode ? sanitize($edit_survey['appointment_date'] ?? '') : '' ?>" required>
+                <input type="date" name="appointment_date" value="<?= $prefill_mode ? sanitize($edit_survey['appointment_date'] ?? '') : '' ?>" required>
             </div>
+            <?php endif; ?>
 
             <!-- 🌟 Port Name: searchable dropdown with search box inside -->
             <div class="form-group-custom avm-span-2">
                 <label><i class="fa-solid fa-location-dot vdd-field-icon"></i> Port Name *</label>
                 <div class="searchable-select" data-ss-root="port">
                     <button type="button" class="ss-trigger" data-testid="port-select-trigger">
-                        <span class="ss-trigger-text<?= ($edit_mode && $edit_port_id) ? '' : ' placeholder' ?>" data-placeholder="Select Port" style="color:#64748b !important;font-weight:500;font-size:14px;"><?= ($edit_mode && $edit_port_id) ? sanitize($edit_port_name) : 'Select Port' ?></span>
+                        <span class="ss-trigger-text<?= ($prefill_mode && $edit_port_id) ? '' : ' placeholder' ?>" data-placeholder="Select Port" style="color:#64748b !important;font-weight:500;font-size:14px;"><?= ($prefill_mode && $edit_port_id) ? sanitize($edit_port_name) : 'Select Port' ?></span>
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
                     <div class="ss-panel">
@@ -1564,7 +1633,7 @@ include 'includes/top_app_bar.php';
                         </div>
                         <ul class="ss-options" data-testid="port-options-list">
                             <?php foreach($ports as $port): ?>
-                                <li class="ss-option<?= ($edit_mode && (int)$port['id'] === $edit_port_id) ? ' ss-selected' : '' ?>" data-value="<?= $port['id'] ?>" data-name="<?= strtolower(sanitize($port['port_name'])) ?>" data-country="<?= strtolower(sanitize($port['country'] ?? 'India')) ?>"><?= sanitize($port['port_name']) ?> <span class="ss-option-country"><?= sanitize($port['country'] ?? 'India') ?></span></li>
+                                <li class="ss-option<?= ($prefill_mode && (int)$port['id'] === $edit_port_id) ? ' ss-selected' : '' ?>" data-value="<?= $port['id'] ?>" data-name="<?= strtolower(sanitize($port['port_name'])) ?>" data-country="<?= strtolower(sanitize($port['country'] ?? 'India')) ?>"><?= sanitize($port['port_name']) ?> <span class="ss-option-country"><?= sanitize($port['country'] ?? 'India') ?></span></li>
                             <?php endforeach; ?>
                             <?php if (!$is_requester): ?>
                             <li class="ss-option ss-option-other" data-value="__add_new__"><i class="fa-solid fa-plus"></i> Add New Port</li>
@@ -1575,7 +1644,7 @@ include 'includes/top_app_bar.php';
                 <select name="port_id" id="portSelect" class="ss-hidden-select" tabindex="-1" aria-hidden="true">
                     <option value="">Select Port</option>
                     <?php foreach($ports as $port): ?>
-                        <option value="<?= $port['id'] ?>"<?= ($edit_mode && (int)$port['id'] === $edit_port_id) ? ' selected' : '' ?>><?= sanitize($port['port_name']) ?></option>
+                        <option value="<?= $port['id'] ?>"<?= ($prefill_mode && (int)$port['id'] === $edit_port_id) ? ' selected' : '' ?>><?= sanitize($port['port_name']) ?></option>
                     <?php endforeach; ?>
                 </select>
                 <?php if (!$is_requester): ?>
@@ -1605,7 +1674,7 @@ include 'includes/top_app_bar.php';
                             <input type="text" class="ss-search-input" placeholder="Search survey type..." autocomplete="off" data-testid="survey-type-search-input">
                         </div>
                         <ul class="ss-options" data-testid="survey-type-options-list">
-                            <?php foreach($survey_types as $type): $typeSelected = $edit_mode && in_array((int)$type['id'], $edit_type_ids, true); ?>
+                            <?php foreach($survey_types as $type): $typeSelected = $prefill_mode && in_array((int)$type['id'], $edit_type_ids, true); ?>
                                 <li class="ss-option<?= $typeSelected ? ' ss-selected' : '' ?>" data-value="<?= $type['id'] ?>" data-name="<?= strtolower(sanitize($type['type_name'])) ?>">
                                     <input type="checkbox" class="ss-option-checkbox" tabindex="-1"<?= $typeSelected ? ' checked' : '' ?>>
                                     <span class="ss-option-label"><?= sanitize($type['type_name']) ?></span>
@@ -1644,7 +1713,7 @@ include 'includes/top_app_bar.php';
                             <input type="text" class="ss-search-input" placeholder="Search surveyor..." autocomplete="off" data-testid="surveyor-search-input">
                         </div>
                         <ul class="ss-options" data-testid="surveyor-options-list">
-                            <?php foreach($surveyors as $surveyor): $surveyorSelected = $edit_mode && in_array((int)$surveyor['id'], $edit_surveyor_ids, true); ?>
+                            <?php foreach($surveyors as $surveyor): $surveyorSelected = $prefill_mode && in_array((int)$surveyor['id'], $edit_surveyor_ids, true); ?>
                                 <li class="ss-option<?= $surveyorSelected ? ' ss-selected' : '' ?>" data-value="<?= (int)$surveyor['id'] ?>" data-name="<?= strtolower(sanitize($surveyor['full_name'])) ?>">
                                     <input type="checkbox" class="ss-option-checkbox" tabindex="-1"<?= $surveyorSelected ? ' checked' : '' ?>>
                                     <span class="ss-option-label"><?= sanitize($surveyor['full_name']) ?></span>
@@ -1666,7 +1735,7 @@ include 'includes/top_app_bar.php';
 
             <div class="form-group-custom avm-span-2">
                 <label><i class="fa-solid fa-comment vdd-field-icon"></i> Remarks (Optional)</label>
-                <textarea name="remarks" rows="3" placeholder="Enter any specific instructions or notes..."><?= $edit_mode ? sanitize($edit_survey['remarks'] ?? '') : '' ?></textarea>
+                <textarea name="remarks" rows="3" placeholder="Enter any specific instructions or notes..."><?= $prefill_mode ? sanitize($edit_survey['remarks'] ?? '') : '' ?></textarea>
             </div>
 
             <?php if ($edit_mode && !empty($edit_attachments)): ?>
@@ -1681,11 +1750,42 @@ include 'includes/top_app_bar.php';
             </div>
             <?php endif; ?>
 
+            <?php if ($completed_mode): $ceMode = (($_POST['recovery_mode'] ?? '') === 'na') ? 'na' : 'enter'; ?>
+            <div class="form-group-custom avm-span-2" data-testid="ce-recovery">
+                <label><i class="fa-solid fa-droplet vdd-field-icon"></i> Recovery *</label>
+                <div class="ce-rec-mode" role="radiogroup">
+                    <label class="ce-pill"><input type="radio" name="recovery_mode" value="enter"<?= $ceMode === 'enter' ? ' checked' : '' ?> data-testid="ce-rec-enter"> <span>Enter recovery</span></label>
+                    <label class="ce-pill"><input type="radio" name="recovery_mode" value="na"<?= $ceMode === 'na' ? ' checked' : '' ?> data-testid="ce-rec-na"> <span><?= RECOVERY_NA_LABEL ?></span></label>
+                </div>
+                <div class="ce-rec-auto" hidden data-testid="ce-rec-auto"><i class="fa-solid fa-circle-info"></i> The selected survey type has no recovery — saved as <?= RECOVERY_NA_LABEL ?>.</div>
+                <div class="ce-rec-grid" data-ce-rec-fields>
+                    <div><label>VLSFO (MT)</label><input type="text" inputmode="decimal" name="vlsfo" value="<?= $cePost('vlsfo') ?>" placeholder="0.000" data-ce-qty data-testid="ce-vlsfo"></div>
+                    <div><label>HSFO (MT)</label><input type="text" inputmode="decimal" name="hsfo" value="<?= $cePost('hsfo') ?>" placeholder="0.000" data-ce-qty data-testid="ce-hsfo"></div>
+                    <div><label>LSMGO (MT)</label><input type="text" inputmode="decimal" name="lsmgo" value="<?= $cePost('lsmgo') ?>" placeholder="0.000" data-ce-qty data-testid="ce-lsmgo"></div>
+                    <div><label>Total (MT)</label><input type="text" value="" readonly tabindex="-1" class="ce-total" data-ce-total data-testid="ce-total"></div>
+                </div>
+            </div>
+            <div class="form-group-custom avm-span-2">
+                <label><i class="fa-solid fa-file-pdf vdd-field-icon"></i> Final Report PDF <span class="text-muted" style="font-weight:500;text-transform:none;letter-spacing:0;">(optional)</span></label>
+                <input type="file" name="final_report_pdf" accept=".pdf,application/pdf" data-testid="ce-final-pdf">
+            </div>
+            <div class="form-group-custom avm-span-2">
+                <label><i class="fa-solid fa-cloud-arrow-up vdd-field-icon"></i> Other Files <span class="text-muted" style="font-weight:500;text-transform:none;letter-spacing:0;">(optional)</span></label>
+                <input type="file" name="completed_files[]" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.csv,.jpg,.jpeg,.png,.zip" data-testid="ce-files">
+                <div class="text-muted" style="font-size:11px;margin-top:4px;">Calculation sheet, photos, Word report… several at once.</div>
+            </div>
+            <?php if ($ce_dupes): ?>
+            <div class="form-group-custom avm-span-2">
+                <label class="ce-confirm"><input type="checkbox" name="confirm_duplicate" value="1" data-testid="ce-confirm-duplicate"> Save anyway — this is a different survey</label>
+            </div>
+            <?php endif; ?>
+            <?php else: ?>
             <div class="form-group-custom avm-span-2">
                 <label><i class="fa-solid fa-cloud-arrow-up vdd-field-icon"></i> Assignment Attachment(s) <span class="text-muted" style="font-weight:500;text-transform:none;letter-spacing:0;">(optional)</span></label>
                 <input type="file" name="assignment_attachment[]" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip" multiple>
                 <div class="text-muted" style="font-size:11px;margin-top:4px;"><?= $edit_mode ? 'Any files selected here are added to the ones already uploaded above — nothing gets removed.' : 'You can select multiple files at once. Surveyor will see all of them on the vessel detail page.' ?></div>
             </div>
+            <?php endif; ?>
 
                 </div>
             </div>
@@ -1693,7 +1793,7 @@ include 'includes/top_app_bar.php';
             <div class="avm-submit-bar">
                 <div class="avm-submit-hint"><i class="fa-solid fa-circle-info"></i> Fields marked <b>*</b> are required</div>
                 <button type="submit" class="blue-action-btn avm-submit" data-testid="assign-vessel-submit">
-                    <i class="fa-solid <?= $edit_mode ? 'fa-floppy-disk' : 'fa-paper-plane' ?>"></i> <?= $edit_mode ? 'Save Changes' : 'Assign &amp; Save Vessel' ?>
+                    <i class="fa-solid <?= $completed_mode ? 'fa-circle-check' : ($edit_mode ? 'fa-floppy-disk' : 'fa-paper-plane') ?>"></i> <?= $completed_mode ? 'Save to Completed Vessels' : ($edit_mode ? 'Save Changes' : 'Assign &amp; Save Vessel') ?>
                 </button>
             </div>
         </div>
@@ -1745,6 +1845,7 @@ $.ajaxSetup({ headers: { 'X-CSRF-Token': CSRF_TOKEN } });
 <script>
     $(document).ready(function() {
         var EDIT_MODE = <?= $edit_mode ? 'true' : 'false' ?>; // editing an existing assignment, not creating a new one
+        var COMPLETED_MODE = <?= $completed_mode ? 'true' : 'false' ?>; // Completed Vessel Entry (no Pending Vessels duplicate check)
 
         // ---- Inline "+ Add New" (Client / Port / Survey Type) ----
         // Admin only (see PHP gating around these boxes). Saves through the
@@ -2215,7 +2316,16 @@ $.ajaxSetup({ headers: { 'X-CSRF-Token': CSRF_TOKEN } });
             // Editing an existing Pending Vessel entry always "matches" itself by
             // name, so the duplicate warning would otherwise fire on every save —
             // skip it entirely in edit mode.
-            if (EDIT_MODE || duplicateCheckedFor === vesselVal) {
+            if (COMPLETED_MODE) {
+                var cm = [];
+                var d1 = $('[name=assign_date]').val(), d2 = $('[name=completed_date]').val(), d3 = $('[name=report_date]').val();
+                if (!d1 || !d2 || !d3) cm.push('Please enter all three dates.');
+                else { if (d2 < d1) cm.push('Survey Completed Date cannot be before the Survey Assigned Date.'); if (d3 < d2) cm.push('Report Completed Date cannot be before the Survey Completed Date.'); }
+                if ($('[name=recovery_mode]:checked').val() !== 'na' && !$('[data-ce-qty]').filter(function () { return $.trim(this.value) !== ''; }).length) cm.push('Enter the recovery (VLSFO / HSFO / LSMGO), or choose NOT APPLICABLE.');
+                $('[data-ce-qty]').each(function () { var x = $.trim(this.value).replace(/,/g, ''); if (x !== '' && (isNaN(x) || +x < 0)) cm.push($(this).closest('div').find('label').text() + ' must be a number.'); });
+                if (cm.length) { alert(cm.join('\n')); return false; }
+            }
+            if (EDIT_MODE || COMPLETED_MODE || duplicateCheckedFor === vesselVal) {
                 doRealSubmit();
                 return false;
             }
@@ -2259,7 +2369,55 @@ $.ajaxSetup({ headers: { 'X-CSRF-Token': CSRF_TOKEN } });
     });
 </script>
 
-<?php if (!$is_requester && !$edit_mode): ?>
+<?php if ($completed_mode): ?>
+<style>
+    .ce-dates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .ce-dates label, .ce-rec-grid label { display: block; }
+    .ce-rec-mode { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .ce-pill { display: inline-flex !important; align-items: center; gap: 8px; border: 1px solid #CBD5E1; border-radius: 10px; padding: 9px 14px; cursor: pointer; background: #fff; font-weight: 700 !important; font-size: 13px !important; text-transform: none !important; letter-spacing: 0 !important; color: #334155 !important; margin: 0 !important; }
+    .ce-pill:has(input:checked) { border-color: #16a34a; background: #f0fdf4; color: #15803d !important; }
+    .ce-pill input { width: auto !important; min-height: 0 !important; margin: 0; accent-color: #16a34a; }
+    .ce-rec-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .ce-rec-grid[hidden], .ce-rec-auto[hidden] { display: none !important; }
+    .ce-rec-grid .ce-total { background: #f1f5f9 !important; font-weight: 800; color: #15803d !important; }
+    .ce-rec-auto { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; border-radius: 10px; padding: 10px 12px; font-size: 12.5px; font-weight: 600; margin-bottom: 4px; }
+    .ce-confirm { display: flex !important; align-items: center; gap: 8px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 10px 12px; color: #92400e !important; text-transform: none !important; letter-spacing: 0 !important; font-size: 13px !important; }
+    .ce-confirm input { width: auto !important; min-height: 0 !important; }
+    @media (max-width: 767.98px) { .ce-dates { grid-template-columns: 1fr; } .ce-rec-grid { grid-template-columns: 1fr 1fr; } }
+</style>
+<script>
+// Completed Vessel Entry: recovery NOT APPLICABLE / enter, live total
+(function () {
+    var NA_TYPES = <?= json_encode(completedEntryNaTypeIds($survey_types)) ?>;
+    var form = document.getElementById('assignVesselForm'); if (!form) return;
+    var fields = form.querySelector('[data-ce-rec-fields]'), auto = form.querySelector('[data-testid=ce-rec-auto]'), modes = form.querySelector('.ce-rec-mode');
+    function typesAllNa() {
+        var ids = (document.getElementById('surveyTypeIdsInput').value || '').split(',').filter(Boolean).map(Number);
+        return ids.length > 0 && ids.every(function (i) { return NA_TYPES.indexOf(i) >= 0; });
+    }
+    function total() {
+        var t = 0, any = false;
+        form.querySelectorAll('[data-ce-qty]').forEach(function (i) { var v = parseFloat(String(i.value).replace(/,/g, '')); if (!isNaN(v)) { t += v; any = true; } });
+        form.querySelector('[data-ce-total]').value = any ? t.toFixed(3) : '';
+    }
+    function sync() {
+        var forced = typesAllNa();
+        if (forced) form.querySelector('[name=recovery_mode][value=na]').checked = true;
+        modes.hidden = forced; auto.hidden = !forced;
+        var na = form.querySelector('[name=recovery_mode]:checked').value === 'na';
+        fields.hidden = na;
+        form.querySelectorAll('[data-ce-qty]').forEach(function (i) { i.disabled = na; });
+        total();
+    }
+    form.addEventListener('input', function (e) { if (e.target.matches('[data-ce-qty]')) total(); });
+    form.addEventListener('change', function (e) { if (e.target.name === 'recovery_mode') sync(); });
+    var h = document.getElementById('surveyTypeIdsInput');
+    if (h) { var last = h.value; setInterval(function () { if (h.value !== last) { last = h.value; sync(); } }, 300); }
+    sync();
+})();
+</script>
+<?php endif; ?>
+<?php if (!$is_requester && !$edit_mode && !$completed_mode): ?>
 <script>
 // 🌟 Paste Email (AI Email -> Vessel Assignment). Separate ready block from
 // the one above — purely additive, never touches the existing manual-form

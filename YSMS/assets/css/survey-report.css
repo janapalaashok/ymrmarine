@@ -618,6 +618,10 @@ body[data-sr-step=tanks] .sr-wiz-top { display: none; }
 .sr-tcg { margin: 0 0 16px; }
 .sr-tcg-h { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: linear-gradient(180deg, #eef4fd, #e2ecfa); border: 1px solid #d5e3f6; margin-bottom: 10px; }
 .sr-tcg-h > i { color: #0b3c7a; font-size: 18px; }
+.sr-tcg-h { cursor: pointer; user-select: none; }
+.sr-tcg-h > .sr-tcg-c { font-size: 13px; width: 14px; color: #475569; transition: transform .15s; }
+.sr-tcg.shut .sr-tcg-c { transform: rotate(-90deg); }
+.sr-tcg.shut .sr-tcg-b { display: none; }
 .sr-tcg-h > b { font-size: 16px; font-weight: 800; color: #0b1e46; }
 .sr-tcg-h span { margin-left: auto; font-size: 13px; font-weight: 700; color: #0b1e46; white-space: nowrap; }
 .sr-tcg-h span b { display: inline-block; margin-left: 4px; padding: 5px 10px; border-radius: 9px; background: #d6e6fb; font-size: 15px; font-weight: 800; }
@@ -748,4 +752,71 @@ body[data-sr-step=tanks] .sr-wiz-top { display: none; }
     /* a field alone on its row takes the whole row, so its name is not cut */
     .sr-tl-g > .sr-f:last-child:nth-child(odd) { grid-column: 1 / -1; }
   }
+}
+
+/* Survey timeline: A, B, C side by side on a computer (one below the other on a phone / tablet) */
+@media (min-width: 992px) {
+  .sr-tl-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+  .sr-tl-row .sr-tl-i { flex-direction: column; gap: 8px; padding-bottom: 0; }
+  .sr-tl-row .sr-tl-i::before { display: none; }
+  .sr-tl-row .sr-tl-b { display: flex; flex-direction: column; }
+  .sr-tl-row .sr-tl-g { grid-template-columns: 1fr 1fr; }
+}
+
+/* timeline boxes without the A / B / C circles: no connector line, the box takes the full width */
+.sr-tl-i.sr-tl-plain::before { display: none; }
+.sr-tl-i.sr-tl-plain { padding-bottom: 12px; }
+.sr-tl-plain .sr-tl-h small { color: #94a3b8; font-size: 11.5px; font-weight: 500; }
+@media (min-width: 992px) { .sr-tl-row .sr-tl-i.sr-tl-plain { padding-bottom: 0; } }
+
+/* Tank Details on a computer (>=992px): one compact 9-column table per grade, six typed columns and
+   VCF / GSV / Metric Tons worked out in grey cells. Phones keep the tank cards (not affected). */
+@media (min-width: 992px) {
+  .sr-xsec { border: 1px solid #d5dde8; border-radius: 8px; margin: 0 0 16px; }
+  .sr-xsec h4 { background: #f3f6fa; border-bottom: 1px solid #d5dde8; padding: 8px 12px; font-size: 15px; color: #0f2b5b; gap: 8px; align-items: baseline; }
+  .sr-xsec h4 small { font-size: 12.5px; font-weight: 500; color: #64748b; }
+  .sr-xg { min-width: 900px; font-size: 13.5px; }
+  .sr-xg col.cw-name { width: 15%; } .sr-xg col.cw-vcf { width: 8%; } .sr-xg col.cw-gsv { width: 10%; } .sr-xg col.cw-mt { width: 11%; } .sr-xg col.cw-del { width: 36px; }
+  .sr-xg th { background: #fff; color: #334155; font-size: 12.5px; font-weight: 700; padding: 6px 6px; border-bottom: 1px solid #cbd5e1; border-right: 1px solid #e2e8f0; }
+  .sr-xg th small { font-size: 11px; color: #64748b; }
+  .sr-xg th.xo, .sr-xg th.mt { background: #eef1f5; }
+  .sr-xg th.xd { background: #fff; border-right: 0; }
+  .sr-xg td { height: 30px; padding: 0; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; }
+  .sr-xg td.xd { border-right: 0; }
+  .sr-step .sr-xg .sr-f input, .sr-step .sr-xg td.x-name .sr-f input, .sr-step .sr-xg tr.sr-spare .sr-f input { height: 29px; border: 0; border-radius: 0; background: transparent; text-align: right; padding: 0 8px; font-size: 13.5px; }
+  .sr-step .sr-xg td.x-name .sr-f input { text-align: left; font-weight: 700; }
+  .sr-step .sr-xg .sr-f input:focus { box-shadow: inset 0 0 0 2px #0b63e5; background: #fff; border: 0; }
+  .sr-step .sr-xg .sr-cellf.bad input { background: #fef2f2; box-shadow: inset 0 0 0 1px #f87171; }
+  .sr-xg td.xo { background: #f1f3f6; text-align: right; padding: 0 8px; color: #1f2937; cursor: default; user-select: text; }
+  .sr-xg td.xo > b, .sr-xg td.mt > b { display: block; height: auto; line-height: 29px; padding: 0; background: none; border-radius: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sr-xg td.mt > b { font-weight: 800; }
+  .sr-xg tr.sr-spare td.mt > b { background: none; }
+  .sr-xadd { padding: 6px 10px; }
+  .sr-xtot { background: #f3f6fa; border-top: 1px solid #d5dde8; }
+  .sr-xtot span { font-size: 13.5px; padding: 8px 12px; }
+  .sr-xtot b { min-width: 11%; background: #e5e9ef; font-size: 15px; padding: 8px 12px; }
+  .sr-xg th .req { color: #dc2626; font-style: normal; }
+  /* S / U: the reading is a sounding (light blue) or an ullage (green) */
+  .sr-xg td.has-pre { position: relative; }
+  .sr-xg td.x-sounding.has-pre .sr-cellf { margin-left: 46px; }
+  .sr-xg td.x-sounding.su-off .sr-su { display: none; }
+  .sr-xg td.x-sounding.su-off .sr-cellf { margin-left: 0; }
+  .sr-su { position: absolute; left: 5px; top: 50%; transform: translateY(-50%); display: inline-flex; gap: 2px; z-index: 1; }
+  .sr-su button { width: 19px; height: 19px; padding: 0; border-radius: 50%; border: 1px solid #cbd5e1; background: #fff; color: #94a3b8; font-size: 10.5px; font-weight: 800; line-height: 17px; cursor: pointer; }
+  .sr-su button.s.on { background: #bae6fd; border-color: #38bdf8; color: #075985; }
+  .sr-su button.u.on { background: #bbf7d0; border-color: #22c55e; color: #166534; }
+  .sr-su button:not(.on):hover { border-color: #64748b; color: #334155; }
+  .sr-su button:disabled { cursor: default; }
+  /* moving a tank: grip to drag, up / down on the row's hover */
+  .sr-step .sr-xg td.x-name.has-pre .sr-f input { padding-left: 22px; padding-right: 26px; }
+  .sr-grip { position: absolute; left: 0; top: 0; bottom: 0; width: 20px; display: flex; align-items: center; justify-content: center; color: #cbd5e1; cursor: grab; z-index: 1; font-size: 12px; }
+  .sr-xg tr:hover .sr-grip { color: #64748b; }
+  .sr-mv { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); display: none; flex-direction: column; z-index: 1; }
+  .sr-xg tr:hover .sr-mv, .sr-xg td.x-name:focus-within .sr-mv { display: flex; }
+  .sr-mv button { border: 0; background: none; padding: 0; width: 20px; height: 13px; line-height: 13px; font-size: 10px; color: #64748b; cursor: pointer; }
+  .sr-mv button:hover:not(:disabled) { color: #0b63e5; }
+  .sr-mv button:disabled { color: #e2e8f0; cursor: default; }
+  .sr-xg tr.sr-dragging td { opacity: .45; }
+  .sr-xg tr.sr-drop-b td { box-shadow: inset 0 2px 0 #0b63e5; }
+  .sr-xg tr.sr-drop-a td { box-shadow: inset 0 -2px 0 #0b63e5; }
 }

@@ -32,9 +32,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $admin = $stmt->fetch();
         if ($admin && password_verify($pass, $admin['password'])) {
             rate_limit_clear($rateKey);
+            session_regenerate_id(true);
             $_SESSION['admin_id'] = $admin['id'];
             $_SESSION['admin_name'] = $admin['full_name'];
-            redirect('index.php');
+            // Still the default / an easy password: it has to be changed before anything else.
+            $_SESSION['admin_must_change_pw'] = admin_password_is_weak($pass);
+            redirect($_SESSION['admin_must_change_pw'] ? 'change_password.php' : 'index.php');
         }
         rate_limit_record_failure($rateKey);
         $error = 'Invalid username or password';

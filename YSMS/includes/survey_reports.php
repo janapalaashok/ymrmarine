@@ -10,6 +10,8 @@
  */
 require_once __DIR__ . '/report_templates.php';
 require_once __DIR__ . '/gemini_json.php';
+require_once __DIR__ . '/survey_certificates.php';
+require_once __DIR__ . '/vessel_lookup.php'; // Vessel lookup by IMO (also used by the Report Generator)
 
 function srRole(): string { return (string)($_SESSION['role'] ?? ''); }
 function srCanUse(): bool { return in_array(srRole(), ['Admin', 'Super Admin', 'Surveyor'], true); }
@@ -86,7 +88,9 @@ function srEditorConfig(array $tpl): array {
         'grades' => array_map(fn($g, $d) => ['key' => $g] + $d, array_keys(srGradeList($eff)), srGradeList($eff)),
         'extra_fields' => array_map(fn($k, $d) => ['key' => $k, 'label' => $d[0], 'type' => $d[1]], array_keys(srExtraFieldDefs()), srExtraFieldDefs()),
         'vessel_keys' => array_values(array_filter(SR_VESSEL_KEYS, fn($k) => isset($eff['fields'][$k]))),
-        'survey_required' => SR_SURVEY_REQUIRED];
+        'survey_required' => SR_SURVEY_REQUIRED,
+        // certificate wording of each survey type (the page draws the certificate offline from it)
+        'cert' => ['types' => srCertTypes(), 'choices' => srCertChoices(), 'by_kind' => SR_CERT_BY_KIND, 'asper' => SR_CERT_ASPER]];
 }
 
 /** File name in the company's style: "MV. PROTECTOR - OFFHIRE - FIELD REPORT". */
@@ -122,13 +126,16 @@ function srGenerate(PDO $db, array $report, bool $pdf, int $uid): array {
     $pdfError = '';
     if ($pdf) {
         $prel = 'uploads/survey_reports/' . $report['id'] . '/' . $stamp . '.pdf';
-        // the PDF: every grade on TABLES 54B (one A4 page) + the certificate, from its own build
-        [$pbook, , $pprint] = srBuildBook($tpl, $report['data'], true);
-        $ptmp = sys_get_temp_dir() . '/ysms_srpdf_' . bin2hex(random_bytes(5)) . '.xlsx';
-        rtSave($pbook, $ptmp, rtAbs($tpl['file_path']));
-        $pbook->disconnectWorksheets();
-        $p = rtPdf($ptmp, $pprint, dirname(__DIR__) . '/' . $prel);
-        @unlink($ptmp);
+        require_once __DIR__ . '/survey_report_pdf.php';
+        if (srOwnPdfAvailable()) $p = srOwnPdf($tpl, $report, dirname(__DIR__) . '/' . $prel); // YMR's own format on the letterhead
+        else { // no dompdf: the template printed by LibreOffice, as before
+            [$pbook, , $pprint] = srBuildBook($tpl, $report['data'], true);
+            $ptmp = sys_get_temp_dir() . '/ysms_srpdf_' . bin2hex(random_bytes(5)) . '.xlsx';
+            rtSave($pbook, $ptmp, rtAbs($tpl['file_path']));
+            $pbook->disconnectWorksheets();
+            $p = rtPdf($ptmp, $pprint, dirname(__DIR__) . '/' . $prel);
+            @unlink($ptmp);
+        }
         if ($p['ok']) { $ins->execute([$report['id'], $tpl['id'], 'pdf', $base . '.pdf', $prel, filesize(dirname(__DIR__) . '/' . $prel), $uid ?: null, $now]); $files['pdf'] = (int)$db->lastInsertId(); }
         else $pdfError = $p['error'];
     }
@@ -153,123 +160,6 @@ function srFiles(PDO $db, int $reportId): array {
     return $q->fetchAll(PDO::FETCH_ASSOC);
 }
 
-/** Vessel particulars the "Vessel lookup" button may fill (field key => what the prompt asks for). */
-const SR_LOOKUP_FIELDS = [
-    'vessel_name' => 'current ship name',
-    'flag' => 'flag state (country)',
-    'port_of_registry' => 'port of registry',
-    'grt' => 'gross tonnage (whole number)',
-    'nrt' => 'net tonnage (whole number)',
-    'owners' => 'registered owner company',
-    'operator' => 'ship manager / operator company',
-    'builder' => 'shipbuilder (yard name)',
-    'keel_month' => 'keel laid month (month name, e.g. MAY)',
-    'keel_year' => 'keel laid year (4 digits; if only the build year is known, null)',
-    'callsign' => 'call sign',
-    'loa' => 'length overall in metres',
-    'breadth' => 'breadth moulded in metres',
-    'depth' => 'depth moulded in metres',
-    'summer_draft' => 'summer draft in metres',
-    'summer_dwt' => 'summer deadweight in tonnes (whole number)',
-    'class' => 'classification society abbreviation (e.g. LR, DNV, ABS, BV, NK, KR, CCS, RINA, IRS)',
-    'holds' => 'number of cargo holds (whole number)',
-];
-
-/**
- * Look up a vessel's particulars by IMO number with Gemini + Google Search. Only values the web
- * sources state for this IMO are returned (each checked against the field's type); nothing is
- * saved here — the page puts them into the form for the surveyor to check.
- * → ['ok', 'fields' => [key => value], 'sources' => [[title, uri]]] | ['ok' => false, 'error']
- */
-function srVesselLookup(string $imoRaw, array $types): array {
-    [$imo, $err] = sfValidate('imo', $imoRaw);
-    if ($imo === '' || $err) return ['ok' => false, 'error' => $err ?: 'Enter the IMO number first.'];
-    if (geminiApiKey() === '') return ['ok' => false, 'error' => 'Vessel lookup is not set up on this server (Gemini API key missing). Fill the fields by hand.'];
-    $want = [];
-    foreach (SR_LOOKUP_FIELDS as $k => $d) if (isset($types[$k])) $want[$k] = $d;
-    $prompt = "VESSEL LOOKUP BY IMO NUMBER.\nSearch the web for the merchant ship with IMO number $imo (e.g. on Equasis-like registries, MarineTraffic, VesselFinder, BalticShipping, classification society registers, shipbuilder pages).\n"
-        . "Return ONE JSON object only, no other text, with these keys:\n"
-        . "  \"found\": true/false, \"imo\": the IMO number of the ship the values belong to,\n";
-    foreach ($want as $k => $d) $prompt .= "  \"$k\": $d,\n";
-    $prompt .= "Rules: use only values a source states for THIS IMO number. If a value is not found or sources disagree, use null. Never guess or estimate. Numbers without units or thousands separators. Text in UPPER CASE.";
-    $res = geminiJson([['text' => $prompt]], 90, 'vessel lookup', ['search' => true, 'fast' => true]);
-    if (!$res['ok']) return ['ok' => false, 'error' => $res['message'] ?? 'Vessel lookup failed. Please try again.'];
-    $d = $res['data'];
-    if (empty($d['found']) || preg_replace('/\D/', '', (string)($d['imo'] ?? '')) !== $imo) {
-        return ['ok' => false, 'error' => 'No vessel particulars were found for IMO ' . $imo . '. Fill the fields by hand.'];
-    }
-    $out = [];
-    foreach ($want as $k => $_) {
-        $v = $d[$k] ?? null;
-        if ($v === null || is_array($v) || is_bool($v)) continue;
-        $v = (string)$v;
-        if ($types[$k] === 'int' || strpos($types[$k], 'num:') === 0) {
-            $v = str_replace(',', '', $v);
-            if (strpos($types[$k], 'num:') === 0 && is_numeric($v)) $v = rtrim(rtrim(number_format((float)$v, (int)substr($types[$k], 4), '.', ''), '0'), '.');
-            if ($types[$k] === 'int' && is_numeric($v)) $v = (string)(int)round((float)$v);
-        } else {
-            $v = mb_strtoupper($v);
-        }
-        [$clean, $e] = sfValidate($types[$k], $v);
-        if ($clean !== '' && !$e) $out[$k] = $clean;
-    }
-    if (!$out) return ['ok' => false, 'error' => 'No vessel particulars were found for IMO ' . $imo . '. Fill the fields by hand.'];
-    return ['ok' => true, 'imo' => $imo, 'fields' => $out, 'sources' => array_slice($res['sources'] ?? [], 0, 8)];
-}
-
-/**
- * Vessel lookup, fast first: (1) particulars found for this IMO before (kept 60 days), (2) the latest report
- * of this IMO typed in by a surveyor, (3) the AI web search (slow, 20-60 s) — its answer is kept for next time.
- * The PHP session is released before the AI is asked, so autosave and other requests do not wait for it.
- */
-const SR_LOOKUP_KEEP_DAYS = 60;
-function srLookupEnsure(PDO $db): void {
-    static $done = false; if ($done) return; $done = true;
-    $db->exec("CREATE TABLE IF NOT EXISTS `survey_vessel_lookup` (
-        `imo` varchar(7) NOT NULL PRIMARY KEY, `fields` longtext NOT NULL, `sources` longtext NULL, `fetched_at` datetime NOT NULL
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-}
-function srLookupFast(PDO $db, string $imoRaw, array $types, int $exceptReport = 0): array {
-    [$imo, $err] = sfValidate('imo', $imoRaw);
-    if ($imo === '' || $err) return ['ok' => false, 'error' => $err ?: 'Enter the IMO number first.'];
-    $keep = function (array $f) use ($types): array {
-        $out = [];
-        foreach ($f as $k => $v) {
-            if (!isset($types[$k]) || !isset(SR_LOOKUP_FIELDS[$k]) || !is_scalar($v) || (string)$v === '') continue;
-            [$clean, $e] = sfValidate($types[$k], (string)$v);
-            if ($clean !== '' && !$e) $out[$k] = $clean;
-        }
-        return $out;
-    };
-    try {
-        srLookupEnsure($db);
-        $q = $db->prepare('SELECT fields, sources, fetched_at FROM survey_vessel_lookup WHERE imo = ? AND fetched_at > ?');
-        $q->execute([$imo, date('Y-m-d H:i:s', time() - SR_LOOKUP_KEEP_DAYS * 86400)]);
-        if ($row = $q->fetch(PDO::FETCH_ASSOC)) {
-            $f = $keep((array)json_decode((string)$row['fields'], true));
-            if ($f) return ['ok' => true, 'imo' => $imo, 'fields' => $f, 'sources' => (array)json_decode((string)$row['sources'], true), 'from' => 'saved', 'at' => $row['fetched_at']];
-        }
-        // the latest report of this IMO (what a surveyor typed and checked)
-        $q = $db->prepare("SELECT id, data, updated_at FROM survey_reports WHERE id <> ? AND JSON_UNQUOTE(JSON_EXTRACT(data, '$.fields.imo')) = ? ORDER BY updated_at DESC LIMIT 1");
-        $q->execute([$exceptReport, $imo]);
-        if ($row = $q->fetch(PDO::FETCH_ASSOC)) {
-            $d = json_decode((string)$row['data'], true);
-            $f = $keep((array)($d['fields'] ?? []));
-            if (count($f) >= 3) return ['ok' => true, 'imo' => $imo, 'fields' => $f, 'sources' => [], 'from' => 'report', 'at' => $row['updated_at']];
-        }
-    } catch (Throwable $e) { error_log('vessel lookup (fast): ' . $e->getMessage()); }
-    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
-    $res = srVesselLookup($imo, $types);
-    if ($res['ok']) {
-        try {
-            $db->prepare('REPLACE INTO survey_vessel_lookup (imo, fields, sources, fetched_at) VALUES (?, ?, ?, ?)')
-               ->execute([$imo, json_encode($res['fields']), json_encode($res['sources'] ?? []), date('Y-m-d H:i:s')]);
-        } catch (Throwable $e) { error_log('vessel lookup (keep): ' . $e->getMessage()); }
-        $res['from'] = 'web';
-    }
-    return $res;
-}
-
 // ================================================================ wizard: grades, checks, workbook
 
 /** Fuel grades the surveyor can choose (order of the wizard steps). */
@@ -287,21 +177,23 @@ const SR_GRADES = [
 const SR_EXTRA_SLOT = ['ulsfo' => 'vlsfo', 'hsmgo' => 'lsmgo'];
 const SR_EXTRA_SHEET = 'TABLES 54B (ULSFO-HSMGO)';
 const SR_SUMMARY_SHEET = 'ROB SUMMARY';
-/** The 18 vessel particulars of step 1 (with the IMO): what Vessel lookup fills. */
-const SR_VESSEL_KEYS = ['vessel_name', 'flag', 'port_of_registry', 'grt', 'nrt', 'owners', 'holds', 'builder', 'keel_month', 'keel_year',
+/** The vessel particulars of step 1 (with the IMO): what Vessel lookup fills. Owners are entered in step 2 with the
+    charterers (the lookup still fills them when it finds them). */
+const SR_VESSEL_KEYS = ['vessel_name', 'flag', 'port_of_registry', 'grt', 'nrt', 'holds', 'builder', 'keel_month', 'keel_year',
     'operator', 'callsign', 'loa', 'breadth', 'depth', 'summer_draft', 'summer_dwt', 'class'];
 /** Survey particulars that must be filled (ROB of each chosen grade is added). */
-const SR_SURVEY_REQUIRED = ['fwe_date', 'fwe_time', 'started_date', 'started_time', 'completed_date', 'completed_time', 'surveyor_name',
+const SR_SURVEY_REQUIRED = ['owners', 'charterers', 'fwe_date', 'fwe_time', 'started_date', 'started_time', 'completed_date', 'completed_time', 'surveyor_name',
     'chief_engineer', 'master', 'port_name', 'place', 'draft_fwd', 'draft_aft'];
 /** Values the template has no cell for (kept in data.extra; printed on the ROB SUMMARY sheet). */
 function srExtraFieldDefs(): array {
     return [
         'port_name' => ['Port Name', 'text'],
+        'survey_type' => ['Survey Type', 'text'], // certificate wording: one of srCertChoices() (includes/survey_certificates.php)
         'brob_fwe_ulsfo' => ['FWE ROB — ULSFO (MT)', 'num:3'], 'brob_fwe_hsmgo' => ['FWE ROB — HSMGO (MT)', 'num:3'],
         'brob_started_ulsfo' => ['Survey started ROB — ULSFO (MT)', 'num:3'], 'brob_started_hsmgo' => ['Survey started ROB — HSMGO (MT)', 'num:3'],
     ];
 }
-const SR_ROW_META = ['mode', 'ullage', 'done', 'id', 'copy']; // copy = 1: a copied tank not saved yet
+const SR_ROW_META = ['mode', 'ullage', 'su', 'done', 'id', 'copy']; // su = s / u: printed next to the reading // copy = 1: a copied tank not saved yet
 
 /** Grades offered for a template: its own sections plus the ones a copied section can take. */
 function srGradeList(array $eff): array {
@@ -331,6 +223,7 @@ function srCleanExtra(array $eff, array $in, array &$store, array &$errors): voi
         $raw = (string)($in['extra'][$k] ?? '');
         [$v, $err] = sfValidate($type, $raw);
         if ($err === '' && $v !== '' && strpos($k, 'brob_') === 0) $err = sfRangeError('brob', $v);
+        if ($k === 'survey_type' && !isset(srCertChoices()[$v])) { $v = ''; $err = ''; } // only a known type is kept
         if ($err !== '') { $errors['f:' . $k] = $err; $v = mb_substr(trim($raw), 0, 200); }
         $store['extra'][$k] = $v;
     }
@@ -339,6 +232,7 @@ function srCleanExtra(array $eff, array $in, array &$store, array &$errors): voi
             $o = [];
             foreach (array_merge(array_keys(RT_TANK_COLS), SR_ROW_META) as $c) $o[$c] = is_scalar($row[$c] ?? '') ? mb_substr(trim((string)($row[$c] ?? '')), 0, 60) : '';
             $o['mode'] = $o['mode'] === 'ullage' ? 'ullage' : 'sounding';
+            $o['su'] = $o['mode'] === 'ullage' ? 'u' : ($o['su'] === 's' ? 's' : '');
             $o['done'] = $o['done'] ? '1' : '';
             $o['copy'] = $o['copy'] && !$o['done'] ? '1' : '';
             $o['id'] = preg_replace('/[^A-Za-z0-9_-]/', '', $o['id']);
@@ -421,7 +315,11 @@ function srTankRows(array $data, string $g): array {
         $r = [];
         foreach (array_keys(RT_TANK_COLS) as $c) $r[$c] = trim((string)($row[$c] ?? ''));
         $r['sounding'] = srSounding($row);
-        if (implode('', $r) !== '') $out[] = $r;
+        if (implode('', $r) === '') continue;
+        $r['su'] = ($row['mode'] ?? '') === 'ullage' ? 'u' : (($row['su'] ?? '') === 's' ? 's' : '');
+        if ($r['su'] === 's' && !is_numeric(str_replace(',', '', $r['sounding']))) $r['su'] = ''; // GAUGE / empty: no S
+        $r['ullage'] = trim((string)($row['ullage'] ?? ''));
+        $out[] = $r;
     }
     return $out;
 }
@@ -1276,9 +1174,20 @@ function srPreviewPdf(array $tpl, array $report): array {
     $dir = sys_get_temp_dir() . '/ysms_sr_preview';
     if (!is_dir($dir)) @mkdir($dir, 0700, true);
     foreach (glob($dir . '/*') ?: [] as $f) if (filemtime($f) < time() - 3600) @unlink($f);
-    $key = $report['id'] . '-' . $report['version'] . '-' . $tpl['id'] . '-' . substr(sha1(json_encode($report['data'])), 0, 12);
+    require_once __DIR__ . '/survey_report_pdf.php';
+    $own = srOwnPdfAvailable();
+    $key = ($own ? 'y' : '') . $report['id'] . '-' . $report['version'] . '-' . $tpl['id'] . '-' . substr(sha1(json_encode($report['data'])), 0, 12);
     $pdf = $dir . '/' . $key . '.pdf';
     if (is_file($pdf)) return ['ok' => true, 'pdf' => $pdf];
+    if ($own) { // the same PDF as the download: YMR's own format on the letterhead
+        $tmp = $dir . '/' . $key . '.' . bin2hex(random_bytes(4)) . '.pdf';
+        try {
+            $p = srOwnPdf($tpl, $report, $tmp);
+            if (!$p['ok']) return ['ok' => false, 'error' => $p['error']];
+            if (!@rename($tmp, $pdf) && !is_file($pdf)) return ['ok' => false, 'error' => 'The preview could not be stored.'];
+            return ['ok' => true, 'pdf' => $pdf];
+        } finally { @unlink($tmp); }
+    }
     [$book, , $print] = srBuildBook($tpl, $report['data'], true); // as the PDF prints
     // own temp names, then an atomic rename: two people previewing the same version at once never clash
     $tmp = $dir . '/' . $key . '.' . bin2hex(random_bytes(4));
@@ -1331,7 +1240,7 @@ function srPrevious(PDO $db, array $report): ?array {
         $k = vesselHistoryKey((string)$n);
         return $k !== '' && in_array($k, $keys, true);
     };
-    $vesselKeys = array_merge(['imo'], SR_VESSEL_KEYS);
+    $vesselKeys = array_merge(['imo'], SR_VESSEL_KEYS, ['owners']);
     $grades = array_keys(srGradeList($eff));
 
     // 1. an earlier report on the website

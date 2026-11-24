@@ -26,6 +26,9 @@
  *                                                   surveyor report (Admin/Super Admin), analytics (Super Admin)
  *   GET app_api.php?a=month&y=<yyyy>&m=<1-12>       month summary (ships surveyed + recovery), as the dashboard card
  *   GET app_api.php?a=sa_controls                   Super Admin: record counts + duplicate client groups (super_admin_controls.php)
+ *   GET app_api.php?a=surveyor_cards                Admin: each surveyor's ID / business card (admin_surveyor_cards.php)
+ *   GET app_api.php?a=daily_emails                  Admin: daily email settings, today's runs, recent runs (admin_daily_emails.php)
+ *   GET app_api.php?a=permission_copy               the Permission Copy form's choices and template (generate_permission_copy.php)
  */
 require_once 'config/config.php';
 require_once 'includes/notifications.php';
@@ -783,6 +786,85 @@ if ($a === 'duplicates') {
             }, $c['records'])];
     }
     appOut(['clusters' => $out]);
+}
+
+if ($a === 'surveyor_cards') {
+    // Read-only, as admin_surveyor_cards.php lists them; upload / remove post to that page itself.
+    if ($role !== 'Admin') appOut(['error' => 'not_allowed'], 403);
+    $rows = [];
+    try {
+        $q = $db->query("SELECT id, full_name, username, business_card_path, id_card_path FROM users WHERE role_id = 2 ORDER BY full_name ASC");
+        foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $u) {
+            $card = function ($p) { $p = (string)($p ?? ''); return $p !== '' && is_file(__DIR__ . '/' . $p) ? $p : ''; };
+            $rows[] = ['id' => (int)$u['id'], 'name' => (string)$u['full_name'], 'username' => (string)$u['username'],
+                'business_card' => $card($u['business_card_path']), 'id_card' => $card($u['id_card_path'])];
+        }
+    } catch (Throwable $e) { $rows = []; } // older databases without the card columns: the page adds them
+    appOut(['items' => $rows]);
+}
+
+if ($a === 'daily_emails') {
+    // Read-only view of admin_daily_emails.php; saving, test, send now and retry post to that page.
+    if ($role !== 'Admin') appOut(['error' => 'not_allowed'], 403);
+    require_once __DIR__ . '/includes/daily_emails.php';
+    dailyEmailEnsureTables($db);
+    $s = dailyEmailSettings($db);
+    $fmt = function ($v) { return $v ? date('d M Y H:i', strtotime($v)) : ''; };
+    $jobs = [];
+    foreach (DAILY_EMAIL_JOBS as $job => $label) {
+        $run = dailyEmailTodayRun($db, $job);
+        $jobs[] = [
+            'job' => $job, 'label' => $label,
+            'enabled' => ($s[$job . '_enabled'] ?? '0') === '1', 'time' => (string)($s[$job . '_time'] ?? ''),
+            'send_empty' => ($s[$job . '_send_empty'] ?? '0') === '1',
+            'from' => $job === 'surveyor_pending' ? (string)($s['surveyor_pending_from'] ?? '') : '',
+            'weekly' => isset(DAILY_EMAIL_WEEKDAY[$job]), 'due_today' => dailyEmailRunsToday($job),
+            'last_scheduler_call' => $fmt(dailyEmailGetMeta($db, 'last_scheduler_call_' . $job)),
+            'today' => $run ? [
+                'status' => (string)$run['status'], 'detail' => (string)$run['detail'], 'attempts' => (int)$run['attempts'], 'via' => (string)$run['via'],
+                'deliveries' => array_map(function ($d) {
+                    return ['name' => (string)$d['recipient_name'], 'to' => (string)$d['recipient'], 'vessels' => (int)$d['vessels'], 'status' => (string)$d['status'],
+                        'attempts' => (int)$d['attempts'], 'sent_at' => $d['sent_at'] ? date('H:i', strtotime($d['sent_at'])) : '', 'error' => (string)$d['error']];
+                }, dailyEmailDeliveries($db, (int)$run['id'])),
+            ] : null,
+        ];
+    }
+    $routes = [
+        'surveyor_pending' => "To each surveyor's own profile email only — their own list, no CC (fixed).",
+        'all_pending' => 'From ' . DAILY_EMAIL_APPT_FROM . ' to ' . DAILY_EMAIL_ALL_PENDING_TO . ' only — fixed, no CC.',
+        'appointments' => 'From ' . DAILY_EMAIL_APPT_FROM . ' to ' . DAILY_EMAIL_APPT_TO . ' only — fixed, no CC.',
+        'surveyor_reports' => 'From ' . DAILY_EMAIL_APPT_FROM . " to each surveyor's own profile email only — their own list, no CC (fixed).",
+        'all_reports' => 'From ' . DAILY_EMAIL_APPT_FROM . ' to ' . implode(' and ', DAILY_EMAIL_ALL_REPORTS_TO) . ' only — fixed, no CC.',
+    ];
+    foreach ($jobs as &$j) $j['route'] = $routes[$j['job']] ?? '';
+    unset($j);
+    $runs = array_map(function ($r) {
+        return ['when' => date('d M Y H:i', strtotime($r['started_at'])), 'label' => DAILY_EMAIL_JOBS[$r['job']] ?? (string)$r['job'],
+            'how' => ($r['kind'] === 'auto' ? 'Scheduled' . ($r['via'] ? ' (' . $r['via'] . ')' : '') : ($r['kind'] === 'test' ? 'Test' : 'Send now')) . ($r['full_name'] ? ' · ' . $r['full_name'] : ''),
+            'status' => (string)$r['status'], 'attempts' => (int)($r['attempts'] ?? 1), 'detail' => (string)$r['detail']];
+    }, dailyEmailRecentRuns($db, 25));
+    appOut([
+        'jobs' => $jobs, 'runs' => $runs, 'today' => date('d M Y'),
+        'mail_on' => !defined('EMAIL_NOTIFICATIONS_ENABLED') || EMAIL_NOTIFICATIONS_ENABLED,
+        'scheduler' => (string)(getenv('YSMS_CRON_TOKEN') ?: '') !== '', // only whether it is set, never the token
+        'surveyors_with_email' => count(dailyEmailSurveyors($db)), 'surveyors' => dailyEmailActiveSurveyorCount($db),
+        'counts' => ['appointments' => count(dailyEmailAppointmentRows($db, date('Y-m-d'))), 'all_pending' => count(dailyEmailAllPendingRows($db)),
+            'all_reports' => count(dailyEmailReportRows($db))],
+    ]);
+}
+
+if ($a === 'permission_copy') {
+    // The choices generate_permission_copy.php offers; generating and the template upload post to that page.
+    $tpl = glob(__DIR__ . '/uploads/permission_templates/*.docx') ?: [];
+    rsort($tpl);
+    appOut([
+        'template' => $tpl ? basename($tpl[0]) : '',
+        'can_upload' => $role === 'Admin',
+        'max_surveyors' => 4,
+        'survey_types' => array_map('strval', $db->query('SELECT type_name FROM survey_types ORDER BY type_name ASC')->fetchAll(PDO::FETCH_COLUMN)),
+        'surveyors' => array_map('strval', $db->query("SELECT full_name FROM users WHERE role_id = 2 AND status = 'Active' ORDER BY full_name ASC")->fetchAll(PDO::FETCH_COLUMN)),
+        'today' => date('Y-m-d'),
+    ]);
 }
 
 appOut(['error' => 'unknown'], 400);

@@ -6,6 +6,8 @@
  *
  *   GET  a=token                     the current CSRF token
  *   POST a=new        kind           a new report → its token
+ *   GET  a=starter&kind=<kind>       the form a new report of that type starts with (nothing stored) — kept on
+ *                                    the device so a report can be started there without internet
  *   GET  a=get&id=<token>            data, version, form config, its PDF files
  *   GET  a=version | verify | excel_view | preview &id=<token>
  *   POST a=save | generate  id, ...  as ajax/survey_reports.php (generate: Excel kept in the system, the PDF for the guest)
@@ -49,6 +51,16 @@ try {
         if (!srgHit($db, 'new')) srgLimited();
         $res = srgNew($db, (string)($_POST['kind'] ?? ''), (int)($_SESSION['user_id'] ?? 0)); // signed in: the report is theirs too
         srgJson($res['ok'] ? 200 : 422, $res);
+    }
+    if ($a === 'starter') {
+        $kind = (string)($_GET['kind'] ?? '');
+        $t = isset(RT_KINDS[$kind]) ? rtActive($db, $kind) : null;
+        if (!$t) srgJson(404, ['ok' => false, 'error' => 'This report type is not available.']);
+        $data = srDefaults(rtEffective($t), null);
+        if (!empty($_SESSION['user_id']) && isset($data['fields']['surveyor_name']) && $data['fields']['surveyor_name'] === '') $data['fields']['surveyor_name'] = strtoupper(trim((string)($_SESSION['full_name'] ?? '')));
+        srgJson(200, ['ok' => true, 'report' => ['id' => '', 'version' => 0, 'data' => $data, 'updated_at' => null, 'updated_by' => null, 'vessel' => 'New ' . (RT_KINDS[$kind] ?? $kind) . ' report',
+            'survey_id' => 0, 'status' => '', 'kind' => $kind, 'kind_label' => RT_KINDS[$kind] ?? $kind],
+            'is_admin' => false, 'guest' => true, 'can_edit' => true, 'locked' => false, 'config' => srEditorConfig($t), 'files' => [], 'newer_template' => null]);
     }
     if ($a === 'file') {
         $r = srgReport($db, srgToken($_GET['t'] ?? ''));

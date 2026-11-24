@@ -122,8 +122,9 @@ $can_replace_docs = canReplaceDocument($db, $role, (int)$current_user_id, (int)$
 // compose window (mail.google.com), not mailto:, since mailto: opens
 // whatever the OS/browser has set as its default mail handler (Outlook,
 // in practice, for this deployment) rather than Gmail specifically. To/Cc
-// are left out of the URL so they stay blank for the user to fill in
-// themselves — no auto-sending, no recipient automation.
+// are left out of these URLs; To is added when Send is clicked from the To field (typed, or
+// filled by "Fetch Master Email" from the vessel's Ships Particulars document —
+// includes/master_email.php). Nothing is sent automatically.
 $redelivery_type = getCombinedSurveyTypeNames($db, $survey['survey_type_ids'] ?? '', $survey['type_name'] ?? 'N/A');
 $redelivery_surveyor = getCombinedSurveyorNames($db, $survey['id'] ?? 0, $survey['surveyor_name'] ?? 'N/A');
 $redelivery_date = !empty($survey['survey_completed_date']) ? date('d M Y', strtotime($survey['survey_completed_date'])) : '';
@@ -616,6 +617,14 @@ include 'includes/header.php';
         <div class="dapp-card redelivery-block" data-testid="redelivery-block-mobile">
             <div class="dapp-sec-h"><span class="si" style="background:#e6fbf7;color:#0f766e"><i class="fa-solid fa-envelope-open-text"></i></span><b>Email to Master</b></div>
             <div style="padding:0 16px 4px;font-size:11.5px;color:#64748b">For redelivery · your Gmail address (optional) picks which account composes.</div>
+            <div style="padding:0 16px 6px">
+                <div style="display:flex;gap:8px">
+                    <input type="email" placeholder="To — Master's email" data-redelivery-to aria-label="To — Master's email" data-testid="redelivery-to-input" style="flex:1;min-width:0;box-sizing:border-box;border:1.5px solid #d6e0ee;border-radius:14px;padding:10px 12px;font-size:13px">
+                    <button type="button" data-redelivery-fetch data-testid="redelivery-fetch-button" style="border:0;border-radius:14px;background:linear-gradient(135deg,#4B2FD6,#7C3AED);color:#fff;font-weight:700;font-size:12.5px;padding:0 12px;white-space:nowrap;cursor:pointer"><i class="fa-solid fa-magnifying-glass"></i> Fetch Master Email</button>
+                </div>
+                <label style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;padding:4px 10px;border:1px dashed #a78bfa;border-radius:999px;background:#F5F3FF;color:#5B2DEE;font-size:11.5px;font-weight:700;cursor:pointer" data-testid="redelivery-upload-button"><i class="fa-solid fa-upload"></i> Upload Ships Particulars<input type="file" accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.jpg,.jpeg,.png,.webp,.zip" data-redelivery-upload hidden></label>
+                <div style="font-size:11px;color:#64748b;margin-top:3px" data-redelivery-note></div>
+            </div>
             <div class="dapp-mail">
                 <input type="email" placeholder="Your Gmail address" value="<?= sanitize($my_email) ?>" data-redelivery-from data-testid="redelivery-from-input">
                 <a href="#" data-redelivery-open data-base-url="<?= sanitize($redelivery_gmail_url) ?>" data-ios-url="<?= sanitize($redelivery_gmail_ios_url) ?>" data-android-url="<?= sanitize($redelivery_gmail_android_url) ?>" class="dapp-btn" data-testid="redelivery-email-button"><i class="fa-solid fa-paper-plane"></i> Send</a>
@@ -884,6 +893,15 @@ include 'includes/header.php';
                     <div class="vdd-card redelivery-block" data-testid="redelivery-block-desktop">
                         <div class="vdd-card-body">
                             <div class="vdd-field" style="margin-bottom:10px;">
+                                <label>To — Master's email</label>
+                                <div style="display:flex;gap:8px;align-items:stretch">
+                                    <input type="email" placeholder="master@…" data-redelivery-to data-testid="redelivery-to-input-desktop" style="flex:1;min-width:0">
+                                    <button type="button" data-redelivery-fetch data-testid="redelivery-fetch-button-desktop" style="border:0;border-radius:14px;background:linear-gradient(135deg,#4B2FD6,#7C3AED);color:#fff;font-weight:700;font-size:12.5px;padding:0 12px;white-space:nowrap;cursor:pointer;border-radius:10px"><i class="fa-solid fa-magnifying-glass"></i> Fetch Master Email</button>
+                                </div>
+                                <label style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;padding:4px 10px;border:1px dashed #a78bfa;border-radius:999px;background:#F5F3FF;color:#5B2DEE;font-size:11.5px;font-weight:700;cursor:pointer" data-testid="redelivery-upload-button-desktop"><i class="fa-solid fa-upload"></i> Upload Ships Particulars<input type="file" accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.jpg,.jpeg,.png,.webp,.zip" data-redelivery-upload hidden></label>
+                                <div style="font-size:11px;color:#64748b;margin-top:3px" data-redelivery-note></div>
+                            </div>
+                            <div class="vdd-field" style="margin-bottom:10px;">
                                 <label>Your Gmail address (optional — picks which account composes)</label>
                                 <input type="email" placeholder="you@gmail.com" value="<?= sanitize($my_email) ?>" data-redelivery-from data-testid="redelivery-from-input-desktop">
                             </div>
@@ -1040,6 +1058,63 @@ include 'includes/header.php';
 // On phones this opens the Gmail app directly (already signed in) instead
 // of a browser tab that would ask the user to log in again; desktop keeps
 // opening the Gmail web compose tab as before.
+// To: "Fetch Master Email" reads the Master's email from the vessel's uploaded Ships Particulars
+// document (ajax/master_email.php) and puts it in To; when it can't, the user types it.
+function rdNote(text, color) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-redelivery-note]'), function (n) { n.textContent = text; n.style.color = color || '#64748b'; });
+}
+var RD_API = 'ajax/master_email.php?id=<?= (int)$survey['id'] ?>', RD_CSRF = <?= json_encode(csrf_token()) ?>;
+function rdBusy(on, label) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-redelivery-fetch]'), function (b) {
+        b.dataset.label = b.dataset.label || b.innerHTML;
+        b.disabled = on; b.innerHTML = on ? '<i class="fa-solid fa-spinner fa-spin"></i> ' + label : b.dataset.label;
+    });
+}
+// the answer of a Fetch or an Upload: To filled, or "enter it manually"
+function rdApply(j) {
+    var email = (j && j.email) || '';
+    if (email) {
+        Array.prototype.forEach.call(document.querySelectorAll('[data-redelivery-to]'), function (i) { i.value = email; });
+        rdNote((j.by === 'ai' ? '⚠ ' : '✓ ') + (j.note || ''), j.by === 'ai' ? '#b45309' : '#047857');
+        return;
+    }
+    rdNote('Master email could not be fetched — please enter it manually.' + (j && (j.error || j.note) ? ' (' + (j.error || j.note) + ')' : ''), '#b91c1c');
+    var vis = Array.prototype.filter.call(document.querySelectorAll('[data-redelivery-to]'), function (i) { return i.offsetParent !== null; })[0];
+    if (vis) vis.focus();
+}
+document.addEventListener('click', function (ev) {
+    var fb = ev.target.closest && ev.target.closest('[data-redelivery-fetch]');
+    if (!fb || fb.disabled) return;
+    ev.preventDefault();
+    rdBusy(true, 'Fetching…');
+    rdNote('Looking for the Master\'s email in the uploaded documents…');
+    fetch(RD_API, { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .catch(function () { return { ok: false, email: '' }; })
+        .then(rdApply)
+        .then(function () { rdBusy(false); });
+});
+// "Upload Ships Particulars": the chosen file is read once for the Master's email (not stored);
+// in a ZIP only its Ships Particulars files are read.
+document.addEventListener('change', function (ev) {
+    var inp = ev.target;
+    if (!inp.matches || !inp.matches('[data-redelivery-upload]') || !inp.files || !inp.files[0]) return;
+    var fd = new FormData();
+    fd.append('particulars', inp.files[0]);
+    fd.append('csrf_token', RD_CSRF);
+    rdBusy(true, 'Reading…');
+    rdNote('Reading ' + inp.files[0].name + ' for the Master\'s email…');
+    fetch(RD_API, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-CSRF-Token': RD_CSRF } })
+        .then(function (r) { return r.json(); })
+        .catch(function () { return { ok: false, email: '', error: 'The file could not be sent.' }; })
+        .then(rdApply)
+        .then(function () { rdBusy(false); inp.value = ''; });
+});
+// the two To fields (phone / computer layout) stay the same
+document.addEventListener('input', function (ev) {
+    if (!ev.target.matches || !ev.target.matches('[data-redelivery-to]')) return;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-redelivery-to]'), function (i) { if (i !== ev.target) i.value = ev.target.value; });
+});
 document.addEventListener('click', function (ev) {
     var btn = ev.target.closest('[data-redelivery-open]');
     if (!btn) return;
@@ -1047,25 +1122,30 @@ document.addEventListener('click', function (ev) {
     var block = btn.closest('.redelivery-block');
     var input = block ? block.querySelector('[data-redelivery-from]') : null;
     var email = input ? input.value.trim() : '';
-    var webUrl = btn.getAttribute('data-base-url') + (email ? '&authuser=' + encodeURIComponent(email) : '');
     var ua = navigator.userAgent || '';
-
-    if (/Android/i.test(ua)) {
-        window.location.href = btn.getAttribute('data-android-url');
-        return;
-    }
-    if (/iPhone|iPad|iPod/i.test(ua)) {
-        var appOpened = false;
-        var onBlur = function () { appOpened = true; window.removeEventListener('blur', onBlur); };
-        window.addEventListener('blur', onBlur);
-        window.location.href = btn.getAttribute('data-ios-url');
-        setTimeout(function () {
-            window.removeEventListener('blur', onBlur);
-            if (!appOpened) window.location.href = webUrl;
-        }, 1500);
-        return;
-    }
-    window.open(webUrl, '_blank', 'noopener');
+    (function () {
+        var toEl = block ? block.querySelector('[data-redelivery-to]') : null;
+        var to = toEl ? toEl.value.trim() : '';
+        if (!/^[^\s@,;]+@[^\s@,;]+\.[A-Za-z]{2,24}$/.test(to)) to = ''; // only a single, valid address
+        var webUrl = btn.getAttribute('data-base-url') + (to ? '&to=' + encodeURIComponent(to) : '') + (email ? '&authuser=' + encodeURIComponent(email) : '');
+        if (/Android/i.test(ua)) {
+            var a = btn.getAttribute('data-android-url');
+            window.location.href = to ? a.replace('intent://send?', 'intent://' + encodeURIComponent(to).replace('%40', '@') + '?') : a;
+            return;
+        }
+        if (/iPhone|iPad|iPod/i.test(ua)) {
+            var appOpened = false;
+            var onBlur = function () { appOpened = true; window.removeEventListener('blur', onBlur); };
+            window.addEventListener('blur', onBlur);
+            window.location.href = btn.getAttribute('data-ios-url') + (to ? '&to=' + encodeURIComponent(to) : '');
+            setTimeout(function () {
+                window.removeEventListener('blur', onBlur);
+                if (!appOpened) window.location.href = webUrl;
+            }, 1500);
+            return;
+        }
+        window.open(webUrl, '_blank', 'noopener');
+    })();
 });
 </script>
 

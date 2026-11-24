@@ -68,8 +68,8 @@ $defaults = [
 ];
 $serviceDesc = trim($type . ' of ' . $vessel . ($inv['port_name'] ? ' at ' . $inv['port_name'] : '') . ($completed ? ' on ' . $completed : ''));
 $serviceRate = (string)($inv['invoice_amount'] ?? '');
-$invoiceNo = invoicePeekNumber($db, $inv) . ($isRecovery ? 'B' : '');
 $noFixed = trim((string)($inv['invoice_no'] ?? '')) !== '';
+$invoiceNo = $isRecovery ? invoiceRecNo($inv) : ($noFixed ? (string)$inv['invoice_no'] : ''); // typed by hand (no automatic series); recovery: its own number or + B
 $hasVesselFile = invoiceFileAbs($inv['file_path'] ?? null) !== null;
 $hasRecFile = invoiceFileAbs($inv['rec_file_path'] ?? null) !== null;
 // The form as last downloaded (Modify); the recovery form borrows the vessel invoice's header
@@ -112,26 +112,138 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if ($isRecovery) {
         // Description line (no amount), then commission on each fuel's recovery.
         $d['note'] = mb_substr(trim((string)($_POST['service_desc'] ?? '')), 0, 2000);
+        $priceMode = ($_POST['price_mode'] ?? 'cp') === 'plat' ? 'plat' : 'cp';
+
         $pct = igNum($_POST['recovery_pct'] ?? '');
-        if ($pct === null || $pct <= 0 || $pct > 100) $errors[] = 'Agreed recovery %';
+
+        if ($pct === null || $pct <= 0 || $pct > 100) {
+            $errors[] = 'Agreed recovery %';
+        }
+
         $fuelRows = [];
+
         foreach (IG_FUELS as $k => $label) {
+
             $rate = igNum($_POST[$k . '_rate'] ?? '');
             $qty = igNum($_POST[$k . '_qty'] ?? '');
-            // Unit = agreed CP price × agreed % (when the CP price is given and the unit left empty)
-            $cp = igNum($_POST['cp_' . $k] ?? '');
-            if ($rate === null && $cp !== null && $pct !== null && trim((string)($_POST[$k . '_rate'] ?? '')) === '') $rate = round($cp * $pct / 100, 2);
-            if (in_array($k, IG_FUELS_OPTIONAL, true) && trim((string)($_POST[$k . '_rate'] ?? '')) === '' && $rate === null) $rate = 0.0;
-            if (in_array($k, IG_FUELS_OPTIONAL, true) && trim((string)($_POST[$k . '_qty'] ?? '')) === '') $qty = 0.0;
-            if ($rate === null || $qty === null) { $errors[] = $label . ' unit and quantity (enter 0 if there is none)'; continue; }
-            $fuelRows[$k] = ['rate' => $rate, 'qty' => $qty];
+
+            if ($priceMode === 'cp') {
+
+                // CP mode:
+                // Unit = agreed CP price × agreed recovery %
+                $cp = igNum($_POST['cp_' . $k] ?? '');
+
+                if (
+                    $rate === null &&
+                    $cp !== null &&
+                    $pct !== null &&
+                    trim((string)($_POST[$k . '_rate'] ?? '')) === ''
+                ) {
+                    $rate = round($cp * $pct / 100, 2);
+                }
+
+            } else {
+
+                // PLAT mode:
+                // Unit = quoted PLAT price directly
+                $plat = igNum($_POST['plat_' . $k] ?? '');
+
+                if (
+                    $rate === null &&
+                    $plat !== null &&
+                    trim((string)($_POST[$k . '_rate'] ?? '')) === ''
+                ) {
+                    if (
+                        $rate === null &&
+                        $plat !== null &&
+                        $pct !== null &&
+                        trim((string)($_POST[$k . '_rate'] ?? '')) === ''
+                    ) {
+                        $rate = round($plat * $pct / 100, 2);
+                    }
+                }
+            }
+
+            if (
+                in_array($k, IG_FUELS_OPTIONAL, true) &&
+                trim((string)($_POST[$k . '_rate'] ?? '')) === '' &&
+                $rate === null
+            ) {
+                $rate = 0.0;
+            }
+
+            if (
+                in_array($k, IG_FUELS_OPTIONAL, true) &&
+                trim((string)($_POST[$k . '_qty'] ?? '')) === ''
+            ) {
+                $qty = 0.0;
+            }
+
+            if ($rate === null || $qty === null) {
+                $errors[] = $label . ' unit and quantity (enter 0 if there is none)';
+                continue;
+            }
+
+            $fuelRows[$k] = [
+                'rate' => $rate,
+                'qty'  => $qty,
+                'base_price' => $priceMode === 'plat'
+                    ? igNum($_POST['plat_' . $k] ?? '')
+                    : igNum($_POST['cp_' . $k] ?? '')
+            ];
         }
+
         if (!$errors) {
+
             $pctTxt = rtrim(rtrim(number_format($pct, 2, '.', ''), '0'), '.');
+
             foreach ($fuelRows as $k => $r) {
-                // HSFO / ULSFO are listed only when filled in (not 0); VLSFO and LSMGO always.
-                if (in_array($k, IG_FUELS_OPTIONAL, true) && ($r['rate'] * $r['qty']) <= 0) continue;
-                $items[] = ['desc' => 'COMMISSION ON RECOVERY @' . $pctTxt . '% OF CP PRICE FOR ' . IG_FUELS[$k], 'rate' => $r['rate'], 'qty' => $r['qty']]; // % is only part of the wording
+
+                if (
+                    in_array($k, IG_FUELS_OPTIONAL, true) &&
+                    ($r['rate'] * $r['qty']) <= 0
+                ) {
+                    continue;
+                }
+
+                if ($priceMode === 'cp') {
+
+                    $platTxt = rtrim(
+                        rtrim(number_format((float)$r['base_price'], 2, '.', ''), '0'),
+                        '.'
+                    );
+
+                    $desc =
+                        'COMMISSION ON RECOVERY @' .
+                        $pctTxt .
+                        '% OF CP PRICE FOR ' .
+                        IG_FUELS[$k] .
+                        ' ' .
+                        $platTxt .
+                        ' PMT';
+
+                } else {
+
+                    $platTxt = rtrim(
+                        rtrim(number_format((float)$r['base_price'], 2, '.', ''), '0'),
+                        '.'
+                    );
+
+                    $desc =
+                        'COMMISSION ON RECOVERY @' .
+                        $pctTxt .
+                        '% OF PLAT PRICE FOR ' .
+                        IG_FUELS[$k] .
+                        ' ' .
+                        $platTxt .
+                        ' PMT';
+                }
+
+                $items[] = [
+                    'desc' => $desc,
+                    'rate' => $r['rate'],
+                    'qty'  => $r['qty']
+                ];
             }
         }
     } else {
@@ -155,13 +267,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $items[] = ['desc' => $xd, 'rate' => $xr, 'qty' => $xq ?? 1.0];
         }
     }
-    // A corrected number for a vessel invoice that already has one (e.g. 1000 → 962): the
-    // client prefix is kept when only digits are typed; it must not be another invoice's.
+    // The vessel invoice's number is typed by hand (required to download). Only digits: the
+    // number keeps its client prefix (YMR-BB-962), or gets the client's code when it has none.
+    // It must not be another invoice's. The recovery invoice uses the vessel's number + B.
     $fixNo = null;
-    if (!$isRecovery && $noFixed && isset($_POST['invoice_no_fix'])) {
-        $want = strtoupper(preg_replace('/\s+/', '', (string)$_POST['invoice_no_fix']));
-        if (ctype_digit($want)) $want = preg_replace('/-[0-9]+$/', '', (string)$inv['invoice_no']) . '-' . ltrim($want, '0');
-        if ($want !== '' && $want !== strtoupper((string)$inv['invoice_no'])) {
+    $download = ($_POST['mode'] ?? '') === 'download';
+    if (!$isRecovery) {
+        $want = strtoupper(preg_replace('/\s+/', '', (string)($_POST['invoice_no_fix'] ?? '')));
+        if (ctype_digit($want) && $want !== '') {
+            $want = $noFixed && preg_match('/-[0-9]+$/', (string)$inv['invoice_no'])
+                ? preg_replace('/-[0-9]+$/', '', strtoupper((string)$inv['invoice_no'])) . '-' . ltrim($want, '0')
+                : 'YMR-' . invoiceCodeForClient($db, (int)($inv['eff_client_id'] ?? 0)) . '-' . ltrim($want, '0');
+        }
+        if ($want === '') {
+            if ($download) $errors[] = 'Invoice No. (type the invoice number)';
+        } elseif ($want !== strtoupper((string)($inv['invoice_no'] ?? ''))) {
             if (!preg_match('/^[A-Z0-9][A-Z0-9\-\/]{0,58}[0-9]$/', $want)) {
                 $errors[] = 'Invoice No. (letters, digits and - only, ending in its number, e.g. YMR-BB-962)';
             } else {
@@ -172,25 +292,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 else $fixNo = $want;
             }
         }
+    } elseif (!$noFixed && invoiceRecNo($inv) === '' && $download) {
+        $errors[] = 'Invoice No. — make the Vessel Invoice first: its number is typed there (the Recovery Invoice uses it with B)';
     }
     if ($errors) {
         http_response_code(422);
         header('Content-Type: text/html; charset=utf-8');
         exit('<div style="font-family:sans-serif;padding:24px;color:#991b1b"><b>Please fill in:</b><ul><li>' . implode('</li><li>', array_map('sanitize', $errors)) . '</li></ul></div>');
     }
-    // Number: the vessel's (fixed on its first download; preview shows the next free one)
-    $download = ($_POST['mode'] ?? '') === 'download';
-    try {
-        if ($fixNo !== null) {
-            $d['invoice_no'] = $fixNo; // saved with the PDF below
-        } else {
-            $d['invoice_no'] = ($download ? invoiceAllocateNumber($db, $id) : invoicePeekNumber($db, $inv)) . ($isRecovery ? 'B' : '');
-        }
-    } catch (Throwable $e) {
-        error_log('invoice number: ' . $e->getMessage());
-        http_response_code(500);
-        exit('The invoice number could not be assigned. Please try again.');
-    }
+    // Number: as typed (saved with the PDF below); the recovery invoice: the vessel's + B
+    $d['invoice_no'] = $fixNo ?? ($isRecovery ? invoiceRecNo($inv) : ($noFixed ? (string)$inv['invoice_no'] : ''));
     $d['items'] = $items;
     @include_once __DIR__ . '/vendor/autoload.php';
     if (!class_exists(\Dompdf\Dompdf::class)) {
@@ -293,6 +404,49 @@ include 'includes/header.php';
 .ig-cp-f .form-control { padding-left: 8px; padding-right: 6px; }
 .ig-cp-f { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .ig-cp-k { display: block; font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 2px; }
+.ig-price-mode {
+    margin-top: 10px;
+}
+
+.ig-price-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 4px;
+    background: #f1f5f9;
+    border-radius: 10px;
+}
+
+.ig-price-toggle label {
+    margin: 0;
+}
+
+.ig-price-toggle input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.ig-price-toggle span {
+    display: block;
+    padding: 8px 10px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.ig-price-toggle input:checked + span {
+    background: #fff;
+    color: #6C4CF1;
+    box-shadow: 0 1px 3px rgba(15,23,42,.12);
+}
+
+.ig-plat {
+    display: none;
+}
 @media (max-width: 575.98px) { .ig-cp { grid-template-columns: 1fr; } .ig-cp-f { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .ig-opt { font-weight: 500; color: #94a3b8; font-size: 11px; }
 .ig-svc-row { display: grid; grid-template-columns: 1fr 170px; gap: 8px; align-items: start; background: #f8fafc; border: 1px solid #eef1f6; border-radius: 10px; padding: 8px; position: relative; }
@@ -323,12 +477,12 @@ include 'includes/header.php';
         <h2><?= $isRecovery ? 'Recovery Invoice' : 'Generate Invoice' ?></h2>
         <div class="ig-sub"><?= sanitize($vessel) ?><?= $defaults['port'] ? ' · ' . sanitize($defaults['port']) : '' ?> — details are filled from the vessel record; change anything before downloading.</div>
         <div class="ig-row">
-<?php if ($noFixed && !$isRecovery): ?>
-            <div><label>Invoice No.</label><input class="form-control" name="invoice_no_fix" value="<?= sanitize($invoiceNo) ?>" maxlength="60" data-testid="ig-invoice-no">
-                <div class="ig-hint">This vessel's number — correct it here if needed (the Recovery Invoice follows it with B)</div></div>
+<?php if (!$isRecovery): ?>
+            <div><label>Invoice No. <b style="color:#dc2626">*</b></label><input class="form-control" name="invoice_no_fix" value="<?= sanitize($invoiceNo) ?>" maxlength="60" placeholder="e.g. YMR-BB-962" data-testid="ig-invoice-no">
+                <div class="ig-hint">Type the invoice number (only digits: the client code is added). The Recovery Invoice uses it with B.</div></div>
 <?php else: ?>
-            <div><label>Invoice No.</label><input class="form-control" value="<?= sanitize($invoiceNo) ?>" readonly data-testid="ig-invoice-no">
-                <div class="ig-hint"><?= $noFixed ? 'This vessel\'s number' : 'Assigned when you download' ?><?= $isRecovery ? ' (+ B for recovery)' : '' ?></div></div>
+            <div><label>Invoice No.</label><input class="form-control" value="<?= sanitize($invoiceNo) ?>" readonly placeholder="Typed on the Vessel Invoice" data-testid="ig-invoice-no">
+                <div class="ig-hint"><?= trim((string)($inv['rec_invoice_no'] ?? '')) !== '' ? 'Recovery invoice number set with Edit Invoice' : ($noFixed ? 'The vessel invoice\'s number + B (change it with Edit Invoice)' : 'Make the Vessel Invoice first — its number is typed there') ?></div></div>
 <?php endif; ?>
             <div><label>Invoice Date</label><input class="form-control" type="date" name="invoice_date" value="<?= sanitize($defaults['invoice_date']) ?>"></div>
         </div>
@@ -351,16 +505,108 @@ include 'includes/header.php';
 <?php if ($isRecovery): ?>
         <label>Description</label>
         <textarea class="form-control" name="service_desc" rows="3" data-testid="ig-service-desc"><?= sanitize($sv('service_desc', 'Recovery of bunkers — ' . $serviceDesc)) ?></textarea>
-        <div class="ig-cp">
-            <div><label>Agreed recovery % <span class="ig-req">*</span></label>
-            <input class="form-control" name="recovery_pct" inputmode="decimal" placeholder="e.g. 8" value="<?= sanitize($sv('recovery_pct', '')) ?>" required data-ig-pct data-testid="ig-recovery-pct"></div>
-            <div><label>Agreed CP price <span class="ig-opt">(USD / MT, optional)</span></label>
-            <div class="ig-cp-f">
-            <?php foreach (IG_CP_ORDER as $k): $label = IG_FUELS[$k]; ?>
-            <div><span class="ig-cp-k"><?= $label ?></span><input class="form-control" name="cp_<?= $k ?>" inputmode="decimal" placeholder="USD" value="<?= sanitize($sv('cp_' . $k, '')) ?>" data-ig-cp="<?= $k ?>" data-testid="ig-cp-<?= $k ?>"></div>
-            <?php endforeach; ?>
-            </div></div>
+        <div class="ig-price-mode">
+            <label>CP Price Available?</label>
+
+            <div class="ig-price-toggle">
+                <label>
+                    <input
+                        type="radio"
+                        name="price_mode"
+                        value="cp"
+                        <?= $sv('price_mode', 'cp') !== 'plat' ? 'checked' : '' ?>
+                        data-ig-price-mode
+                    >
+                    <span>Yes — CP Price</span>
+                </label>
+
+                <label>
+                    <input
+                        type="radio"
+                        name="price_mode"
+                        value="plat"
+                        <?= $sv('price_mode', 'cp') === 'plat' ? 'checked' : '' ?>
+                        data-ig-price-mode
+                    >
+                    <span>No — PLAT Price</span>
+                </label>
+            </div>
         </div>
+
+        <div class="ig-recovery-pct">
+    <label>
+        Agreed recovery %
+        <span class="ig-req">*</span>
+    </label>
+
+    <input
+        class="form-control"
+        name="recovery_pct"
+        inputmode="decimal"
+        placeholder="e.g. 8"
+        value="<?= sanitize($sv('recovery_pct', '')) ?>"
+        required
+        data-ig-pct
+        data-testid="ig-recovery-pct"
+    >
+</div>
+
+<div data-ig-cp-section>
+    <label>
+        Agreed CP price
+        <span class="ig-opt">(USD / MT, optional)</span>
+    </label>
+
+    <div class="ig-cp-f">
+        <?php foreach (IG_CP_ORDER as $k): $label = IG_FUELS[$k]; ?>
+            <div>
+                <span class="ig-cp-k"><?= $label ?></span>
+
+                <input
+                    class="form-control"
+                    name="cp_<?= $k ?>"
+                    inputmode="decimal"
+                    placeholder="USD"
+                    value="<?= sanitize($sv('cp_' . $k, '')) ?>"
+                    data-ig-cp="<?= $k ?>"
+                    data-testid="ig-cp-<?= $k ?>"
+                >
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+        <div class="ig-plat" data-ig-plat-section>
+            <label>
+                PLAT Price
+                <span class="ig-opt">(USD / MT)</span>
+            </label>
+
+            <div class="ig-cp-f">
+                <?php foreach (IG_CP_ORDER as $k): $label = IG_FUELS[$k]; ?>
+                    <div>
+                        <span class="ig-cp-k"><?= $label ?></span>
+
+                        <input
+                            class="form-control"
+                            name="plat_<?= $k ?>"
+                            inputmode="decimal"
+                            placeholder="USD"
+                            value="<?= sanitize($sv('plat_' . $k, '')) ?>"
+                            data-ig-plat="<?= $k ?>"
+                            data-testid="ig-plat-<?= $k ?>"
+                        >
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <label>
+            Recovery
+            <span class="ig-hint" data-ig-recovery-hint>
+                (unit = agreed CP price × agreed %, filled in from the CP price; quantity = MT recovered)
+            </span>
+        </label>
         <label>Recovery <span class="ig-hint">(unit = agreed CP price × agreed %, filled in from the CP price; quantity = MT recovered)</span></label>
         <div class="ig-svc" data-testid="ig-recovery">
             <?php foreach (IG_FUELS as $k => $label): ?>
@@ -476,19 +722,107 @@ include 'includes/header.php';
     document.querySelector('[data-ig-total]').textContent = '$' + t.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
   // Recovery: unit of each fuel = agreed CP price × agreed % (recalculated when either changes)
-  function cpUnits(only) {
-    var pctEl = document.querySelector('[data-ig-pct]'); if (!pctEl) return;
-    var pct = num(pctEl.value);
-    document.querySelectorAll('[data-ig-cp]').forEach(function (c) {
-      var k = c.getAttribute('data-ig-cp'); if (only && only !== k) return;
-      var rate = document.querySelector('[data-ig-fuel-rate="' + k + '"]');
-      if (!rate || String(c.value).trim() === '' || !(pct > 0)) return;
-      rate.value = (Math.round(num(c.value) * pct) / 100).toFixed(2);
+  // Recovery pricing: CP or PLAT price × agreed %
+var priceModes = document.querySelectorAll('[data-ig-price-mode]');
+var cpSection = document.querySelector('[data-ig-cp-section]');
+var platSection = document.querySelector('[data-ig-plat-section]');
+var recoveryHint = document.querySelector('[data-ig-recovery-hint]');
+
+function getPriceMode() {
+    var selected = document.querySelector('[data-ig-price-mode]:checked');
+    return selected ? selected.value : 'cp';
+}
+
+function updatePriceMode() {
+    var mode = getPriceMode();
+    var isPlat = mode === 'plat';
+
+    if (cpSection) {
+        cpSection.style.display = isPlat ? 'none' : 'block';
+    }
+
+    if (platSection) {
+        platSection.style.display = isPlat ? 'block' : 'none';
+    }
+
+    document.querySelectorAll('[data-ig-cp]').forEach(function (el) {
+        el.disabled = isPlat;
     });
+
+    document.querySelectorAll('[data-ig-plat]').forEach(function (el) {
+        el.disabled = !isPlat;
+    });
+
+    if (recoveryHint) {
+        recoveryHint.textContent = isPlat
+            ? '(unit = PLAT price × agreed %; quantity = MT recovered)'
+            : '(unit = agreed CP price × agreed %; quantity = MT recovered)';
+    }
+
+    recoveryUnits(null);
+}
+
+function recoveryUnits(only) {
+    var pctEl = document.querySelector('[data-ig-pct]');
+    if (!pctEl) return;
+
+    var pct = num(pctEl.value);
+    var mode = getPriceMode();
+
+    var selector = mode === 'plat'
+        ? '[data-ig-plat]'
+        : '[data-ig-cp]';
+
+    document.querySelectorAll(selector).forEach(function (priceEl) {
+
+        var k = mode === 'plat'
+            ? priceEl.getAttribute('data-ig-plat')
+            : priceEl.getAttribute('data-ig-cp');
+
+        if (only && only !== k) return;
+
+        var rate = document.querySelector('[data-ig-fuel-rate="' + k + '"]');
+
+        if (!rate || String(priceEl.value).trim() === '' || !(pct > 0)) {
+            return;
+        }
+
+        rate.value = (
+            Math.round(num(priceEl.value) * pct) / 100
+        ).toFixed(2);
+    });
+
     total();
-  }
-  document.querySelectorAll('[data-ig-cp]').forEach(function (c) { c.addEventListener('input', function () { cpUnits(c.getAttribute('data-ig-cp')); }); });
-  var pctIn = document.querySelector('[data-ig-pct]'); if (pctIn) pctIn.addEventListener('input', function () { cpUnits(null); });
+}
+
+document.querySelectorAll('[data-ig-cp]').forEach(function (el) {
+    el.addEventListener('input', function () {
+        if (getPriceMode() === 'cp') {
+            recoveryUnits(el.getAttribute('data-ig-cp'));
+        }
+    });
+});
+
+document.querySelectorAll('[data-ig-plat]').forEach(function (el) {
+    el.addEventListener('input', function () {
+        if (getPriceMode() === 'plat') {
+            recoveryUnits(el.getAttribute('data-ig-plat'));
+        }
+    });
+});
+
+var pctIn = document.querySelector('[data-ig-pct]');
+if (pctIn) {
+    pctIn.addEventListener('input', function () {
+        recoveryUnits(null);
+    });
+}
+
+priceModes.forEach(function (radio) {
+    radio.addEventListener('change', updatePriceMode);
+});
+
+updatePriceMode();
   var add = document.querySelector('[data-ig-add]');
   if (add) add.addEventListener('click', function () {
     var r = document.createElement('div');

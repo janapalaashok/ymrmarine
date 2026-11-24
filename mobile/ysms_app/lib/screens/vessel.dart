@@ -1,13 +1,14 @@
 // Vessel details (app_api.php?a=survey): the facts of vessel_detail / report_detail / completed_detail.
-// Latest update is saved through vessel_detail.php's own form; uploading has its Flutter screen; the
-// detail pages' other tools (edit, replace a document, recovery edit, remarks, generators) open the web
-// app's vessel screen, where they already are.
+// Latest update is saved through vessel_detail.php's own form; uploading, editing (assign) and the
+// tools (agent email, recovery, replace a document, remarks: vessel_tools.dart) are Flutter screens; the
+// report generators open the website's own pages.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../api.dart';
 import '../ui.dart';
 import 'upload.dart';
+import 'vessel_tools.dart';
 
 class VesselScreen extends StatefulWidget {
   const VesselScreen({super.key, required this.id, this.first});
@@ -56,6 +57,16 @@ class _VesselScreenState extends State<VesselScreen> {
     }
   }
 
+  Object? _sureRemark;
+
+  /// The detail page of this vessel (vessel_detail / report_detail / completed_detail.php?id=), whose
+  /// forms the tools post to.
+  String get _page => s(_v?['web']).isEmpty ? 'vessel_detail.php?id=${widget.id}' : s(_v!['web']);
+
+  Future<void> _tool(Future<bool> f) async {
+    if (await f) _load();
+  }
+
   Future<void> _web(String route) async {
     await openAppRoute(context, route);
     _load();
@@ -68,7 +79,6 @@ class _VesselScreenState extends State<VesselScreen> {
     final can = (me['can'] as Map?) ?? {};
     final st = s(v?['status']);
     final menu = <(IconData, String, VoidCallback)>[
-      if (_v != null) (Icons.open_in_new_rounded, 'All tools of this vessel', () => _web('/v/${widget.id}')),
       if (role == 'Admin') (Icons.edit_outlined, 'Edit vessel', () => _web('/e/${widget.id}')),
       if (st == 'Pending Report' && can['report_generator'] == true)
         (Icons.description_outlined, 'Word report generator', () => openWeb(context, 'report_generator.php?id=${widget.id}')),
@@ -288,7 +298,7 @@ class _VesselScreenState extends State<VesselScreen> {
                   ),
                   if (s(me['role']) == 'Admin' && full != null)
                     TextButton.icon(
-                      onPressed: () => _web('/v/${widget.id}'),
+                      onPressed: () => _web('/e/${widget.id}'),
                       icon: const Icon(Icons.edit_outlined, size: 18),
                       label: const Text('Edit'),
                     ),
@@ -302,7 +312,8 @@ class _VesselScreenState extends State<VesselScreen> {
                   'Agent update',
                   s((full!['agent_email'] as Map)['sent']).isEmpty ? 'Not sent yet' : 'Sent ${(full['agent_email'] as Map)['sent']}',
                   action: TextButton(
-                    onPressed: () => _web('/v/${widget.id}'),
+                    key: const ValueKey('agent-mail'),
+                    onPressed: () => _tool(agentMailSheet(context, widget.id)),
                     child: Text(s((full['agent_email'] as Map)['sent']).isEmpty ? 'Send email' : 'Send again'),
                   ),
                 ),
@@ -321,7 +332,12 @@ class _VesselScreenState extends State<VesselScreen> {
                     const Expanded(
                       child: Text('Recovery (MT)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
                     ),
-                    if (rec['can_edit'] == true) TextButton(onPressed: () => _web('/v/${widget.id}'), child: const Text('Edit')),
+                    if (rec['can_edit'] == true)
+                      TextButton(
+                        key: const ValueKey('rec-edit'),
+                        onPressed: () => _tool(recoverySheet(context, _page, rec)),
+                        child: const Text('Edit'),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -397,8 +413,6 @@ class _VesselScreenState extends State<VesselScreen> {
                     const Expanded(
                       child: Text('Documents', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
                     ),
-                    if (full['can_replace'] == true && docs.isNotEmpty)
-                      TextButton(onPressed: () => _web('/v/${widget.id}'), child: const Text('Replace')),
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: Text(
@@ -424,7 +438,14 @@ class _VesselScreenState extends State<VesselScreen> {
                       style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                     ),
                     subtitle: Text([s(d['type']), s(d['when'])].where((x) => x.isNotEmpty).join(' · ')),
-                    trailing: const Icon(Icons.download_rounded),
+                    trailing: full['can_replace'] == true
+                        ? IconButton(
+                            key: ValueKey('replace-${d['id']}'),
+                            tooltip: 'Replace ${s(d['name'])}',
+                            onPressed: () => _tool(replaceDocument(context, d['id'])),
+                            icon: const Icon(Icons.sync_rounded),
+                          )
+                        : const Icon(Icons.download_rounded),
                     onTap: () => downloadAndOpen(context, 'download.php?upload_id=${d['id']}', name: s(d['name'])),
                   ),
               ],
@@ -469,8 +490,12 @@ class _VesselScreenState extends State<VesselScreen> {
               const Expanded(
                 child: Text('Remarks', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
               ),
-              if (r['can_add'] == true || r['can_delete'] == true)
-                TextButton(onPressed: () => _web('/v/${widget.id}'), child: Text(r['can_add'] == true ? 'Add remark' : 'Manage')),
+              if (r['can_add'] == true)
+                TextButton(
+                  key: const ValueKey('rm-add'),
+                  onPressed: () => _tool(addRemarkSheet(context, _page)),
+                  child: const Text('Add remark'),
+                ),
             ],
           ),
           if (items.isEmpty) Text('No remarks yet.', style: TextStyle(color: mutedText(context))),
@@ -483,9 +508,28 @@ class _VesselScreenState extends State<VesselScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(s(m['by']), style: const TextStyle(fontWeight: FontWeight.w700)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(s(m['by']), style: const TextStyle(fontWeight: FontWeight.w700)),
+                            Text(s(m['when']), style: TextStyle(fontSize: 12, color: mutedText(context))),
+                          ],
+                        ),
                       ),
-                      Text(s(m['when']), style: TextStyle(fontSize: 12, color: mutedText(context))),
+                      if (r['can_delete'] == true)
+                        TextButton(
+                          key: ValueKey('rm-del-${m['id']}'),
+                          style: TextButton.styleFrom(foregroundColor: red),
+                          onPressed: () async {
+                            if (_sureRemark != m['id']) {
+                              setState(() => _sureRemark = m['id']);
+                              return;
+                            }
+                            setState(() => _sureRemark = null);
+                            await _tool(deleteRemark(context, _page, m['id']));
+                          },
+                          child: Text(_sureRemark == m['id'] ? 'Tap to confirm' : 'Delete'),
+                        ),
                     ],
                   ),
                   if (s(m['text']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(s(m['text']))),

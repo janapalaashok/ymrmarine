@@ -13,8 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$port_name = trim($_POST['port_name'] ?? '');
-$country = trim($_POST['country'] ?? '') ?: 'India';
+$port_name = portCaps($_POST['port_name'] ?? '');
+$country = portCaps($_POST['country'] ?? '') ?: 'INDIA';
 
 if ($port_name === '') {
     echo json_encode(['success' => false, 'message' => 'Port name is required.']);

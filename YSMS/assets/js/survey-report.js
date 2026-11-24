@@ -10,6 +10,9 @@
 (function () {
   'use strict';
   var P = window.SR_PAGE || {};
+  // a report started without internet (?draft=<x>): kept on this device until it is made on the server
+  if (P.draft) { var dq = /[?&]draft=([a-z0-9]{4,24})\b/.exec(location.search); if (dq) P.draft = dq[1]; P.id = 'draft-' + P.draft; }
+  var DRAFT = P.draft ? 'ysms_srp_draft_' + P.draft : '';
   var LS = 'ysms_sr_' + P.id, CACHE = 'ysms_sr_get_' + P.id, TPL_CACHE = 'ysms-sr-templates';
   var S = { cfg: null, report: null, data: null, version: 0, canEdit: false, errors: {}, files: [], dirty: false, saving: false, timer: null, offlineMode: false,
     ai: {}, lookup: null, lookupMsg: '', manual: false, showErr: {}, open: {}, expand: {}, server: null, serverIssues: null, verifying: false };
@@ -74,14 +77,30 @@
     el.className = 'sr-net ' + (online() ? 'on' : 'off');
     el.innerHTML = online() ? '<i class="fa-solid fa-wifi"></i> Online' : '<i class="fa-solid fa-plane"></i> Offline — saved on this device';
     $$('[data-online-only]').forEach(function (b) { b.disabled = !online() || !S.canEdit || b.hasAttribute('data-blocked'); });
+    $$('[data-gate]').forEach(function (b) { b.disabled = !S.canEdit || b.hasAttribute('data-blocked'); }); // work offline too (PDF made on this device)
+    $$('[data-off-note]').forEach(function (e) { e.hidden = online(); });
   }
-  window.addEventListener('online', function () { netState(); if (S.dirty) saveNow(); });
+  window.addEventListener('online', function () {
+    netState();
+    setTimeout(pendingImo, 2500); // an IMO typed while offline
+    if (P.draft) { draftSync(); return; }
+    // opened from the copy on this device: save what was typed, then the report as the server has it now
+    if (S.offlineMode && S.data) { flush().then(function () { if (online() && !S.dirty) load(); }); return; }
+    if (S.dirty) saveNow();
+  });
   window.addEventListener('offline', netState);
   function saveState(text, cls) { var el = $('[data-save-state]'); el.className = 'sr-save ' + (cls || ''); el.textContent = text; }
 
   // ---------- load ----------
   function load() {
     netState();
+    if (P.draft) { // started without internet: everything is on this device
+      var d = read(DRAFT);
+      if (!d || !d.res) { $('[data-form]').innerHTML = '<div class="sr-note err"><i class="fa-solid fa-plane"></i> This report is not on this device any more (it may have been sent already). <a href="survey_report_public.php">Start a report</a></div>'; return Promise.resolve(); }
+      start(d.res, true);
+      if (online()) draftSync();
+      return Promise.resolve();
+    }
     return fetch(P.api + '?a=get&id=' + P.id, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (res) {
       if (!res.ok) { $('[data-form]').innerHTML = '<div class="sr-note err">' + esc(res.error || 'Report not found.') + '</div>'; return; }
       store(CACHE, res);
@@ -115,7 +134,7 @@
     render();
     saveState(S.dirty ? (online() ? 'Saving…' : 'Changes on this device') : 'Saved', S.dirty ? 'dirty' : '');
     if (S.dirty && online() && !fromCache) saveNow();
-    if (online() && !fromCache) { precache(); loadPrevious(); setTimeout(finalAfterOffline, 1500); }
+    if (online() && !fromCache) { precache(); loadPrevious(); setTimeout(finalAfterOffline, 1500); setTimeout(pendingImo, 1200); }
   }
   /** Keep this page and everything it loaded (scripts incl. ExcelJS, styles, fonts, CDN files) for offline use. */
   function headChips() {
@@ -128,7 +147,8 @@
     if (!('caches' in window)) return;
     var urls = [location.href];
     $$('script[src]').forEach(function (x) { urls.push(x.src); });
-    urls.push(new URL(BANNER, location.href).href); // the letterhead banner of the draft PDF
+    urls.push(new URL(LOGO, location.href).href, new URL(BANNER, location.href).href); // the letterhead of the PDF made offline
+    if (P.pdfjs) urls.push(P.pdfjs, P.pdfjsWorker); // the preview viewer (offline preview of the PDF made on this device)
     $$('link[rel=stylesheet][href]').forEach(function (x) { urls.push(x.href); });
     try { performance.getEntriesByType('resource').forEach(function (e) { if (/\.(woff2?|ttf|otf|png|jpe?g|svg|webp|css|js)(\?|$)/i.test(e.name)) urls.push(e.name); }); } catch (e) {}
     caches.open('ysms-sr-v1').then(function (c) {
@@ -149,7 +169,7 @@
         start(res, false);
       });
   }
-  var ROW_KEYS = ['name', 'ref_height', 'sounding', 'volume', 'density', 'temp', 'mode', 'ullage', 'done', 'id', 'copy'];
+  var ROW_KEYS = ['name', 'ref_height', 'sounding', 'volume', 'density', 'temp', 'mode', 'ullage', 'su', 'done', 'id', 'copy'];
   function normalise(d) {
     d = d || {}; d.fields = d.fields || {}; d.tanks = d.tanks || {}; d.extra = d.extra || {};
     d.grades = Array.isArray(d.grades) ? d.grades : [];
@@ -158,6 +178,7 @@
       d.tanks[g.key] = (d.tanks[g.key] || []).map(function (r) {
         var o = {}; ROW_KEYS.forEach(function (k) { o[k] = r[k] == null ? '' : String(r[k]); });
         o.mode = o.mode === 'ullage' ? 'ullage' : 'sounding'; if (!o.id) o.id = uid();
+        o.su = o.mode === 'ullage' ? 'u' : o.su === 's' ? 's' : ''; // S / U chosen on the computer: printed next to the reading
         return o;
       });
     });
@@ -286,6 +307,10 @@
     var v = val(k), dis = S.canEdit && !opts.ro ? '' : ' disabled', inp;
     var attrs = ' data-f="' + k + '" data-testid="sr-f-' + k + '"' + dis + (S.ai[k] ? ' class="ai" title="Filled by Vessel lookup — please check"' : '');
     if (f.type === 'month') inp = '<select' + attrs + '><option value=""></option>' + MONTHS.map(function (m) { return '<option' + (m === v ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select>';
+    else if (k === 'survey_type') { // the certificate's wording follows it (includes/survey_certificates.php)
+      var ch = (S.cfg.cert || {}).choices || {}, cur = certType();
+      inp = '<select' + attrs + '>' + Object.keys(ch).map(function (c) { return '<option value="' + esc(c) + '"' + (c === cur ? ' selected' : '') + '>' + esc(ch[c]) + '</option>'; }).join('') + '</select>';
+    }
     else {
       var t = f.type === 'date' ? 'date' : f.type === 'time' ? 'time' : 'text';
       var mode = /^(num|int|imo)/.test(f.type) ? ' inputmode="decimal"' : '';
@@ -360,8 +385,7 @@
       if (!g.length) return '<p class="sr-muted sr-span">Choose the fuel grades above to enter the ROB.</p>';
       return g.map(function (x) { return inputHtml('brob_' + kind + '_' + x, req); }).join('');
     };
-    var mean = num(val('draft_fwd')) !== null && num(val('draft_aft')) !== null ? ((num(val('draft_fwd')) + num(val('draft_aft'))) / 2).toFixed(3) : '';
-    var trim = mean !== '' ? (num(val('draft_aft')) - num(val('draft_fwd'))).toFixed(3) : '';
+    var trim = num(val('draft_fwd')) !== null && num(val('draft_aft')) !== null ? (num(val('draft_aft')) - num(val('draft_fwd'))).toFixed(3) : '';
     var card = function (title, icon, inner, tid, keys) {
       var st = keys ? doneOf(keys) : '';
       return '<section class="sr-card sr-s2c" data-testid="sr-grp-' + tid + '"><h3><i class="fa-solid ' + icon + '"></i> ' + title + st + '</h3><div class="sr-grid">' + inner + '</div></section>'; };
@@ -373,16 +397,14 @@
     }
     /** one event of the survey (FWE, start, completion): date + time with a "Now" button, then the ROB of each grade */
     var EV = [
-      { k: 'fwe', no: 'A', title: 'Engine Particulars (FWE)', sub: 'Finished With Engines', icon: 'fa-gears', d: 'fwe_date', t: 'fwe_time', rob: 'fwe', robT: 'FWE ROB' },
-      { k: 'started', no: 'B', title: 'Survey Start', sub: 'Surveyor on board', icon: 'fa-play', d: 'started_date', t: 'started_time', rob: 'started', robT: 'Log Book ROB' },
-      { k: 'completed', no: 'C', title: 'Survey Completion', sub: 'Readings finished', icon: 'fa-flag-checkered', d: 'completed_date', t: 'completed_time', extra: 'surveyor_name' }
+      { k: 'fwe', title: 'Finish With Engine (FWE)', sub: 'As per Engine Logbook', icon: 'fa-gears', d: 'fwe_date', t: 'fwe_time', rob: 'fwe', robT: 'FWE ROB' },
+      { k: 'started', title: 'Survey Start Time', sub: 'As per Engine Logbook', icon: 'fa-play', d: 'started_date', t: 'started_time', rob: 'started', robT: 'Log Book ROB' },
+      { k: 'completed', title: 'Survey Completed Time', sub: '1-2 hours from start time', icon: 'fa-flag-checkered', d: 'completed_date', t: 'completed_time' }
     ];
-    var timeline = '<section class="sr-card sr-tl" data-testid="sr-timeline"><h3><i class="fa-solid fa-timeline"></i> Survey timeline <small>Local time (LT)</small></h3>' +
+    var timeline = '<section class="sr-card sr-tl" data-testid="sr-timeline"><h3><i class="fa-solid fa-timeline"></i> Survey timeline <small>Local time (LT)</small></h3><div class="sr-tl-row">' +
       EV.map(function (e) {
-        var keys = [e.d, e.t].concat(e.rob ? g.map(function (x) { return 'brob_' + e.rob + '_' + x; }) : []).concat(e.extra ? [e.extra] : []);
-        return '<div class="sr-tl-i" data-testid="sr-grp-' + e.k + '"><span class="sr-tl-no">' + e.no + '</span><div class="sr-tl-b">' +
-          '<div class="sr-tl-h"><b><i class="fa-solid ' + e.icon + '"></i> ' + esc(e.title) + '</b><small>' + esc(e.sub) + '</small>' + doneOf(keys) +
-            (S.canEdit ? '<button type="button" class="sr-btn sm sr-now" data-now="' + e.k + '" data-testid="sr-now-' + e.k + '"><i class="fa-regular fa-clock"></i> Now</button>' : '') + '</div>' +
+        return '<div class="sr-tl-i sr-tl-plain" data-testid="sr-grp-' + e.k + '"><div class="sr-tl-b">' +
+          '<div class="sr-tl-h"><b><i class="fa-solid ' + e.icon + '"></i> ' + esc(e.title) + '</b><small data-testid="sr-tl-sub-' + e.k + '">' + esc(e.sub) + '</small></div>' +
           '<div class="sr-tl-g">' + inputHtml(e.d, { req: true, label: 'Date' }) + inputHtml(e.t, { req: true, label: 'Time (LT)' }) +
             (e.extra ? inputHtml(e.extra, req) : '') + '</div>' +
           (e.rob ? '<div class="sr-tl-rob"><span class="sr-tl-rl">' + esc(e.robT) + ' <small>MT</small></span>' +
@@ -391,7 +413,7 @@
               return inputHtml('brob_' + e.rob + '_' + x, { req: true, label: gr ? gr.short : x.toUpperCase() });
             }).join('') + '</div>' : '<p class="sr-muted">Choose the fuel grades above first.</p>') + '</div>' : '') +
           '</div></div>';
-      }).join('') + '</section>';
+      }).join('') + '</div></section>';
     return '<section class="sr-card sr-s2g" data-testid="sr-grades" data-fw="grades"><h3><i class="fa-solid fa-gas-pump"></i> Fuel grades on board <b class="sr-req">*</b>' +
       '<small>' + (g.length ? g.length + ' selected' : 'tap the grades the vessel has') + '</small></h3>' +
       '<div class="sr-chips">' + S.cfg.grades.map(function (x) {
@@ -399,14 +421,17 @@
         return '<label class="sr-chip' + (on ? ' on' : '') + '" data-testid="sr-grade-' + x.key + '"><input type="checkbox" data-grade="' + x.key + '"' + (on ? ' checked' : '') + (S.canEdit ? '' : ' disabled') + '><i class="fa-solid fa-check sr-chip-tick" aria-hidden="true"></i><b>' + esc(x.short) + '</b><small>' + esc(x.name) + '</small></label>';
       }).join('') + '</div><em data-err="grades"></em></section>' +
       timeline +
-      '<div class="sr-s2-cols">' +
-      card('D. Ship Staff', 'fa-user-tie', inputHtml('chief_engineer', req) + inputHtml('master', req), 'staff', ['chief_engineer', 'master']) +
-      card('E. Survey Location', 'fa-location-dot', inputHtml('port_name', req) + inputHtml('place', req), 'location', ['port_name', 'place']) +
-      '</div>' +
-      card('F. Draft Particulars', 'fa-ruler-vertical', inputHtml('draft_fwd', req) + inputHtml('draft_aft', req) +
-        '<label class="sr-f calc"><span>Mean Draft (m)</span><output data-testid="sr-mean">' + mean + '</output></label>' +
-        '<label class="sr-f calc"><span>Trim (m) <small>Aft − Fwd</small></span><output data-testid="sr-trim">' + trim + '</output></label>' + inputHtml('list'), 'drafts', ['draft_fwd', 'draft_aft']) +
-      card('Other details <small>optional</small>', 'fa-file-lines', inputHtml('voyage_no') + inputHtml('charterers'), 'other');
+      (function () { // every other survey detail in one card, as the vessel particulars in step 1
+        var keys = ['owners', 'charterers', 'port_name', 'place', 'draft_aft', 'draft_fwd', 'master', 'chief_engineer', 'surveyor_name'];
+        return card('Survey particulars', 'fa-clipboard-list',
+          (S.cfg.cert ? inputHtml('survey_type', { label: 'Survey Type' }) : '') +
+          inputHtml('owners', { req: true, label: 'Owners' }) + inputHtml('charterers', { req: true, label: 'Charterers' }) +
+          inputHtml('port_name', req) + inputHtml('place', { req: true, label: 'Place of Survey' }) + inputHtml('voyage_no', { label: 'Voyage No.' }) +
+          inputHtml('draft_aft', { req: true, label: 'Draft Aft (m)' }) + inputHtml('draft_fwd', { req: true, label: 'Draft Fwd (m)' }) +
+          '<label class="sr-f calc"><span>Trim (m) <small>Aft − Fwd, worked out</small></span><output data-testid="sr-trim">' + trim + '</output></label>' + inputHtml('list', { label: 'List (degrees)' }) +
+          inputHtml('master', { req: true, label: 'Master (Capt.)' }) + inputHtml('chief_engineer', { req: true, label: 'Chief Engineer' }) + inputHtml('surveyor_name', { req: true, label: 'Surveyor Name' }), 'details', keys) +
+          '<p class="sr-muted sr-small sr-s2-tip"><i class="fa-solid fa-circle-info"></i> Names print in capital letters on the report, however they are typed.</p>';
+      })();
   }
   // tank steps
   /** Readings as the surveyors write them, however typed: sounding 0.000, density 0.0000, temperature 00.0. */
@@ -446,7 +471,7 @@
   function f3c(v) { return v === null || v === undefined || v === '' || isNaN(v) ? '' : (+v).toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 }); }
   function totalsBar() {
     var t = allTotals();
-    return '<div class="sr-totbar" data-testid="sr-totbar"><div><span>Total Tanks:</span> <b data-testid="sr-tot-tanks">' + t.n + '</b></div>' +
+    return '<div class="sr-totbar" data-testid="sr-totbar">' + (cardMode() ? '<div><span>Total Tanks:</span> <b data-testid="sr-tot-tanks">' + t.n + '</b></div>' : '<div></div>') +
       '<div class="r mt"><span>Total Metric Tons:</span> <b data-testid="sr-tot-mt">' + f3c(t.mt) + ' MT</b></div><b hidden data-testid="sr-tot-gsv">' + f3c(t.gsv) + ' m³</b></div>';
   }
   function tankToolbar() {
@@ -517,31 +542,48 @@
     return a === null || b === null ? '' : (Math.round((a - b) * 1000) / 1000).toFixed(3);
   }
   function rowState(r) { return r.done && !r._editing ? 'done' : r.copy ? 'copy' : 'open'; }
-  /** One table per fuel grade, laid out like the company sheet and used like Excel: Tank Name · Ref. Height · Sdg. Corr'd ·
-      Volume · Density · Temp typed into the cells, Metric Tons worked out as you type (V.C.F. and G.S.V. are shown when the
-      pointer rests on it, and in the generated report), the grade's total below. Each grade opens with a set number of rows
-      (VLSFO 12, LSMGO 8, the others 6); "Add more tanks" gives one more row, any row can be deleted. Empty rows are never
-      saved or checked. A phone swipes the table sideways with the tank name kept in view. */
-  var XCOLS = [['name', 'Tank', 'Name'], ['ref_height', 'Ref. Height', '(m)'], ['sounding', 'Sdg. Corr\'d', '(m)'], ['volume', 'Volume', 'Cubic Metres'], ['density', 'Density', '@15°C'], ['temp', 'Temp', 'Deg(C)']];
-  var XROWS = { vlsfo: 12, ulsfo: 6, hsfo: 6, lsmgo: 8 };
+  /** Computer screen: one compact table per fuel grade with the vessel's tanks. Tank Name · Reference Height · Sounding /
+      Ullage · Volume · Density @ 15°C · Temperature are typed into the cells; VCF · GSV · Metric Tons are worked out as you
+      type (grey, not editable), the grade's total below. "Add Tank" gives one more row, any row can be deleted. Empty rows
+      are never saved or checked. */
+  var XCOLS = [['name', 'Tank Name', ''], ['ref_height', 'Reference Height', '(m)'], ['sounding', 'Sounding / Ullage', '(m)'], ['volume', 'Volume', '(m³)'], ['density', 'Density', '@ 15°C'], ['temp', 'Temperature', '(°C)']];
+  /** Worked out by report-calc.js (the template's formulas), never typed: grey cells. */
+  var XCALC = [['vcf', 'VCF', ''], ['gsv', 'GSV', '(m³)'], ['mt', 'Metric Tons', '(MT)']];
+  /** Order of the grade tables on a computer. */
+  var XORDER = ['vlsfo', 'lsmgo', 'ulsfo', 'hsfo', 'hsmgo'];
   /** Empty rows shown below the tanks of a grade: at first enough to reach the grade's row count. */
   function xSpare(g) {
     S.spare = S.spare || {};
-    if (!(g in S.spare)) S.spare[g] = Math.max((XROWS[g] || 6) - S.data.tanks[g].length, 0);
+    if (!(g in S.spare)) S.spare[g] = 0; // only the vessel's tanks; Add Tank gives one more row
     return S.canEdit ? S.spare[g] : 0;
   }
   function xCell(g, i, col, r) {
-    var key = g + ':' + i, v = r ? shown(r, col) : '', dec = col === 'volume' || col === 'density' || col === 'temp';
-    return '<td class="xi x-' + col + '"><label class="sr-f sr-cellf" data-tw="' + key + ':' + col + '"><input data-t="' + key + ':' + col + '" data-testid="sr-t-' + g + '-' + i + '-' + col + '" value="' + esc(v) + '"' +
+    var key = g + ':' + i, ul = col === 'sounding' && r && r.mode === 'ullage', so = !!(r && r.su === 's'), pre = '';
+    if (col === 'sounding') {
+      if (ul) col = 'ullage';
+      pre = '<span class="sr-su" role="radiogroup" aria-label="Sounding or ullage">' +
+        '<button type="button" tabindex="-1" role="radio" class="s' + (so ? ' on' : '') + '" aria-checked="' + so + '" data-su="' + key + ':s" title="Sounding" data-testid="sr-su-' + g + '-' + i + '-s"' + (S.canEdit ? '' : ' disabled') + '>S</button>' +
+        '<button type="button" tabindex="-1" role="radio" class="u' + (ul ? ' on' : '') + '" aria-checked="' + ul + '" data-su="' + key + ':u" title="Ullage" data-testid="sr-su-' + g + '-' + i + '-u"' + (S.canEdit ? '' : ' disabled') + '>U</button></span>';
+    }
+    if (col === 'name' && r && S.canEdit) {
+      var n = S.data.tanks[g].length;
+      pre = '<span class="sr-grip" draggable="true" data-grip="' + key + '" title="Drag to move the tank (or Alt + ↑ / ↓)" data-testid="sr-grip-' + g + '-' + i + '"><i class="fa-solid fa-grip-vertical"></i></span>' +
+        '<span class="sr-mv"><button type="button" tabindex="-1" data-mv="' + key + ':-1" title="Move up" aria-label="Move up" data-testid="sr-up-' + g + '-' + i + '"' + (i === 0 ? ' disabled' : '') + '><i class="fa-solid fa-chevron-up"></i></button>' +
+        '<button type="button" tabindex="-1" data-mv="' + key + ':1" title="Move down" aria-label="Move down" data-testid="sr-down-' + g + '-' + i + '"' + (i === n - 1 ? ' disabled' : '') + '><i class="fa-solid fa-chevron-down"></i></button></span>';
+    }
+    var v = r ? shown(r, col) : '', dec = col === 'volume' || col === 'density' || col === 'temp';
+    var suOff = (col === 'sounding' || col === 'ullage') && num(v) === null; // S / U only next to a number (not GAUGE, not empty)
+    return '<td class="xi x-' + (col === 'ullage' ? 'sounding' : col) + (pre ? ' has-pre' : '') + (suOff ? ' su-off' : '') + '">' + pre + '<label class="sr-f sr-cellf" data-tw="' + key + ':' + col + '"><input data-t="' + key + ':' + col + '" data-testid="sr-t-' + g + '-' + i + '-' + col + '" value="' + esc(v) + '"' +
       (dec ? ' inputmode="decimal"' : '') + (S.canEdit ? '' : ' disabled') + ' autocomplete="off" spellcheck="false"' + (/^GAUGE$/i.test(v) ? ' class="gauge"' : '') + '><em data-terr="' + key + ':' + col + '"></em></label></td>';
   }
   function rowHtml(g, r, i) {
     var key = g + ':' + i, t = r ? calc(r) : {}, real = !!r;
     return '<tr class="' + (real ? 'sr-row' : 'sr-spare') + '" data-tank="' + key + '" data-testid="sr-' + (real ? 'tank' : 'spare') + '-' + g + '-' + i + '">' +
       XCOLS.map(function (c) { return xCell(g, i, c[0], r); }).join('') +
-      '<td class="xo mt" tabindex="-1"><b data-rc="' + key + ':mt">' + f3c(t.mt) + '</b>' +
-        '<span class="xtip" role="tooltip">V.C.F. <b data-rc="' + key + ':vcf">' + (t.vcf == null ? '—' : t.vcf.toFixed(4)) + '</b><br>G.S.V. <b data-rc="' + key + ':gsv">' + (t.gsv == null ? '—' : f3c(t.gsv)) + '</b> m³</span></td>' +
-      '<td class="xd">' + (S.canEdit ? '<button type="button" data-del="' + key + '"' + (real ? '' : ' data-spare') + ' title="Delete row" aria-label="Delete row" data-testid="sr-del-' + g + '-' + i + '"><i class="fa-regular fa-trash-can"></i></button>' : '') + '</td></tr>';
+      '<td class="xo x-vcf"><b data-rc="' + key + ':vcf" data-testid="sr-c-' + g + '-' + i + '-vcf">' + (t.vcf == null ? (real ? '—' : '') : t.vcf.toFixed(4)) + '</b></td>' +
+      '<td class="xo x-gsv"><b data-rc="' + key + ':gsv" data-testid="sr-c-' + g + '-' + i + '-gsv">' + (t.gsv == null ? (real ? '—' : '') : f3c(t.gsv)) + '</b></td>' +
+      '<td class="xo mt"><b data-rc="' + key + ':mt" data-testid="sr-c-' + g + '-' + i + '-mt">' + f3c(t.mt) + '</b></td>' +
+      '<td class="xd">' + (S.canEdit ? '<button type="button" tabindex="-1" data-del="' + key + '"' + (real ? '' : ' data-spare') + ' title="Delete row" aria-label="Delete row" data-testid="sr-del-' + g + '-' + i + '"><i class="fa-regular fa-trash-can"></i></button>' : '') + '</td></tr>';
   }
   /** Link page on a phone: each tank a card that opens and closes (readings in labelled boxes, MT in its header). */
   function cardMode() { return !!(P.guest || P.std) && !S.wide; }
@@ -577,26 +619,28 @@
   function cardsHtml() {
     return chosen().map(function (g) {
       var gi = gradeInfo(g), rows = S.data.tanks[g], tot = gradeTotals(g);
-      return '<section class="sr-tcg" data-testid="sr-tanks-' + g + '"><div class="sr-tcg-h"><i class="fa-solid fa-gas-pump"></i><b>' + esc(gi.short) + ' Tanks</b>' +
-        '<span>Total MT: <b data-gmt="' + g + '">' + f3c(tot.mt) + '</b></span></div>' +
+      var shut = !!(S.tgShut && S.tgShut[g]);
+      return '<section class="sr-tcg' + (shut ? ' shut' : '') + '" data-testid="sr-tanks-' + g + '"><div class="sr-tcg-h" data-tgfold="' + g + '" role="button" aria-expanded="' + !shut + '" data-testid="sr-tcg-toggle-' + g + '"><i class="fa-solid fa-chevron-down sr-tcg-c"></i><i class="fa-solid fa-gas-pump"></i><b>' + esc(gi.short) + ' Tanks</b>' +
+        '<span>Total MT: <b data-gmt="' + g + '">' + f3c(tot.mt) + '</b></span></div><div class="sr-tcg-b">' +
         (rows.map(function (r, i) { return cardHtml(g, r, i); }).join('') || '<div class="sr-tc-none">No tanks yet.</div>') +
         (S.canEdit ? '<button type="button" class="sr-tc-add" data-add="' + g + '" data-testid="sr-add-' + g + '"><i class="fa-solid fa-plus"></i> Add ' + esc(gi.short) + ' tank</button>' : '') +
-        '<b hidden data-testid="sr-total-' + g + '">' + f3(tot.mt) + '</b><b hidden data-testid="sr-total-gsv-' + g + '">' + f3(tot.gsv) + '</b></section>';
+        '</div><b hidden data-testid="sr-total-' + g + '">' + f3(tot.mt) + '</b><b hidden data-testid="sr-total-gsv-' + g + '">' + f3(tot.gsv) + '</b></section>';
     }).join('');
   }
   function gridHtml() {
     if (cardMode()) return cardsHtml();
-    var head = '<colgroup><col class="cw-name">' + XCOLS.slice(1).map(function () { return '<col>'; }).join('') + '<col class="cw-mt"><col class="cw-del"></colgroup>' +
-      '<thead><tr>' + XCOLS.map(function (c) { return '<th class="x-' + c[0] + '">' + c[1] + '<small>' + c[2] + '</small></th>'; }).join('') +
-      '<th class="xo mt">Metric<small>Tons</small></th><th class="xd"></th></tr></thead>';
-    return chosen().map(function (g, gi_) {
+    var head = '<colgroup><col class="cw-name">' + XCOLS.slice(1).map(function () { return '<col>'; }).join('') + '<col class="cw-vcf"><col class="cw-gsv"><col class="cw-mt"><col class="cw-del"></colgroup>' +
+      '<thead><tr>' + XCOLS.map(function (c) { return '<th class="x-' + c[0] + '">' + c[1] + ' <i class="req">*</i>' + (c[2] ? '<small>' + c[2] + '</small>' : '') + '</th>'; }).join('') +
+      XCALC.map(function (c) { return '<th class="xo x-' + c[0] + '">' + c[1] + (c[2] ? '<small>' + c[2] + '</small>' : '') + '</th>'; }).join('') + '<th class="xd"></th></tr></thead>';
+    var list = chosen().slice().sort(function (a, b) { return (XORDER.indexOf(a) + 1 || 99) - (XORDER.indexOf(b) + 1 || 99); });
+    return list.map(function (g, gi_) {
       var gi = gradeInfo(g), rows = S.data.tanks[g], tot = gradeTotals(g), spare = xSpare(g), body = '';
       rows.forEach(function (r, i) { body += rowHtml(g, r, i); });
       for (var k = 0; k < spare; k++) body += rowHtml(g, null, rows.length + k);
-      if (!rows.length && !spare) body = '<tr><td colspan="8" class="xe">No rows — press Add more tanks.</td></tr>';
-      return '<section class="sr-xsec" data-testid="sr-tanks-' + g + '"><h4><i class="fa-solid fa-droplet"></i> ' + esc(gi.name) + '</h4>' +
+      if (!rows.length && !spare) body = '<tr><td colspan="10" class="xe">No tanks yet — press Add Tank.</td></tr>';
+      return '<section class="sr-xsec" data-testid="sr-tanks-' + g + '"><h4>' + esc(gi.short) + ' <small>' + esc(gi.name) + '</small></h4>' +
         '<div class="sr-xwrap"><table class="sr-xg" data-g="' + g + '" data-testid="' + (gi_ === 0 ? 'sr-tgrid' : 'sr-tgrid-' + g) + '">' + head + '<tbody>' + body + '</tbody></table></div>' +
-        (S.canEdit ? '<div class="sr-xadd"><button type="button" data-more="' + g + '" data-testid="sr-add-' + g + '"><i class="fa-solid fa-plus"></i> Add more tanks</button></div>' : '') +
+        (S.canEdit ? '<div class="sr-xadd"><button type="button" data-more="' + g + '" data-testid="sr-add-' + g + '"><i class="fa-solid fa-plus"></i> Add Tank</button></div>' : '') +
         '<div class="sr-xtot"><span>TOTAL Metric Tons</span><b data-gmt="' + g + '">' + f3c(tot.mt) + '</b></div>' +
         '<b hidden data-testid="sr-total-' + g + '">' + f3(tot.mt) + '</b><b hidden data-testid="sr-total-gsv-' + g + '">' + f3(tot.gsv) + '</b></section>';
     }).join('');
@@ -721,17 +765,20 @@
     var all = issues();
     return problemsHtml() +
       '<section class="sr-card"><h3><i class="fa-solid fa-file-export"></i> Preview &amp; Generate</h3><div class="sr-out" data-testid="sr-output">' +
-      '<button type="button" class="sr-btn pri big" data-gen="pdf" data-online-only' + (all.length ? ' data-blocked' : '') + ' data-testid="sr-download-pdf"><i class="fa-solid fa-file-pdf"></i> Download PDF Report</button>' +
-      '<button type="button" class="sr-btn big" data-pv="load" data-testid="sr-preview-summary"><i class="fa-solid fa-eye"></i> Preview Report</button></div>' +
-      '<p class="sr-small sr-muted"><i class="fa-solid fa-circle-info"></i> The PDF is made by the server from the company template; its Excel is kept in the system for the Word report.</p>' +
-      '<button type="button" class="sr-link" data-offline-pdf data-testid="sr-offline-pdf"' + (all.length ? ' hidden' : '') + '><i class="fa-solid fa-plane"></i> No internet? Download a draft PDF made on this device</button></section>';
+      '<button type="button" class="sr-btn pri big" data-gen="pdf" data-gate' + (all.length ? ' data-blocked' : '') + ' data-testid="sr-download-pdf"><i class="fa-solid fa-file-pdf"></i> Download PDF Report</button>' +
+      '<button type="button" class="sr-btn big" data-pv="load" data-testid="sr-preview-summary"><i class="fa-solid fa-eye"></i> Preview Report</button>' +
+      '<button type="button" class="sr-btn big" data-print data-gate' + (all.length ? ' data-blocked' : '') + ' data-testid="sr-print"><i class="fa-solid fa-print"></i> Print</button></div>' +
+      '<p class="sr-small sr-muted"><i class="fa-solid fa-circle-info"></i> The PDF is made in the YMR report format on the company letterhead' + (certType() !== 'none' && S.cfg.cert ? ': page 1 the <b data-testid="sr-cert-name">' + esc(S.cfg.cert.types[certType()].title) + '</b> (' + esc(S.cfg.cert.choices[certType()]) + '), then the tank report' : '') + '; its Excel is kept in the system for the Word report.</p>' +
+      '<p class="sr-small sr-off-note" data-off-note data-testid="sr-off-note"' + (online() ? ' hidden' : '') + '><i class="fa-solid fa-plane"></i> Offline: the PDF is made on this device. When the connection is back the report is saved and the final PDF on the YMR letterhead is made automatically.</p>' +
+      '<button type="button" class="sr-link" data-offline-pdf data-testid="sr-offline-pdf"' + (all.length ? ' hidden' : '') + '><i class="fa-solid fa-plane"></i> No internet? Download the PDF made on this device</button></section>';
   }
   /** Admin: the version history of the saved tanks (Sounding, Volume, Density, Temperature). */
   var HCOLS = [['sounding', 'Sounding'], ['volume', 'Volume'], ['density', 'Density'], ['temperature', 'Temp']];
   function tankLogHtml() {
     if (!S.isAdmin) return '';
     if (S.tankLog === null) { loadTankLog(); return '<section class="sr-card" data-testid="sr-tank-log"><h3><i class="fa-solid fa-clock-rotate-left"></i> Tank history</h3><span class="sr-muted">Loading…</span></section>'; }
-    var T = S.tankLog, edits = 0;
+    // only the tanks changed after their first save (a tank still at v1 is not listed), with every version
+    var T = S.tankLog.filter(function (t) { return t.versions.length > 1; }), edits = 0;
     T.forEach(function (t) { edits += t.versions.length - 1; });
     return '<section class="sr-card" data-testid="sr-tank-log"><h3><i class="fa-solid fa-clock-rotate-left"></i> Tank history <small class="sr-muted">Admin only · ' + edits + ' change' + (edits === 1 ? '' : 's') + ' after the first save</small></h3>' +
       (T.length ? '<div class="sr-cmp-wrap"><table class="sr-t sr-log"><thead><tr><th>Tank</th><th>Version</th>' + HCOLS.map(function (c) { return '<th>' + c[1] + '</th>'; }).join('') + '<th>By</th><th>When</th></tr></thead><tbody>' + T.map(function (t) {
@@ -741,7 +788,7 @@
             HCOLS.map(function (c) { return '<td' + (v.changed.indexOf(c[0]) >= 0 ? ' class="chg"' : '') + '>' + esc(v.values[c[0]] == null ? '—' : v.values[c[0]]) + '</td>'; }).join('') +
             '<td>' + esc(v.by || '') + '</td><td>' + esc(String(v.at).slice(0, 16)) + '</td></tr>';
         }).join('');
-      }).join('') + '</tbody></table></div>' : '<span class="sr-muted">No tank has been saved yet.</span>') + '</section>';
+      }).join('') + '</tbody></table></div>' : '<span class="sr-muted" data-testid="sr-hist-none">No tank has been changed after its first save.</span>') + '</section>';
   }
   function loadTankLog() {
     if (S.tankLogLoading) return; S.tankLogLoading = true;
@@ -814,6 +861,10 @@
     if (t.closest('[data-undo]')) { undoLookup(); return; }
     if (t.closest('[data-manual]')) { S.manual = true; render(); var f = $('[data-f=vessel_name]'); if (f) f.focus(); return; }
     if ((b = t.closest('[data-more]'))) { moreRows(b.getAttribute('data-more')); return; }
+    if ((b = t.closest('[data-tgfold]'))) { // a grade row on a phone: its tanks fold away (grade name left, Total MT right)
+      var tg = b.getAttribute('data-tgfold'), tsec = b.closest('.sr-tcg'); S.tgShut = S.tgShut || {};
+      S.tgShut[tg] = !tsec.classList.contains('shut'); tsec.classList.toggle('shut', S.tgShut[tg]); b.setAttribute('aria-expanded', S.tgShut[tg] ? 'false' : 'true'); return;
+    }
     if ((b = t.closest('[data-tc]'))) {
       var card = b.closest('.sr-tc'), rr = S.data.tanks[b.getAttribute('data-tc').split(':')[0]][+b.getAttribute('data-tc').split(':')[1]];
       S.tcOpen = S.tcOpen || {}; var op = !card.classList.contains('open'); if (rr) S.tcOpen[rr.id] = op;
@@ -831,10 +882,13 @@
     if ((b = t.closest('[data-copy]'))) { copyTank(b.getAttribute('data-copy')); return; }
     if ((b = t.closest('[data-edit]'))) { var ek = b.getAttribute('data-edit'); var x = $('[data-t="' + ek + ':name"]'); if (x) { x.focus(); x.select(); } return; }
     if ((b = t.closest('[data-expand]'))) { var q = b.getAttribute('data-expand').split(':'), rr = S.data.tanks[q[0]][+q[1]]; S.expand[rr.id] = !S.expand[rr.id]; render(); return; }
+    if ((b = t.closest('[data-su]'))) { setSU(b); return; }
+    if ((b = t.closest('[data-mv]'))) { var mv = b.getAttribute('data-mv').split(':'); reorderTank(mv[0], +mv[1], +mv[1] + +mv[2], 'name'); return; }
     if ((b = t.closest('[data-del]'))) { delTank(b.getAttribute('data-del')); return; }
     if ((b = t.closest('[data-mode]'))) { var m = b.getAttribute('data-mode').split(':'), tr = S.data.tanks[m[0]][+m[1]]; tr.mode = m[2]; tr.sounding = m[2] === 'ullage' ? sounding(tr) : tr.sounding; changed(); render(); return; }
-    if ((b = t.closest('[data-gen]'))) { generate(b.getAttribute('data-gen')); return; }
+    if ((b = t.closest('[data-gen]'))) { if (!online()) { offlinePdf(); return; } generate(b.getAttribute('data-gen')); return; }
     if (t.closest('[data-offline-pdf]')) { offlinePdf(); return; }
+    if ((b = t.closest('[data-print]'))) { if (b.hasAttribute('data-blocked')) { block('generate'); return; } printPdf(b); return; }
     if (t.closest('[data-save-now]')) { saveProgress(); return; }
     if ((b = t.closest('[data-pv]'))) { pvAction(b.getAttribute('data-pv')); return; }
   });
@@ -870,6 +924,10 @@
       else if (p[2] === 'ullage') { r.mode = 'ullage'; r.ullage = el.value; r.sounding = sounding(r); }
       else { r[p[2]] = el.value; if (p[2] === 'ref_height' && r.mode === 'ullage') r.sounding = sounding(r); }
       if (p[2] === 'ref_height' || p[2] === 'sounding') el.classList.toggle('gauge', /^GAUGE$/i.test(el.value.trim()));
+      if (p[2] === 'sounding' || p[2] === 'ullage') { // S / U shown only while the reading is a number; GAUGE / empty: no S
+        var nOk = num(el.value) !== null, std = el.closest('td'); if (std) std.classList.toggle('su-off', !nOk);
+        if (!nOk && r.mode !== 'ullage' && r.su) { r.su = ''; var sb = std && $('[data-su$=":s"]', std); if (sb) { sb.classList.remove('on'); sb.setAttribute('aria-checked', 'false'); } }
+      }
       if (p[2] === 'name') { var tn = $('[data-tc-name="' + p[0] + ':' + p[1] + '"]'); if (tn) tn.textContent = el.value || 'New tank'; }
       updateRow(p[0], +p[1]);
       changed(); showErrors();
@@ -897,6 +955,29 @@
     var firstSpare = $('tr.sr-spare', tb); if (firstSpare && firstSpare.compareDocumentPosition(tr) & Node.DOCUMENT_POSITION_FOLLOWING) { tb.insertBefore(tr, firstSpare); el.focus(); }
     return row;
   }
+  /** S / U in the Sounding / Ullage cell: the reading typed is a sounding or an ullage (sounding = reference height − ullage).
+      The choice prints next to the reading in the report ("0.012 S"); none chosen, nothing printed. A second click clears it. */
+  function setSU(b) {
+    var q = b.getAttribute('data-su').split(':'), g = q[0], i = +q[1], r = S.data.tanks[g][i];
+    if (!r) { var inp = $('[data-t]', b.closest('tr')); if (!inp) return; r = spareToRow(inp); i = S.data.tanks[g].indexOf(r); }
+    var su = r.su === q[2] ? '' : q[2], m = su === 'u' ? 'ullage' : 'sounding';
+    if (r.su !== su) { r.su = su; if (r.done === '1') r.done = ''; r._editing = true; changed(); }
+    if (r.mode !== m) {
+      if (m === 'ullage') { r.ullage = ullageOf(r); r.mode = 'ullage'; r.sounding = sounding(r); }
+      else { r.sounding = sounding(r); r.mode = 'sounding'; r.ullage = ''; }
+      if (r.done === '1') r.done = '';
+      r._editing = true; changed();
+    }
+    render(); var x = $('[data-t="' + g + ':' + i + ':' + m + '"]'); if (x) x.focus();
+  }
+  /** A tank to another place in its grade's list (the report keeps this order). */
+  function reorderTank(g, from, to, col) {
+    var a = S.data.tanks[g]; if (!a || !a[from] || to < 0 || to >= a.length || to === from) return false;
+    var r = a.splice(from, 1)[0]; a.splice(to, 0, r); changed(true); render();
+    var c = col === 'sounding' || col === 'ullage' ? (r.mode === 'ullage' ? 'ullage' : 'sounding') : col || 'name';
+    var x = $('[data-t="' + g + ':' + to + ':' + c + '"]'); if (x) x.focus();
+    return true;
+  }
   function moreRows(g) {
     xSpare(g); S.spare[g]++; render();
     var all = $$('table[data-g="' + g + '"] tbody tr'), x = all.length && $('[data-t$=":name"]', all[all.length - 1]); if (x) { x.focus(); x.scrollIntoView({ block: 'center' }); }
@@ -907,10 +988,11 @@
     var rows = $$('tr', tb).filter(function (t) { return $('td.xi', t); }), ri = rows.indexOf(tr), tr2 = rows[ri + dr];
     var cells = function (t) { return $$('td.xi input', t); };
     if (dc) { var c = cells(tr)[ci + dc]; if (c) { c.focus(); c.select(); return true; } return false; }
-    if (!tr2) { // past the last row of this grade: the next grade's first row
-      if (dr < 0) return false;
-      var sec = el.closest('.sr-xsec').nextElementSibling; while (sec && !sec.classList.contains('sr-xsec')) sec = sec.nextElementSibling;
-      tr2 = sec && $('tbody tr', sec); if (!tr2) return false;
+    if (!tr2) { // past the last row of this grade: the next grade's first row (up on the first row: the grade above's last row)
+      var sib = dr < 0 ? 'previousElementSibling' : 'nextElementSibling';
+      var sec = el.closest('.sr-xsec')[sib]; while (sec && !sec.classList.contains('sr-xsec')) sec = sec[sib];
+      var rs = sec ? $$('tbody tr', sec).filter(function (t) { return $('td.xi', t); }) : [];
+      tr2 = dr < 0 ? rs[rs.length - 1] : rs[0]; if (!tr2) return false;
     }
     var x = cells(tr2)[ci]; if (x) { x.focus(); x.select(); return true; }
     return false;
@@ -919,7 +1001,7 @@
   function gridPaste(el, text) {
     var lines = text.replace(/\r/g, '').split('\n'); while (lines.length && lines[lines.length - 1] === '') lines.pop();
     if (!lines.length || (lines.length === 1 && lines[0].indexOf('\t') < 0)) return false;
-    var p = el.getAttribute('data-t').split(':'), g = p[0], i0 = +p[1], cols = XCOLS.map(function (c) { return c[0]; }), c0 = cols.indexOf(p[2]);
+    var p = el.getAttribute('data-t').split(':'), g = p[0], i0 = +p[1], cols = XCOLS.map(function (c) { return c[0]; }), c0 = cols.indexOf(p[2] === 'ullage' ? 'sounding' : p[2]);
     if (c0 < 0) return false;
     var before = S.data.tanks[g].length;
     lines.forEach(function (ln, k) {
@@ -928,8 +1010,11 @@
       var r = S.data.tanks[g][i];
       vals.forEach(function (v, j) {
         var col = cols[c0 + j]; if (!col) return;
-        v = v.trim(); if (col === 'sounding') { r.mode = 'sounding'; r.ullage = ''; }
+        v = v.trim();
+        if (col === 'sounding' && r.mode === 'ullage') { r.ullage = v; r.sounding = sounding(r); return; }
+        if (col === 'sounding') { r.mode = 'sounding'; r.ullage = ''; }
         r[col] = v;
+        if (col === 'ref_height' && r.mode === 'ullage') r.sounding = sounding(r);
       });
       r.done = ''; r._editing = false;
       if (!blankRow(r) && !Object.keys(tankErrors(r)).length) { fmtRow(r); r.done = '1'; }
@@ -940,6 +1025,31 @@
   }
   // like an Excel cell: taking a cell (click, tap, Tab, arrows) selects its value, so typing replaces it; a double click edits inside it
   document.addEventListener('focusin', function (ev) { var el = ev.target; if (el.matches && el.matches('.sr-xg [data-t], .sr-tc [data-t]')) el.select(); });
+  var drag = null;
+  document.addEventListener('dragstart', function (ev) {
+    var gp = ev.target.closest && ev.target.closest('[data-grip]'); if (!gp) return;
+    var q = gp.getAttribute('data-grip').split(':'); drag = { g: q[0], i: +q[1] };
+    ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', ''); ev.dataTransfer.setDragImage(gp.closest('tr'), 12, 15); } catch (e) {}
+    gp.closest('tr').classList.add('sr-dragging');
+  });
+  function dropRow(ev) {
+    var tr = drag && ev.target.closest && ev.target.closest('tr.sr-row'); if (!tr) return null;
+    var q = tr.getAttribute('data-tank').split(':'); if (q[0] !== drag.g) return null;
+    var rc = tr.getBoundingClientRect(), after = ev.clientY > rc.top + rc.height / 2;
+    return { tr: tr, i: +q[1], after: after };
+  }
+  document.addEventListener('dragover', function (ev) {
+    var d = dropRow(ev); $$('.sr-drop-b,.sr-drop-a').forEach(function (e) { e.classList.remove('sr-drop-b', 'sr-drop-a'); });
+    if (!d) return; ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; d.tr.classList.add(d.after ? 'sr-drop-a' : 'sr-drop-b');
+  });
+  document.addEventListener('drop', function (ev) {
+    var d = dropRow(ev); if (!d) return; ev.preventDefault();
+    var to = d.i + (d.after ? 1 : 0); if (to > drag.i) to--;
+    var from = drag.i; drag = null; reorderTank(d.tr.getAttribute('data-tank').split(':')[0], from, to, 'name');
+  });
+  document.addEventListener('dragend', function () { drag = null; $$('.sr-dragging,.sr-drop-b,.sr-drop-a').forEach(function (e) { e.classList.remove('sr-dragging', 'sr-drop-b', 'sr-drop-a'); }); });
+  document.addEventListener('focusout', function (ev) { var el = ev.target; if (el.matches && el.matches('.sr-xg [data-t]')) el.removeAttribute('data-xedit'); });
+  document.addEventListener('dblclick', function (ev) { var el = ev.target; if (el.matches && el.matches('.sr-xg [data-t]')) el.setAttribute('data-xedit', '1'); });
   document.addEventListener('mousedown', function (ev) {
     var el = ev.target; if (!el.matches || !el.matches('.sr-xg [data-t]') || el.disabled || document.activeElement === el || ev.detail > 1) return;
     ev.preventDefault(); el.focus();
@@ -963,12 +1073,16 @@
   window.addEventListener('resize', function () { var w = window.matchMedia('(min-width: 992px)').matches; if (S.data && lastWide !== null && w !== lastWide && S.data.step === 'tanks') render(); lastWide = w; });
   document.addEventListener('keydown', function (ev) { // Enter: lookup from the IMO box, otherwise the next box
     var gt = ev.target;
+    if (gt.matches && gt.matches('.sr-xg [data-t]') && ev.altKey && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) {
+      ev.preventDefault(); var mq = gt.getAttribute('data-t').split(':'); reorderTank(mq[0], +mq[1], +mq[1] + (ev.key === 'ArrowUp' ? -1 : 1), mq[2]); return;
+    }
     if (gt.matches && gt.matches('.sr-xg [data-t]') && !ev.altKey && !ev.ctrlKey && !ev.metaKey) {
-      var atStart = gt.selectionStart === 0 && gt.selectionEnd === 0, atEnd = gt.selectionStart === gt.value.length;
+      // like Excel: arrow keys go to the next cell; after a double click (or F2) left / right move inside the value until the cell is left
+      var edit = gt.getAttribute('data-xedit') === '1';
+      if (ev.key === 'F2') { ev.preventDefault(); gt.setAttribute('data-xedit', '1'); var n = gt.value.length; gt.setSelectionRange(n, n); return; }
       if (ev.key === 'Enter' || ev.key === 'ArrowDown') { ev.preventDefault(); gridMove(gt, ev.shiftKey && ev.key === 'Enter' ? -1 : 1, 0); return; }
       if (ev.key === 'ArrowUp') { ev.preventDefault(); gridMove(gt, -1, 0); return; }
-      if (ev.key === 'ArrowLeft' && atStart && gridMove(gt, 0, -1)) { ev.preventDefault(); return; }
-      if (ev.key === 'ArrowRight' && atEnd && gridMove(gt, 0, 1)) { ev.preventDefault(); return; }
+      if ((ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') && !edit && !ev.shiftKey) { ev.preventDefault(); gridMove(gt, 0, ev.key === 'ArrowLeft' ? -1 : 1); return; }
       return;
     }
     if (ev.key !== 'Enter' || !ev.target.matches('[data-f],[data-t]')) return;
@@ -1117,6 +1231,7 @@
   }
   /** "Import from Excel": tank rows from a workbook (company format or a plain table), added to the grid. */
   function importTanks(file) {
+    if (!online()) { Swal.fire({ icon: 'info', title: 'Import needs internet', text: 'Reading an Excel file is done by the server. Offline, copy the rows in Excel and paste them into the tank table — that works without internet.' }); return; }
     var f = new FormData(); f.append('csrf_token', P.csrf); f.append('a', 'import_tanks'); f.append('id', P.id); f.append('file', file);
     Swal.fire({ title: 'Reading the Excel…', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
     fetch(P.api, { method: 'POST', body: f, credentials: 'same-origin', headers: { 'X-CSRF-Token': P.csrf } }).then(function (r) { return r.json(); }).then(function (res) {
@@ -1142,7 +1257,7 @@
   }
   /** A row with nothing typed (the empty rows at the end of a grid): ignored in checks and totals, never saved. */
   function blankRow(r) { return !['name', 'ref_height', 'sounding', 'ullage', 'volume', 'density', 'temp'].some(function (k) { return String(r[k] || '').trim() !== ''; }); }
-  function emptyRow() { return { name: '', ref_height: '', sounding: '', volume: '', density: '', temp: '', mode: 'sounding', ullage: '', done: '', id: uid() }; }
+  function emptyRow() { return { name: '', ref_height: '', sounding: '', volume: '', density: '', temp: '', mode: 'sounding', ullage: '', su: '', done: '', id: uid() }; }
   function saveTank(key) {
     var p = key.split(':'), r = S.data.tanks[p[0]][+p[1]], e = tankErrors(r);
     r._tried = true;
@@ -1206,10 +1321,18 @@
 
   // ---------- vessel lookup by IMO (AI + web search on the server) ----------
   // A whole, valid IMO starts the lookup by itself (no button needed); each IMO once.
+  /** An IMO typed while offline: look it up now (on the report itself — a draft first becomes a report on the server). */
+  function pendingImo() {
+    var v = read(LS + '_imo');
+    if (!v || P.draft || !online()) return;
+    if (S.data && v === val('imo')) autoLookup(v); else store(LS + '_imo', null);
+  }
   function autoLookup(v) {
     clearTimeout(S.autoT);
     v = String(v || '').replace(/\D/g, '');
-    if (!S.canEdit || v.length !== 7 || S.autoImo === v || typeError(FIELD('imo'), v) || !online()) return;
+    if (!S.canEdit || v.length !== 7 || S.autoImo === v || typeError(FIELD('imo'), v)) return;
+    if (!online()) { store(LS + '_imo', v); return; } // looked up as soon as the connection is back
+    store(LS + '_imo', null);
     S.autoT = setTimeout(function () { if (val('imo') === v && !S.looking) { S.autoImo = v; lookup(); } }, 400);
   }
   function lookup() {
@@ -1222,11 +1345,12 @@
     var info = $('[data-lookup-info]'); if (info) info.innerHTML = lookupInfoHtml();
     post({ a: 'lookup', id: P.id, imo: imo }).then(function (res) {
       S.looking = false; res = res || { ok: false };
+      setTimeout(finalAfterOffline, 2500); // a PDF made offline: the final one now has the looked-up particulars
       S.manual = true;
       if (!res.ok) { S.lookupMsg = res.error || 'Nothing found for this IMO.'; S.lookup = null; render(); return; }
       var prev = {};
       Object.keys(res.fields).forEach(function (k) {
-        if (VESSEL().indexOf(k) < 0) return;
+        if (VESSEL().indexOf(k) < 0 && k !== 'owners') return; // owners: found with the particulars, shown in step 2
         var old = val(k);
         if (old === res.fields[k]) return;
         prev[k] = old; setVal(k, res.fields[k]); S.ai[k] = true;
@@ -1256,6 +1380,7 @@
     return JSON.stringify(d, function (k, v) { return k === '_tried' ? undefined : v; });
   }
   function saveNow() {
+    if (P.draft) { if (online()) return draftSync(); saveState('Changes on this device', 'dirty'); return Promise.resolve(false); }
     if (!S.dirty || S.saving || !S.canEdit) return Promise.resolve(true);
     if (!online()) { saveState('Changes on this device', 'dirty'); return Promise.resolve(false); }
     S.saving = true;
@@ -1283,6 +1408,42 @@
       if (res.error) toast('error', res.error);
       return false;
     }).catch(function () { S.saving = false; saveState('Changes on this device', 'dirty'); return false; });
+  }
+  /**
+   * Back online with a report started without internet: the report is made on the server (once —
+   * its link is kept with the draft, so a second try only saves), everything typed is saved into it,
+   * and the page moves to the report's own link. Nothing is lost if the connection drops halfway.
+   */
+  function draftSync() {
+    if (!P.draft || S.drafting || !online() || !S.data) return Promise.resolve(false);
+    S.drafting = true; saveState('Sending the report…', 'dirty');
+    var d = read(DRAFT) || {}, token = d.token || '';
+    return freshToken().then(function () {
+      if (token) return { ok: true, token: token };
+      return post({ a: 'new', kind: S.report.kind });
+    }).then(function (j) {
+      if (!j || !j.ok || !j.token) throw new Error((j && j.error) || 'The report could not be made on the server.');
+      token = j.token; d.token = token; store(DRAFT, d);
+      return fetch(P.api + '?a=get&id=' + encodeURIComponent(token), { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+    }).then(function (g) {
+      if (!g || !g.ok) throw new Error((g && g.error) || 'The report could not be opened on the server.');
+      return post({ a: 'save', id: token, version: g.report.version, data: payload() });
+    }).then(function (res) {
+      if (!res || !res.ok) throw new Error((res && res.error) || 'The report could not be saved.');
+      var to = 'ysms_sr_' + token;
+      store(to + '_step', S.data.step);
+      var op = read(LS + '_offpdf'); if (op) store(to + '_offpdf', op); // a PDF made offline: the final one is made on the report page
+      var im = read(LS + '_imo'); if (im) store(to + '_imo', im); // an IMO typed offline: looked up on the report page
+      try { localStorage.setItem('ysms_srp_last', token); } catch (e) {}
+      [DRAFT, LS, LS + '_step', LS + '_seen', LS + '_offpdf', LS + '_imo', CACHE].forEach(function (k) { store(k, null); });
+      S.dirty = false; saveState('Saved', '');
+      location.replace('survey_report_public.php?t=' + token);
+      return true;
+    }).catch(function (e) {
+      S.drafting = false; saveState('Changes on this device', 'dirty');
+      if (online()) toast('error', (e && e.message) || 'Not sent yet — kept on this device.');
+      return false;
+    });
   }
   function flush() { // wait for the save in flight and save what is left
     clearTimeout(S.timer);
@@ -1348,7 +1509,7 @@
     PV.timer = setTimeout(pvLoad, now ? 0 : 900);
   }
   function pvLoad() {
-    if (!online()) { pvStatus('Offline — preview when back online', 'warn'); return; }
+    if (!online()) { pvDevice(); return; }
     if (S.dirty || S.saving) { PV.timer = setTimeout(pvLoad, 700); return; } // preview what is saved, never a half-saved state
     if (PV.ver === S.version && PV.doc) return;
     var seq = ++PV.seq, ver = S.version;
@@ -1366,6 +1527,24 @@
         return pvDraw();
       });
     }).catch(function (e) { if (seq === PV.seq) pvStatus(e.message || 'Preview not available.', 'err'); });
+  }
+  /** Offline: preview the PDF made on this device (the server makes the final one when online). */
+  function pvDevice() {
+    var seq = ++PV.seq;
+    pvStatus('Offline — making the preview on this device…', 'busy');
+    Promise.all([pvLib(), devicePdf()]).then(function (x) {
+      if (seq !== PV.seq) return;
+      return x[0].getDocument({ data: new Uint8Array(x[1].doc.output('arraybuffer')) }).promise.then(function (doc) {
+        if (seq !== PV.seq) return;
+        if (PV.doc) PV.doc.destroy();
+        PV.doc = doc; PV.ver = null; PV.page = Math.min(PV.page, doc.numPages) || 1;
+        pvStatus('Offline preview — made on this device', 'warn');
+        return pvDraw();
+      });
+    }).catch(function (e) {
+      if (seq !== PV.seq) return;
+      pvStatus(e && e.title === 'Please complete the report first' ? 'Complete the report to see the preview' : (e && (e.text || e.message)) || 'Preview not available offline', 'err');
+    });
   }
   function pvDraw() {
     if (!PV.doc) return;
@@ -1408,6 +1587,27 @@
       }).catch(function () { pvStatus('Not available', 'err'); });
     };
     if (S.dirty || S.saving) flush().then(go2); else go2();
+  }
+  /** Print: the report PDF (certificate + tank report) opened in a hidden frame and sent to the printer. */
+  function printBlob(bl, done) {
+    var u = URL.createObjectURL(bl), fr = document.createElement('iframe');
+    fr.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0'; fr.setAttribute('data-testid', 'sr-print-frame'); fr.src = u;
+    fr.onload = function () { setTimeout(function () { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { window.open(u, '_blank'); } done(); }, 300); };
+    var old = $('[data-testid=sr-print-frame]'); if (old) old.parentNode.removeChild(old);
+    document.body.appendChild(fr);
+  }
+  /** Print: the report PDF (certificate + tank report) opened in a hidden frame and sent to the printer — offline, the one made on this device. */
+  function printPdf(btn) {
+    btn.disabled = true;
+    var done = function () { btn.disabled = false; };
+    if (!online()) { devicePdf().then(function (x) { printBlob(x.doc.output('blob'), done); }, function (e) { done(); devicePdfFail(e); }); return; }
+    (S.dirty || S.saving ? flush() : Promise.resolve()).then(function () {
+      return fetch(P.api + '?a=preview&id=' + encodeURIComponent(P.id), { credentials: 'same-origin' });
+    }).then(function (r) {
+      if (!r.ok || !/pdf/.test(r.headers.get('content-type') || '')) throw new Error();
+      return r.blob();
+    }).then(function (bl) { printBlob(bl, done); })
+      .catch(function () { done(); toast('error', 'The PDF could not be made for printing. Please try again.'); });
   }
   function pvAction(a) {
     if (a === 'load') { if (!pvPanelShown()) document.body.classList.add('sr-pv-open'); pvTab('pdf'); PV.ver = null; if (S.dirty || S.saving) flush(); preview(true); return; }
@@ -1463,88 +1663,274 @@
         document.body.appendChild(a); a.click(); setTimeout(function () { a.remove(); }, 4000);
         toast('success', (type === 'pdf' ? 'PDF' : 'Excel') + ' report downloaded');
       }
+      // the Admin also gets the Excel made with it (a user only the PDF)
+      var xid = S.isAdmin && type === 'pdf' && res.new_files && res.new_files.xlsx;
+      if (xid) setTimeout(function () {
+        var x = document.createElement('a'); x.href = fileUrl(xid); x.setAttribute('download', ''); x.setAttribute('data-testid', 'sr-dl-xlsx');
+        document.body.appendChild(x); x.click(); setTimeout(function () { x.remove(); }, 4000);
+      }, 900);
     });
   }
-  // ---------- draft PDF made on this device (no internet) ----------
-  // The final report is made by the server from the company template. Without internet the
-  // surveyor still gets a PDF: the same particulars, tank tables and ROB summary, drawn here with
-  // jsPDF and marked DRAFT. When the connection is back the data is saved and the final PDF (and
-  // the Excel kept in the system) is made by itself.
-  var BANNER = 'assets/images/survey-letterhead.png';
-  function imgData(url) {
-    return fetch(url, { credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw new Error(); return r.blob(); }).then(function (b) {
-      return new Promise(function (ok, no) { var fr = new FileReader(); fr.onload = function () { var im = new Image(); im.onload = function () { ok({ data: fr.result, w: im.naturalWidth, h: im.naturalHeight }); }; im.onerror = no; im.src = fr.result; }; fr.onerror = no; fr.readAsDataURL(b); });
-    }).catch(function () { return null; });
+  // ---------- the report made on this device (no internet) ----------
+  // The final report is made by the server (includes/survey_report_pdf.php). Without internet the same
+  // report is drawn here with jsPDF in the same YMR format: letterhead, vessel name + IMO, the header
+  // lines with the BROB of each grade, drafts, one tank table per grade (readings with S / U), TOTAL
+  // Metric Tons, the remark, the MT of each grade and the three signatures in one row — on one page.
+  // When the connection is back the data is saved and the server's PDF is made by itself.
+  var LOGO = 'assets/images/ymr-logo-horizontal.svg', BANNER = 'assets/images/survey-letterhead.png';
+  // load them once as images while online, so the offline cache (survey_report_sw.js) has them later
+  try { [LOGO, BANNER].forEach(function (u) { var im = new Image(); im.src = u; }); } catch (e) {}
+  /** An image as PNG data (the vector logo drawn sharp on a canvas, w px wide), or null. */
+  function imgPng(url, w) {
+    return new Promise(function (ok) {
+      var im = new Image();
+      im.onload = function () {
+        try {
+          var cw = w || im.naturalWidth, ch = Math.round(cw * im.naturalHeight / im.naturalWidth), c = document.createElement('canvas'); c.width = cw; c.height = ch;
+          var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, cw, ch); x.drawImage(im, 0, 0, cw, ch);
+          ok({ data: c.toDataURL('image/png'), w: cw, h: ch });
+        } catch (e) { ok(null); }
+      };
+      im.onerror = function () { ok(null); };
+      im.src = url;
+    });
   }
-  function offlinePdf() {
-    if (!window.jspdf || !window.jspdf.jsPDF) { Swal.fire({ icon: 'error', title: 'Not available', text: 'The PDF tools are not on this device yet — open the report once while online.' }); return; }
-    var all = issues();
-    if (all.length) { Swal.fire({ icon: 'warning', title: 'Please complete the report first', html: '<ul class="sr-swal-list">' + all.slice(0, 8).map(function (x) { return '<li>' + esc(x.msg) + '</li>'; }).join('') + '</ul>' }); return; }
-    imgData(BANNER).then(function (banner) {
-      var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' }), W = 210, M = 12;
-      var navy = [15, 43, 91], grey = [100, 116, 139];
-      var head = function () {
-        var y = M;
-        if (banner) { var bw = W - 2 * M, h = bw * banner.h / banner.w; if (h > 42) { h = 42; bw = h * banner.w / banner.h; } doc.addImage(banner.data, 'PNG', (W - bw) / 2, y, bw, h); y += h + 3; } // the letterhead, in proportion
-        else { doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(0, 163, 223); doc.text('YMR MARINE SOLUTIONS', W / 2, y + 8, { align: 'center' }); y += 14; }
-        doc.saveGraphicsState(); doc.setGState(new doc.GState({ opacity: 0.08 })); doc.setFont('helvetica', 'bold'); doc.setFontSize(80); doc.setTextColor(220, 38, 38);
-        doc.text('DRAFT', W / 2, 170, { align: 'center', angle: 35 }); doc.restoreGraphicsState();
-        return y;
-      };
-      var foot = function () {
-        doc.setFont('helvetica', 'italic'); doc.setFontSize(7.5); doc.setTextColor.apply(doc, grey);
-        doc.text('DRAFT made on this device without internet — the final report is made by the YSMS server from the company template.', W / 2, 290, { align: 'center' });
-      };
-      var vessel = val('vessel_name') || S.report.vessel, grades = chosen();
-      // ---- page 1: particulars + tank tables
-      var y = head();
-      doc.setTextColor.apply(doc, navy); doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.text(vessel, W / 2, y + 2, { align: 'center' });
-      doc.setFontSize(9.5); if (val('imo')) doc.text('IMO No. ' + val('imo'), W / 2, y + 7, { align: 'center' });
-      doc.setFontSize(10.5); doc.text((S.report.kind_label || 'Bunker') .toUpperCase() + ' — BUNKER SURVEY', W / 2, y + 13, { align: 'center' });
-      y += 18;
-      var dt = function (d, t) { return [d, t ? t + ' Hrs LT' : ''].filter(Boolean).join('  '); };
-      var part = [['Owners', val('owners')], ['Charterers', val('charterers')], ['FWE', dt(val('fwe_date'), val('fwe_time'))], ['Survey Started', dt(val('started_date'), val('started_time'))],
-        ['Survey Completed', dt(val('completed_date'), val('completed_time'))], ['Place of Survey', [val('place'), val('port_name')].filter(Boolean).join(', ')], ['Voyage No.', val('voyage_no')],
-        ['Draft Fwd / Aft', [val('draft_fwd'), val('draft_aft')].filter(Boolean).join(' / ') + ' m'], ['List', val('list') ? val('list') + '°' : '']];
-      doc.autoTable({ startY: y, margin: { left: M, right: W / 2 + 2 }, body: part, theme: 'grid', styles: { fontSize: 7.5, cellPadding: 1.2, lineColor: [148, 163, 184], lineWidth: 0.15, textColor: 20 }, columnStyles: { 0: { fontStyle: 'bold', cellWidth: 30 } } });
-      var y1 = doc.lastAutoTable.finalY;
-      var brob = grades.map(function (g) { return [gradeInfo(g).short, val('brob_fwe_' + g), val('brob_started_' + g)]; });
-      doc.autoTable({ startY: y, margin: { left: W / 2 + 6, right: M }, head: [['BROB (MT)', 'At FWE', 'Survey started']], body: brob, theme: 'grid',
-        headStyles: { fillColor: navy, textColor: 255, fontStyle: 'bold', fontSize: 7.5, cellPadding: 1.2 }, styles: { fontSize: 7.5, cellPadding: 1.2, halign: 'right', lineColor: [148, 163, 184], lineWidth: 0.15 }, columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } } });
-      y = Math.max(y1, doc.lastAutoTable.finalY) + 6;
-      grades.forEach(function (g) {
-        var rows = S.data.tanks[g] || []; if (!rows.length) return;
-        var gt = gradeTotals(g), body = rows.map(function (r) {
-          var t = calc(r);
-          return [r.name, r.ref_height, fmtT('sounding', sounding(r)), r.volume, fmtT('density', r.density), fmtT('temp', r.temp), t.vcf == null ? '' : t.vcf.toFixed(4), f3(t.gsv), f3(t.mt)];
-        });
-        body.push([{ content: 'TOTAL', colSpan: 7, styles: { halign: 'right', fontStyle: 'bold' } }, { content: f3(gt.gsv), styles: { fontStyle: 'bold' } }, { content: f3(gt.mt), styles: { fontStyle: 'bold' } }]);
-        if (y > 250) { foot(); doc.addPage(); y = head(); }
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor.apply(doc, navy); doc.text(gradeInfo(g).name || gradeInfo(g).short, M, y);
-        doc.autoTable({ startY: y + 2, margin: { left: M, right: M }, head: [['Tank', 'Ref. Ht (m)', 'Sounding (m)', 'Volume (m³)', 'Density @15°C', 'Temp (°C)', 'V.C.F.', 'G.S.V. (m³)', 'MT in Air']], body: body, theme: 'grid',
-          headStyles: { fillColor: [230, 246, 252], textColor: navy, fontSize: 7, halign: 'center', cellPadding: 1.2 }, styles: { fontSize: 7.5, cellPadding: 1.1, halign: 'right', lineColor: [148, 163, 184], lineWidth: 0.15, textColor: 20 },
-          columnStyles: { 0: { halign: 'left', cellWidth: 34 } }, didDrawPage: function () {} });
-        y = doc.lastAutoTable.finalY + 7;
+  function pNum(v, d) { var n = num(v); d = d == null ? 3 : d; return n === null ? '—' : n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function pRead(col, v) {
+    v = String(v == null ? '' : v).trim(); if (v === '') return '—';
+    var n = num(v); if (n === null) return v.toUpperCase();
+    var d = { ref_height: 3, sounding: 3, volume: 3, density: 4, temp: 1 }[col]; return d == null ? v : pNum(n, d);
+  }
+  var MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+  function pDate(v) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); if (!m) return v || '';
+    var d = +m[3], s = d % 100 >= 11 && d % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th'][d % 10];
+    return d + s + ' ' + MONTHS[+m[2] - 1] + ' ' + m[1];
+  }
+  /** The reading of the Sounding column as printed: "0.012 S", "1.250 U" (the ullage typed), or the plain value. */
+  function pSdg(r) {
+    if (r.mode === 'ullage') return pRead('sounding', r.ullage) + ' U';
+    var s = sounding(r); return pRead('sounding', s) + (r.su === 's' && num(s) !== null ? ' S' : '');
+  }
+  /** The YMR letterhead at the top of a page (the same on the certificate and the tank report) → the y below it. */
+  function lhDraw(doc, logo, banner, k) {
+    var W = 210, L = 10, CW = 190, PT = 0.3528, y = 7;
+    if (logo) {
+      var lgw = k >= 0.5 ? 182 : 160, lgh = lgw * logo.h / logo.w;
+      doc.addImage(logo.data, 'PNG', (W - lgw) / 2, y, lgw, lgh); y += lgh + 4.6;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.4); doc.setTextColor(59, 95, 149);
+      var lab = 'REGISTERED OFFICE ADDRESS:', all = lab + ' Runwal Elegante, A2605, Lokhandwala, Andheri West, Mumbai, Maharashtra- 400058', x0 = (W - doc.getTextWidth(all)) / 2;
+      doc.text(all, x0, y); doc.setDrawColor(59, 95, 149); doc.setLineWidth(0.15); doc.line(x0, y + 0.6, x0 + doc.getTextWidth(lab), y + 0.6);
+      y += 4.3; var aw = CW * 0.92, ax = (W - aw) / 2;
+      doc.text('e-mail: ops@ymrmarine.com', ax, y); doc.text('Phone: +919820482713', W / 2, y, { align: 'center' }); doc.text('http://www.ymrmarine.com', ax + aw, y, { align: 'right' });
+      y += 2.4;
+    } else if (banner) {
+      var bh = CW * banner.h / banner.w; if (bh > 40) bh = 40; doc.addImage(banner.data, 'PNG', (W - bh * banner.w / banner.h) / 2, y, bh * banner.w / banner.h, bh); y += bh + 1.5;
+    } else {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(0, 160, 226); doc.text('YMR MARINE SOLUTIONS', W / 2, y + 8, { align: 'center' }); y += 11;
+    }
+    doc.setDrawColor(61, 139, 214); doc.setLineWidth(0.9 * PT); doc.line(L, y, W - L, y); y += 2.1;
+    return y;
+  }
+  /** Survey type of the report: as chosen in Survey Details, else the one its report type opens with. */
+  function certType() {
+    var C = S.cfg.cert; if (!C) return 'none';
+    var t = val('survey_type'); if (t && C.choices[t]) return t;
+    return C.by_kind[S.cfg.template.kind] || 'none';
+  }
+  /** The certificate as srCertModel() makes it on the server (includes/survey_certificates.php), from the same wording. */
+  function certModel() {
+    var C = S.cfg.cert, cfg = C && C.types[certType()]; if (!cfg) return null;
+    var up = function (k) { return val(k).toUpperCase(); }, parts = [];
+    if (val('flag')) parts.push('under ' + up('flag') + ' Flag');
+    if (val('port_of_registry')) parts.push('Port of Registry ' + up('port_of_registry'));
+    if (val('grt')) parts.push('GRT ' + val('grt'));
+    if (val('nrt')) parts.push('NRT ' + val('nrt'));
+    var rep = { '{vessel}': up('vessel_name'), '{particulars}': parts.length ? ', ' + parts.join(', ') : '', '{owners}': up('owners'), '{charterers}': up('charterers') };
+    var fill = function (t) { return String(t || '').replace(/\{(vessel|particulars|owners|charterers)\}/g, function (m) { return rep[m]; }); };
+    var box = function (fk) { var x = fk ? String((S.data.fields[fk] != null ? S.data.fields[fk] : S.data.extra[fk]) || '').trim() : ''; if (/^\d{4}-\d{2}-\d{2}$/.test(x)) x = pDate(x); return x || C.asper; };
+    var grades = chosen().filter(function (g) { return S.data.tanks[g].some(function (r) { return !blankRow(r); }); });
+    var asper = grades.map(function (g) { return [gradeInfo(g).name || gradeInfo(g).short, C.asper]; });
+    return { title: cfg.title,
+      boxes: [['Place of ' + cfg.event + ':', box(cfg.boxes.place)], ['Date of ' + cfg.event + ':', box(cfg.boxes.date)], ['Time of ' + cfg.event + ':', box(cfg.boxes.time)]],
+      completed: [pDate(val('completed_date')), val('completed_time') ? val('completed_time') + '  Hrs LT' : ''],
+      paras: [fill(cfg.certify), fill(cfg.survey)],
+      qty: grades.map(function (g) { var t = gradeTotals(g).mt; return [gradeInfo(g).name || gradeInfo(g).short, t == null || isNaN(t) ? '—' : (+t).toFixed(3), 'M. Tons']; }),
+      consumption: fill(cfg.consumption), onboard: fill(cfg.onboard), asper: asper, remark: fill(cfg.remark), without_prejudice: fill(cfg.without_prejudice),
+      sign_left: cfg.sign_left.map(fill), sign_right: cfg.sign_right.map(fill), master: 'Capt. ' + up('master'), chief: 'Mr. ' + up('chief_engineer'),
+      surveyor_title: cfg.surveyor_title, surveyor: 'Mr. ' + up('surveyor_name') };
+  }
+  /** The certificate page drawn with jsPDF (as srCertHtml() on the server). */
+  function drawCert(doc, m, logo, banner) {
+    var W = 210, L = 10, CW = 190, PT = 0.3528, FS = 9.4, LH = 1.34, y = lhDraw(doc, logo, banner, 1);
+    var base = { font: 'helvetica', fontSize: FS, textColor: 0, lineColor: 0, lineWidth: 0, valign: 'middle', cellPadding: { top: 0.8, bottom: 0.8, left: 2.2, right: 2.2 } };
+    doc.setTextColor(0); doc.setFont('helvetica', 'bold'); doc.setFontSize(13.5); y += 2.5 + 13.5 * PT * 0.85;
+    doc.text(m.title, W / 2, y, { align: 'center' }); var tw = doc.getTextWidth(m.title); doc.setDrawColor(0); doc.setLineWidth(0.25); doc.line((W - tw) / 2, y + 0.9, (W + tw) / 2, y + 0.9); y += 5;
+    doc.autoTable({ startY: y, margin: { left: L }, tableWidth: CW * 0.6, theme: 'plain', styles: Object.assign({}, base, { lineWidth: 0.7 * PT, halign: 'center' }), columnStyles: { 0: { cellWidth: CW * 0.6 * 0.45 } }, body: m.boxes });
+    y = doc.lastAutoTable.finalY + 2.5;
+    doc.autoTable({ startY: y, margin: { left: L }, tableWidth: CW, theme: 'plain', styles: Object.assign({}, base, { lineWidth: 0.9 * PT, fontStyle: 'bold', cellPadding: { top: 1.1, bottom: 1.1, left: 2.2, right: 2.2 } }),
+      columnStyles: { 0: { cellWidth: CW * 0.36 }, 1: { cellWidth: CW * 0.32, halign: 'center' } }, body: [['Date / Time of Survey Completed:', m.completed[0], m.completed[1]]] });
+    y = doc.lastAutoTable.finalY + 3.2;
+    var para = function (t, style) {
+      doc.setFont('helvetica', style || 'normal'); doc.setFontSize(FS); doc.setTextColor(style === 'italic' ? 31 : 0, style === 'italic' ? 41 : 0, style === 'italic' ? 55 : 0);
+      var lines = doc.splitTextToSize(t, CW); y += FS * PT * 0.8;
+      if (lines.length > 1) doc.text(t, L, y, { align: 'justify', maxWidth: CW, lineHeightFactor: LH }); else doc.text(t, L, y);
+      y += (lines.length - 1) * FS * PT * LH + 2.6; doc.setTextColor(0);
+    };
+    var list = function (rows, bold) {
+      doc.autoTable({ startY: y - 0.6, margin: { left: L + CW * 0.12 }, tableWidth: 'wrap', theme: 'plain', styles: Object.assign({}, base, { cellPadding: { top: 0.55, bottom: 0.55, left: 2.8, right: 2.8 } }), body: rows,
+        columnStyles: { 0: { halign: 'right', minCellWidth: 52 }, 1: bold ? { halign: 'right', fontStyle: 'bold', minCellWidth: 24 } : {}, 2: { cellPadding: { left: 5, top: 0.55, bottom: 0.55 } } } });
+      y = doc.lastAutoTable.finalY + 2.6;
+    };
+    m.paras.forEach(function (t) { para(t); });
+    list(m.qty, true);
+    para(m.consumption); list(m.asper);
+    para(m.onboard); list(m.asper);
+    // REMARK: bold label, the text after it
+    doc.setFontSize(FS); doc.setFont('helvetica', 'normal'); var rl = doc.splitTextToSize('REMARK: ' + m.remark, CW); y += FS * PT * 0.8;
+    doc.setFont('helvetica', 'bold'); doc.text('REMARK:', L, y); var bw = doc.getTextWidth('REMARK: ');
+    doc.setFont('helvetica', 'normal'); doc.text(rl[0].slice(8), L + bw, y); rl.slice(1).forEach(function (t, i) { doc.text(t, L, y + (i + 1) * FS * PT * LH); });
+    y += (rl.length - 1) * FS * PT * LH + 2.6;
+    if (m.without_prejudice) para(m.without_prejudice, 'italic');
+    // signatures: Owners' side (Master, Chief Engineer) left, the surveyor right
+    y += 2;
+    var colW = CW * 0.46, xs = [L, L + CW * 0.54], sy = [y, y];
+    var head = function (c, lines) { doc.setFont('helvetica', 'normal'); doc.setFontSize(FS); lines.forEach(function (t, i) { doc.text(t, xs[c], sy[c] + FS * PT * (0.8 + i * 1.4)); }); sy[c] += FS * PT * (0.8 + (lines.length - 1) * 1.4) + 1; };
+    var sig = function (c, title, names) {
+      sy[c] += 40 * PT; doc.setDrawColor(0); doc.setLineWidth(0.8 * PT); doc.line(xs[c], sy[c], xs[c] + colW, sy[c]);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(FS); [title].concat(names).forEach(function (t, i) { doc.text(t, xs[c], sy[c] + 1 + FS * PT * (0.85 + i * 1.3)); });
+      sy[c] += 1 + FS * PT * (0.85 + names.length * 1.3) + 1;
+    };
+    head(0, m.sign_left); sig(0, 'The Master', [m.master]); sig(0, 'The Chief Engineer', [m.chief]);
+    head(1, m.sign_right); sig(1, m.surveyor_title, ['For YMR MARINE SOLUTIONS LLP', m.surveyor]);
+  }
+  /** The report drawn at print scale k (1 = full size; text and spacing shrink, the letterhead keeps its size). */
+  function ymrPdf(k, logo, banner, cm) {
+    var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' }), W = 210, L = 10, CW = W - 20, PT = 0.3528, BOT = 286, pages = cm ? 2 : 1;
+    if (cm) { drawCert(doc, cm, logo, banner); doc.addPage(); } // the certificate of the survey type, then the tank report
+    var f = function (pt) { return pt * k; }, mm = function (pt) { return pt * k * PT; }, lw = Math.max(0.5 * k, 0.3) * PT;
+    var up = function (key) { return val(key).toUpperCase(); }, y = 7;
+    doc.setLineHeightFactor(1.15);
+    y = lhDraw(doc, logo, banner, k);
+    // vessel name and IMO
+    var vessel = (val('vessel_name') || S.report.vessel || '').toUpperCase() || 'BUNKER SURVEY REPORT';
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(f(18.5)); doc.setTextColor(11, 60, 122); y += mm(18.5) * 0.85;
+    doc.text(vessel, W / 2, y, { align: 'center' });
+    if (val('imo')) {
+      y += mm(3) + mm(9.5);
+      doc.setFontSize(f(9.5)); doc.setFont('helvetica', 'normal'); var a = 'IMO No. ', aW = doc.getTextWidth(a); doc.setFont('helvetica', 'bold'); var bW = doc.getTextWidth(val('imo')), sx = (W - aW - bW) / 2;
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(0); doc.text(a, sx, y); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 58, 138); doc.text(val('imo'), sx + aW, y);
+    }
+    y += mm(9) + mm(3);
+    var grades = chosen().filter(function (g) { return S.data.tanks[g].some(function (r) { return !blankRow(r); }); }), nb = grades.length;
+    var base = { font: 'helvetica', fontSize: f(8.2), textColor: 0, lineColor: 0, lineWidth: 0, cellPadding: { top: mm(1.6), bottom: mm(1.6), left: mm(3), right: mm(3) }, valign: 'middle', overflow: 'linebreak' };
+    var C = function (content, o) { o = o || {}; return { content: content == null ? '' : String(content), colSpan: o.span || 1, styles: { lineWidth: o.b ? lw : 0, halign: o.al || 'left', fontStyle: o.bold ? 'bold' : 'normal' } }; };
+    var cols = function (ws) { var t = ws.reduce(function (s, x) { return s + x; }, 0), o = {}; ws.forEach(function (x, i) { o[i] = { cellWidth: CW * x / t }; }); return o; };
+    // header lines: the BROB of each grade beside FWE and Survey Started, the grade names right above them
+    var blank = function () { var o = [C('')]; grades.forEach(function () { o.push(C('')); }); o.push(C('')); return nb ? o : []; };
+    var brob = function (p) { var o = [C('BROB:', { al: 'right' })]; grades.forEach(function (g) { var v = val('brob_' + p + '_' + g); o.push(C(v === '' ? '' : pNum(v), { b: 1 })); }); o.push(C('M.Tons')); return nb ? o : []; };
+    var heads = function () { var o = [C('')]; grades.forEach(function (g) { o.push(C(gradeInfo(g).short, { b: 1 })); }); o.push(C('')); return nb ? o : []; };
+    var line = function (label, v, time, right, bold) {
+      var o = [C(label, { b: 1, bold: bold })];
+      if (time === '') o.push(C(v, { b: 1, span: 2, bold: bold })); else o.push(C(v, { b: 1, bold: bold }), C(time, { b: 1, al: 'center', bold: bold }));
+      o.push(C(time !== '' ? 'Hrs LT' : '', { bold: bold })); return o.concat(right);
+    };
+    var hw = [22, 22, 8, 7].concat(nb ? [6] : []).concat(grades.map(function () { return 10; })).concat(nb ? [8] : []);
+    doc.autoTable({ startY: y, margin: { left: L, right: L }, tableWidth: CW, theme: 'plain', styles: base, columnStyles: cols(hw), body: [
+      line('Owners', up('owners'), '', blank()), line('Charterers', up('charterers'), '', heads()),
+      line('FWE', pDate(val('fwe_date')), val('fwe_time'), brob('fwe')), line('Survey Started', pDate(val('started_date')), val('started_time'), brob('started')),
+      line('Survey Completed', pDate(val('completed_date')), val('completed_time'), blank(), true), line('Place of Survey', val('place'), '', blank()), line('Voyage No.', val('voyage_no'), '', blank())] });
+    y = doc.lastAutoTable.finalY + mm(6);
+    // drafts
+    var fa = num(val('draft_aft')), ff = num(val('draft_fwd')), li = num(val('list')), d2 = function (n) { return n === null ? '' : n.toFixed(2); };
+    doc.autoTable({ startY: y, margin: { left: L, right: L }, tableWidth: CW, theme: 'plain', styles: base, columnStyles: cols([13, 14, 10, 26, 13, 14, 10]), body: [
+      [C('Draft Aft', { b: 1 }), C(d2(fa), { b: 1 }), C('Meters', { b: 1 }), C(''), C('Trim:', { b: 1 }), C(fa !== null && ff !== null ? (Math.round((fa - ff) * 1000) / 1000).toFixed(2) : '', { b: 1 }), C('Meters', { b: 1 })],
+      [C('Draft Fwd', { b: 1 }), C(d2(ff), { b: 1 }), C('Meters', { b: 1 }), C(''), C('List', { b: 1 }), C(d2(li), { b: 1 }), C('Degrees', { b: 1 })]] });
+    y = doc.lastAutoTable.finalY + mm(10);
+    // one table per grade: thin grey lines between the tanks, only TOTAL Metric Tons
+    var tw = [15].concat([1, 2, 3, 4, 5, 6, 7, 8].map(function () { return 85 / 8; }));
+    grades.forEach(function (g, gi) {
+      var rows = S.data.tanks[g].filter(function (r) { return !blankRow(r); }), anyU = rows.some(function (r) { return r.mode === 'ullage'; });
+      if (gi) y += mm(8);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(f(11)); doc.setTextColor(0); y += mm(11) * 0.8; doc.text(gradeInfo(g).name || gradeInfo(g).short, L, y); y += mm(3);
+      var body = rows.map(function (r) {
+        var t = calc(r);
+        return [String(r.name || '').toUpperCase(), pRead('ref_height', r.ref_height), pSdg(r), pRead('volume', r.volume), pRead('density', r.density), pRead('temp', r.temp), pNum(t.vcf, 4), pNum(t.gsv), pNum(t.mt)];
       });
-      foot();
-      // signatures under the tables (no separate ROB summary page — the report is the tank page; the certificate is made by the server)
-      if (y > 235) { foot(); doc.addPage(); y = head(); }
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(30, 41, 59);
-      doc.text(doc.splitTextToSize('All bunker tanks were carefully sounded together with the Chief Engineer / his representative and the quantities calculated from the vessel\'s calibration tables.', W - 2 * M), M, y);
-      y += 22;
-      var sig = function (x, t, n) { doc.setDrawColor(100); doc.line(x, y, x + 70, y); doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.text(t, x, y + 5); doc.setFont('helvetica', 'normal'); doc.text(n || '', x, y + 10); };
-      sig(M, 'The Master', val('master')); sig(W - M - 70, 'Independent Marine Surveyor', val('surveyor_name')); y += 22;
-      sig(M, 'The Chief Engineer', val('chief_engineer'));
-      foot();
-      var name = (vessel + ' - ' + (S.report.kind_label || 'SURVEY') + ' - DRAFT').toUpperCase().replace(/[^A-Z0-9 .\-]+/g, '').trim() + '.pdf';
-      doc.save(name);
-      store(LS + '_offpdf', { at: Date.now(), version: S.version }); // make the final report as soon as the connection is back
-      toast('success', 'Draft PDF saved on this device');
+      var last = body.length - 1;
+      doc.autoTable({ startY: y, margin: { left: L, right: L }, tableWidth: CW, theme: 'plain', columnStyles: cols(tw),
+        styles: Object.assign({}, base, { fontSize: f(7.8), halign: 'center', cellPadding: { top: mm(1.5), bottom: mm(1.5), left: mm(2), right: mm(2) } }),
+        headStyles: { fontStyle: 'normal', fontSize: f(7.6), lineWidth: lw, cellPadding: mm(2) },
+        head: [['Tank\nName:', 'Ref. Height\n(m)', (anyU ? 'Sdg. / Ullage' : "Sdg. Corr'd") + '\n(m)', 'Volume\nCubic Metres', 'Density\n@15°C', 'Temp\nDeg(C)', 'V.C.F.\nT(54B)', 'G.S.V\nm³ @ 15°C', 'Metric\nTons']],
+        body: body,
+        didParseCell: function (d) { if (d.section === 'body' && d.column.index === 0) d.cell.styles.halign = 'left'; },
+        didDrawCell: function (d) {
+          if (d.section !== 'body') return;
+          var c = d.cell; doc.setDrawColor(0); doc.setLineWidth(lw);
+          doc.line(c.x, c.y, c.x, c.y + c.height); doc.line(c.x + c.width, c.y, c.x + c.width, c.y + c.height);
+          if (d.row.index === last) { doc.line(c.x, c.y + c.height, c.x + c.width, c.y + c.height); return; }
+          doc.setDrawColor(180, 191, 204); doc.setLineWidth(Math.max(0.3 * k, 0.3) * PT); doc.line(c.x, c.y + c.height, c.x + c.width, c.y + c.height);
+        } });
+      doc.autoTable({ startY: doc.lastAutoTable.finalY, margin: { left: L, right: L }, tableWidth: CW, theme: 'plain', columnStyles: cols([58, 28, 14]),
+        styles: Object.assign({}, base, { fontSize: f(7.8), cellPadding: { top: mm(1.5), bottom: mm(1.5), left: mm(3), right: mm(3) } }),
+        body: [[C(''), C('TOTAL Metric Tons', { b: 1, bold: 1, al: 'right' }), { content: pNum(gradeTotals(g).mt), styles: { lineWidth: lw, halign: 'right', fontStyle: 'bold', fontSize: f(8.6) } }]] });
+      y = doc.lastAutoTable.finalY;
     });
+    // remark, MT of each grade, the signatures in one row with room to sign and stamp
+    y += mm(8) + mm(6);
+    var remark = val('remarks') || 'All bunker tanks were carefully sounded together with Ch. Engineer/his representative and the quantities, as calculated from the vessels calibration tables, were found and agreed to be at the time of survey :';
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(f(8.2)); doc.setTextColor(0);
+    var rl = doc.splitTextToSize(remark, CW); y += mm(8.2) * 0.8; doc.text(rl, L, y, { lineHeightFactor: 1.35 }); y += (rl.length - 1) * mm(8.2) * 1.35 + mm(10);
+    if (nb) {
+      doc.autoTable({ startY: y, margin: { left: L, right: L }, tableWidth: CW * 0.46, theme: 'plain', styles: base, columnStyles: { 0: { cellWidth: CW * 0.46 * 0.45 }, 1: { cellWidth: CW * 0.46 * 0.35 }, 2: { cellWidth: CW * 0.46 * 0.20 } },
+        body: grades.map(function (g) { return [C(gradeInfo(g).short, { b: 1, al: 'center' }), C(pNum(gradeTotals(g).mt), { b: 1, al: 'center', bold: 1 }), C('MT', { b: 1, al: 'center' })]; }) });
+      y = doc.lastAutoTable.finalY + mm(6);
+    }
+    var sigH = mm(10) + mm(62) + mm(8) * 1.35 * 3.2;
+    if (y + sigH > BOT) { doc.addPage(); y = 12; }
+    y += mm(10) + mm(62);
+    var colW = CW * 0.3, gap = (CW - 3 * colW) / 2, sig = function (i, lines) {
+      var x = L + i * (colW + gap); doc.setDrawColor(0); doc.setLineWidth(0.7 * k * PT); doc.line(x, y, x + colW, y);
+      doc.setFontSize(f(8)); lines.forEach(function (t, j) { doc.setFont('helvetica', j ? 'normal' : 'bold'); doc.text(t, x, y + mm(2) + mm(8) * (0.85 + j * 1.35)); });
+    };
+    sig(0, ['The Master', 'CAPT. ' + up('master')]); sig(1, ['The Chief Engineer', 'MR. ' + up('chief_engineer')]); sig(2, ['Independent Marine Surveyor', 'MR. ' + up('surveyor_name'), 'For YMR MARINE SOLUTIONS LLP']);
+    y += mm(2) + mm(8) * 1.35 * 3;
+    // footer on every page
+    var now = new Date(), p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+    var stamp = p2(now.getDate()) + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][now.getMonth()] + ' ' + now.getFullYear() + ' ' + p2(now.getHours()) + ':' + p2(now.getMinutes());
+    for (var pg = 1; pg <= doc.getNumberOfPages(); pg++) {
+      doc.setPage(pg); doc.setDrawColor(203, 213, 225); doc.setLineWidth(0.18); doc.line(L, 289, W - L, 289);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(100, 116, 139);
+      doc.text(vessel + ' · Generated by YMR Marine YSMS on ' + stamp + ' (offline)', L, 292);
+      if (doc.getNumberOfPages() > pages) doc.text('Page ' + pg + ' of ' + doc.getNumberOfPages(), W - L, 292, { align: 'right' });
+    }
+    return { doc: doc, fits: doc.getNumberOfPages() === pages && y <= BOT };
+  }
+  /** The report PDF made on this device (no server): resolves { doc, name }, or rejects with what to tell the user. */
+  function devicePdf() {
+    if (!window.jspdf || !window.jspdf.jsPDF) return Promise.reject({ title: 'Not available', text: 'The PDF tools are not on this device yet — open the report once while online.' });
+    var all = issues();
+    if (all.length) return Promise.reject({ icon: 'warning', title: 'Please complete the report first', html: '<ul class="sr-swal-list">' + all.slice(0, 8).map(function (x) { return '<li>' + esc(x.msg) + '</li>'; }).join('') + '</ul>' });
+    return Promise.all([imgPng(LOGO, 2800), imgPng(BANNER)]).then(function (im) {
+      var out = null;
+      var cm = certModel();
+      [1, 0.9, 0.8, 0.72, 0.65, 0.58, 0.52, 0.46, 0.41, 0.36, 0.32].some(function (k) { out = ymrPdf(k, im[0], im[1], cm); return out.fits; }); // the certificate, then the whole tank report on one page
+      var vessel = val('vessel_name') || S.report.vessel || 'SURVEY';
+      return { doc: out.doc, name: (vessel + ' - ' + (S.report.kind_label || 'SURVEY') + ' REPORT').toUpperCase().replace(/[^A-Z0-9 .\-]+/g, '').trim() + '.pdf' };
+    });
+  }
+  function devicePdfFail(e) { Swal.fire({ icon: (e && e.icon) || 'error', title: (e && e.title) || 'PDF not made', text: e && e.text, html: e && e.html }); }
+  function offlinePdf() {
+    devicePdf().then(function (x) {
+      x.doc.save(x.name);
+      store(LS + '_offpdf', { at: Date.now(), version: S.version }); // make the server's report as soon as the connection is back
+      toast('success', 'PDF saved on this device');
+    }, devicePdfFail);
   }
   /** Back online after a draft PDF was made offline: save, then make the final PDF (and the Excel kept in the system). */
   function finalAfterOffline() {
     var f = read(LS + '_offpdf'); if (!f || !online() || !S.canEdit || S.finalBusy) return;
+    if (read(LS + '_imo')) return; // an IMO typed offline is looked up first; the final PDF follows that
     S.finalBusy = true;
     flush().then(function () {
       if (S.dirty || issues().length) { S.finalBusy = false; return; }
@@ -1554,7 +1940,7 @@
         store(LS + '_offpdf', null);
         S.files = res.files || S.files; if (res.version) S.version = res.version;
         var id = res.new_files && res.new_files.pdf;
-        Swal.fire({ icon: 'success', title: 'Synced — final report ready', text: 'Your offline changes are saved and the final PDF was made from the company template.',
+        Swal.fire({ icon: 'success', title: 'Synced — final report ready', text: 'Your offline changes are saved and the final PDF was made on the YMR letterhead.',
           confirmButtonText: '<i class="fa-solid fa-file-pdf"></i> Download final PDF', showCancelButton: !!id, cancelButtonText: 'Later', showConfirmButton: !!id })
           .then(function (r) { if (r.isConfirmed && id) { var a = document.createElement('a'); a.href = fileUrl(id); a.setAttribute('download', ''); document.body.appendChild(a); a.click(); setTimeout(function () { a.remove(); }, 4000); } });
       });

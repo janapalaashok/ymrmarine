@@ -71,3 +71,35 @@ function requireLogin(): void {
         redirect('login.php');
     }
 }
+
+/**
+ * Admin passwords that must never stay in use: the install default (admin123, see
+ * install/schema.sql) and other obvious guesses. An admin still signing in with one is sent to
+ * the Change Password page and can't open any other admin page until it is changed.
+ */
+const ADMIN_WEAK_PASSWORDS = ['admin123', 'admin', 'admin@123', 'password', 'password123', '12345678', '123456789', 'ymrmarine', 'ymrmarine123'];
+
+function admin_password_is_weak(string $plain): bool {
+    return in_array(strtolower($plain), ADMIN_WEAK_PASSWORDS, true);
+}
+
+/** True when the stored hash matches one of the weak passwords above. */
+function admin_hash_is_weak(string $hash): bool {
+    foreach (ADMIN_WEAK_PASSWORDS as $p) {
+        if (password_verify($p, $hash)) return true;
+    }
+    return false;
+}
+
+/** Why a new admin password is not accepted, or '' when it is fine. */
+function admin_password_problem(string $new, string $username): string {
+    if (strlen($new) < 10) return 'The new password must be at least 10 characters.';
+    if (strlen($new) > 128) return 'The new password is too long (128 characters at most).';
+    if (!preg_match('/[A-Za-z]/', $new) || !preg_match('/\d/', $new)) {
+        return 'The new password must have at least one letter and one number.';
+    }
+    if (admin_password_is_weak($new) || strcasecmp($new, $username) === 0) {
+        return 'This password is too easy to guess. Please choose another one.';
+    }
+    return '';
+}

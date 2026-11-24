@@ -161,7 +161,7 @@
   function cell(k, d) {
     switch (k) {
       case 'invoice_no': return (d.invoice_no ? '<span class="inv-no" data-testid="inv-no-' + d.id + '">' + esc(d.invoice_no) + '</span>' : muted('Not generated')) +
-        (d.has_rec ? '<span class="at-kind" title="Recovery invoice ' + esc(d.invoice_no) + 'B">+ Recovery</span>' : '') +
+        (d.has_rec || d.has_rec_entry ? '<span class="at-kind" title="Recovery invoice ' + esc(d.rec_no || '') + '">+ Recovery</span>' : '') +
         (d.recovery_pending ? '<span class="at-pend" data-testid="inv-rec-pending-' + d.id + '">Recovery pending</span>' : '');
       case 'status': return statusCell(d);
       case 'actions': return actionsCell(d);
@@ -432,7 +432,7 @@
       if (window.InvoiceForm) window.InvoiceForm.open(d);
     } else if (act === 'upload' || act === 'edit') {
       pdfForm(d, act === 'upload' ? 'Upload Invoice' : 'Edit Invoice').then(function (r) {
-        if (r.isConfirmed && r.value && r.value.ok) { toast('success', act === 'upload' ? 'Invoice uploaded' : (r.value.replaced ? 'Invoice replaced' : 'Invoice details saved')); load(); }
+        if (r.isConfirmed && r.value && r.value.ok) { toast('success', (act === 'upload' ? 'Invoice uploaded' : (r.value.replaced ? 'Invoice replaced' : 'Invoice details saved')) + (r.value.rec ? ' (with recovery invoice)' : '')); load(); }
       });
     } else if (act === 'remove') {
       Swal.fire({ icon: 'warning', title: 'Delete this entry?', width: 480,
@@ -460,23 +460,77 @@
     }
   });
   function pdfForm(d, title) {
+    // The vessel invoice PDF and details, and optionally its recovery invoice (number = invoice
+    // number + B unless typed differently, date, amount, PDF) — saved in that order.
+    var hadRec = !!(d.has_rec || d.has_rec_entry), recAuto = !d.rec_no_custom, vesselDone = false;
+    var g = function (id) { return document.getElementById(id); };
+    var usual = function () { var v = g('invNo').value.replace(/\s+/g, '').toUpperCase(); return v ? v + 'B' : ''; };
+    function recSync() {
+      g('invRecBox').hidden = !g('invRecOn').checked;
+      if (recAuto) g('invRecNo').value = usual();
+      g('invRecReset').hidden = recAuto;
+      g('invRecHint').textContent = recAuto ? 'The invoice number + B — type here to use a different number.' : 'Typed number — it must not be used by another invoice.';
+    }
     return Swal.fire({
-      title: title, width: 520, showCancelButton: true, confirmButtonText: d.has_file ? 'Save' : 'Upload', confirmButtonColor: '#6C4CF1', showLoaderOnConfirm: true,
+      title: title, width: 560, showCancelButton: true, confirmButtonText: d.has_file ? 'Save' : 'Upload', confirmButtonColor: '#6C4CF1', showLoaderOnConfirm: true,
       html: '<form class="inv-form" onsubmit="return false">' +
         '<label>Invoice PDF' + (d.has_file ? ' (choose a new file to replace ' + esc(d.file_name) + ')' : '') + '</label><input type="file" id="invFile" accept="application/pdf,.pdf" data-testid="inv-file-input"><small>PDF only, up to ' + C.maxMb + ' MB.</small>' +
         '<div class="two"><div><label>Invoice No.</label><input id="invNo" value="' + esc(d.invoice_no) + '" data-testid="inv-no-input"></div><div><label>Invoice Date</label><input type="date" id="invDate" value="' + esc(d.invoice_date) + '"></div></div>' +
         '<label>Amount (USD)</label><input id="invAmt" inputmode="decimal" value="' + esc(d.invoice_amount) + '" data-testid="inv-amount-input">' +
-        '<label>Notes</label><textarea id="invNotes" rows="2">' + esc(d.invoice_notes) + '</textarea></form>',
+        '<label>Notes</label><textarea id="invNotes" rows="2">' + esc(d.invoice_notes) + '</textarea>' +
+        '<div class="inv-rec"><label class="chk"><input type="checkbox" id="invRecOn" data-testid="inv-rec-on"' + (hadRec ? ' checked disabled' : '') + '> Recovery invoice too <span>(optional)</span></label>' +
+        (hadRec ? '<small>To remove the recovery invoice use Edit Invoice.</small>' : '') +
+        '<div id="invRecBox" hidden>' +
+          '<label>Recovery Invoice No. <button type="button" class="lnk" id="invRecReset" data-testid="inv-rec-reset" hidden>Use invoice number + B</button></label><input id="invRecNo" maxlength="64" value="' + esc(d.rec_no || '') + '" data-testid="inv-rec-no"><small id="invRecHint"></small>' +
+          '<div class="two"><div><label>Recovery Date</label><input type="date" id="invRecDate" value="' + esc(d.rec_date || d.invoice_date || '') + '" data-testid="inv-rec-date"></div>' +
+          '<div><label>Recovery Amount (USD)</label><input id="invRecAmt" inputmode="decimal" value="' + esc(d.rec_amount || '') + '" data-testid="inv-rec-amount"></div></div>' +
+          '<label>Recovery invoice PDF' + (d.has_rec ? ' (choose a new file to replace ' + esc(d.rec_file_name || 'recovery-invoice.pdf') + ')' : ' (optional)') + '</label><input type="file" id="invRecFile" accept="application/pdf,.pdf" data-testid="inv-rec-file">' +
+        '</div></div></form>',
+      didOpen: function () {
+        g('invRecOn').addEventListener('change', function () {
+          if (g('invRecOn').checked && !g('invRecDate').value) g('invRecDate').value = g('invDate').value || new Date().toISOString().slice(0, 10);
+          recSync();
+        });
+        g('invNo').addEventListener('input', function () { if (recAuto) recSync(); });
+        g('invRecNo').addEventListener('input', function () {
+          recAuto = g('invRecNo').value.replace(/\s+/g, '').toUpperCase() === usual() && usual() !== '';
+          g('invRecReset').hidden = recAuto;
+          g('invRecHint').textContent = recAuto ? 'The invoice number + B.' : 'Typed number — it must not be used by another invoice.';
+        });
+        g('invRecReset').addEventListener('click', function () { recAuto = true; recSync(); });
+        recSync();
+      },
       preConfirm: function () {
-        var f = document.getElementById('invFile').files[0];
-        if (!d.has_file && !f) { Swal.showValidationMessage('Choose the invoice PDF.'); return false; }
-        if (f && !/\.pdf$/i.test(f.name)) { Swal.showValidationMessage('Only PDF files can be uploaded.'); return false; }
-        if (f && f.size > C.maxMb * 1048576) { Swal.showValidationMessage('The PDF must be smaller than ' + C.maxMb + ' MB.'); return false; }
-        var data = fd({ a: f ? 'upload' : 'meta', id: d.id, invoice_no: document.getElementById('invNo').value, invoice_date: document.getElementById('invDate').value,
-          invoice_amount: document.getElementById('invAmt').value, invoice_notes: document.getElementById('invNotes').value });
-        if (f) data.append('invoice_pdf', f);
-        return post(data).then(function (res) { if (!res.ok) { Swal.showValidationMessage(res.error || 'Could not save.'); return false; } return res; })
-          .catch(function () { Swal.showValidationMessage('Network error — please try again.'); return false; });
+        var f = g('invFile').files[0], rec = g('invRecOn').checked, rf = rec ? g('invRecFile').files[0] : null;
+        if (!d.has_file && !f && !vesselDone && !rf) { Swal.showValidationMessage('Choose the invoice PDF' + (rec ? ' (or the recovery invoice PDF)' : '') + '.'); return false; }
+        var bad = function (x) { return x && !/\.pdf$/i.test(x.name) ? 'Only PDF files can be uploaded.' : x && x.size > C.maxMb * 1048576 ? 'The PDF must be smaller than ' + C.maxMb + ' MB.' : ''; };
+        if (bad(f) || bad(rf)) { Swal.showValidationMessage(bad(f) || bad(rf)); return false; }
+        if (rec) {
+          var rn = g('invRecNo').value.trim(), ra = g('invRecAmt').value.replace(/[,\s$]/g, '');
+          if (!rn) { Swal.showValidationMessage('Enter the recovery invoice number (or the invoice number first).'); return false; }
+          if (rn.replace(/\s+/g, '').toUpperCase() === g('invNo').value.replace(/\s+/g, '').toUpperCase()) { Swal.showValidationMessage('The recovery invoice number must be different from the invoice number.'); return false; }
+          if (!g('invRecDate').value) { Swal.showValidationMessage('Choose the recovery invoice date.'); return false; }
+          if (ra !== '' && (isNaN(+ra) || +ra < 0)) { Swal.showValidationMessage('Recovery amount must be a number of 0 or more.'); return false; }
+        }
+        var vessel = vesselDone ? Promise.resolve({ ok: true }) : (function () {
+          var data = fd({ a: f ? 'upload' : 'meta', id: d.id, invoice_no: g('invNo').value, invoice_date: g('invDate').value,
+            invoice_amount: g('invAmt').value, invoice_notes: g('invNotes').value });
+          if (f) data.append('invoice_pdf', f);
+          return post(data);
+        })();
+        return vessel.then(function (res) {
+          if (!res.ok) { Swal.showValidationMessage(res.error || 'Could not save.'); return false; }
+          vesselDone = true; // a retry (recovery error) does not upload the invoice PDF again
+          if (!rec) return res;
+          var data = fd({ a: 'recovery', id: d.id, rec_on: '1', rec_invoice_no: recAuto ? '' : g('invRecNo').value.trim(),
+            rec_invoice_date: g('invRecDate').value, rec_invoice_amount: g('invRecAmt').value.replace(/[,\s$]/g, '') });
+          if (rf) data.append('rec_pdf', rf);
+          return post(data).then(function (r2) {
+            if (!r2.ok) { Swal.showValidationMessage('Invoice saved, but the recovery invoice was not: ' + (r2.error || 'please try again.')); load(); return false; }
+            r2.replaced = res.replaced || r2.replaced; r2.rec = true;
+            return r2;
+          });
+        }).catch(function () { Swal.showValidationMessage('Network error — please try again.'); return false; });
       },
       allowOutsideClick: function () { return !Swal.isLoading(); }
     });
@@ -508,7 +562,8 @@
       kv('Vessel', d.vessel ? '<b>' + esc(d.vessel) + '</b>' : muted()) + kv('Client', d.client ? esc(d.client) : muted()) + kv('Survey Type', d.type ? '<span class="at-tag">' + esc(d.type) + '</span>' : muted()) +
       kv('Port', d.port ? esc(d.port) : muted()) + kv('Report No', d.report_no ? esc(d.report_no) : muted()) + kv('Survey Completed', d.survey_completed_ymd ? fdate(d.survey_completed_ymd) : muted()) + '</div></div>';
     h += '<div class="at-sec"><div class="at-sec-h">Invoice</div><div class="at-kv">' +
-      kv('Invoice Number', d.invoice_no ? '<b>' + esc(d.invoice_no) + '</b>' + (d.has_rec ? ' <span class="at-kind">+ Recovery ' + esc(d.invoice_no) + 'B</span>' : '') : muted('Assigned on the first download')) +
+      kv('Invoice Number', d.invoice_no ? '<b>' + esc(d.invoice_no) + '</b>' + (d.has_rec || d.has_rec_entry ? ' <span class="at-kind">+ Recovery ' + esc(d.rec_no || '') + '</span>' : '') : muted('Assigned on the first download')) +
+      (d.has_rec_entry ? kv('Recovery Invoice', '<b>' + esc(d.rec_no || '—') + '</b>' + (d.rec_date ? ' · ' + fdate(d.rec_date) : '') + (d.rec_amount !== '' && d.rec_amount != null ? ' · ' + usd(+d.rec_amount) : '')) : '') +
       kv('Invoice Date', d.invoice_date ? fdate(d.invoice_date) : muted()) + kv('Invoice Amount', d.amount === null || d.amount === undefined ? muted() : usd(d.amount)) +
       kv('Notes', d.invoice_notes ? esc(d.invoice_notes) : muted()) +
       kv('Status', S.view === 'completed' ? '<span class="at-pill done">Completed</span>' : statusCell(d).replace('data-testid="inv-status-' + d.id + '"', 'data-testid="inv-p-status"').replace('data-testid="inv-update-' + d.id + '"', 'data-testid="inv-p-update"')) +

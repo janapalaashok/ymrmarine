@@ -101,3 +101,8 @@
 .at-t tbody tr.flash td { background: #e6f6fc !important; transition: background .4s; }
 /* the form sits above the app chrome (sidebar, top bar, floating buttons); its alerts above the form */
 body.ivf-open .swal2-container { z-index: 100010 !important; }
+/* Recovery invoice (optional) */
+.ivf-recon { display: inline-flex !important; align-items: center; gap: 8px; font-size: 13.5px !important; font-weight: 700 !important; color: #334155 !important; text-transform: none !important; letter-spacing: 0 !important; cursor: pointer; margin: 0; }
+.ivf-recon input { width: 17px; height: 17px; accent-color: var(--ivf-p); }
+[data-ivf-rec] { margin-top: 10px; }
+[data-ivf-rec][hidden] { display: none; }

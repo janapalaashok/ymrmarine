@@ -64,62 +64,120 @@ function mvQs(array $f, array $extra = []): string {
 }
 $fmtDate = fn(string $d) => $d !== '' && strpos($d, '0000') !== 0 && strtotime($d) ? date('d M Y', strtotime($d)) : '—';
 $fmtTime = fn(string $d) => $d !== '' && strpos($d, '0000') !== 0 && strtotime($d) ? date('h:i A', strtotime($d)) : '';
+$mvPager = '';
+if ($pages > 1) {
+    $mvPager = '<div class="lp-pages">' . ($page > 1 ? '<a href="missed.php' . sanitize(mvQs($f, ['page' => $page - 1])) . '" aria-label="Previous page" data-testid="mv-prev"><i class="fa-solid fa-chevron-left"></i></a>' : '<span class="dis"><i class="fa-solid fa-chevron-left"></i></span>');
+    for ($p = max(1, $page - 2); $p <= min($pages, $page + 2); $p++) $mvPager .= $p === $page ? '<span class="on">' . $p . '</span>' : '<a href="missed.php' . sanitize(mvQs($f, ['page' => $p])) . '">' . $p . '</a>';
+    $mvPager .= ($page < $pages ? '<a href="missed.php' . sanitize(mvQs($f, ['page' => $page + 1])) . '" aria-label="Next page" data-testid="mv-next"><i class="fa-solid fa-chevron-right"></i></a>' : '<span class="dis"><i class="fa-solid fa-chevron-right"></i></span>') . '</div>';
+}
 
 $page_title = 'Missed Vessels';
+$moreOpen = $f['client'] !== '' || $f['surveyor'] !== '' || $f['port'] !== '' || $f['from'] !== '' || $f['to'] !== '' || $f['sort'] !== 'latest';
+$mvSvg = [ // card icons (same as the Pending Vessels cards)
+    'client' => '<path d="M11 17l2 2a1 1 0 0 0 3-3"/><path d="M14 14l2.5 2.5a1 1 0 0 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="M21 3l1 11h-2"/><path d="M3 3L2 14l6.5 6.5a1 1 0 1 0 3-3"/><path d="M3 4h8"/>',
+    'port' => '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+    'type' => '<rect x="5" y="4" width="14" height="17" rx="2.5"/><rect x="9" y="2.5" width="6" height="3.5" rx="1"/><path d="M11 10.5h5M11 14h5M11 17.5h5"/>',
+    'person' => '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
+    'date' => '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+    'note' => '<rect x="4" y="3.5" width="16" height="17" rx="3"/><path d="M8 8.5h8M8 12h8M8 15.5h8"/>',
+];
+$mvItem = fn(string $ic, string $label, string $val) => '<div class="pvz-i"><svg viewBox="0 0 24 24" aria-hidden="true">' . $mvSvg[$ic] . '</svg><div class="pvz-t"><span class="pvz-l">' . sanitize($label) . '</span><b>' . ($val !== '' ? sanitize($val) : '—') . '</b></div></div>';
 include 'includes/header.php';
 echo missedAssets();
 ?>
-<div class="scroll-content mvp" data-testid="missed-vessels-page">
+<link rel="stylesheet" href="assets/css/mobile-card.css?v=<?= @filemtime(__DIR__ . '/assets/css/mobile-card.css') ?>">
+<link rel="stylesheet" href="assets/css/list-page.css?v=<?= @filemtime(__DIR__ . '/assets/css/list-page.css') ?>">
+<style>
+/* Missed Vessels: amber cards (rest: assets/css/list-page.css + mobile-card.css) */
+@media (max-width: 991.98px) {
+    .lp .vessel-list-container { padding: 0 !important; }
+    .lp .vessel-list-container .vessel-card.cc-card.pvz.pvz-amber { border-color: #f59e0b !important; box-shadow: 0 6px 16px rgba(245,158,11,.12) !important; margin: 0 0 14px !important; cursor: default; }
+    .lp .pvz-amber .pvz-bar, .lp .pvz-amber .pvz-upd-bar { background: #f59e0b; }
+    .lp .pvz-amber .pvz-i > svg, .lp .pvz-amber .pvz-upd-k svg { stroke: #d97706; }
+    .lp .pvz-amber .pvz-upd-k { color: #b45309; }
+    .lp .pvz-amber .pvz-name a { color: inherit; text-decoration: none; }
+    .lp .pvz .lp-actions { justify-content: stretch; padding: 10px 0 4px; }
+    .lp .pvz .lp-actions > * { flex: 1 1 auto; justify-content: center; }
+    .lp .mv-more { display: none !important; }
+    .lp form.show .mv-more { display: block !important; }
+    .lp form.show .lp-pill.mv-more { display: inline-block !important; }
+    .lp .mv-ftog { flex: 1 1 calc(50% - 4px); height: 42px; border-radius: 999px; border: 1px solid #e2e8f0; background: #fff; color: #334155; font-weight: 700; font-size: 13px; }
+    .lp .lp-search { flex-basis: 100%; }
+    .lp .lp-pill-date { display: none; }
+}
+@media (min-width: 992px) {
+    .lp .mv-ftog { display: none; }
+    .lp .lp-table td { white-space: normal; }
+    .lp .lp-table td.nw { white-space: nowrap; }
+    .lp .mv-rem { max-width: 280px; overflow-wrap: anywhere; color: #334155; }
+    .lp .lp-table .lp-actions { flex-direction: column; align-items: stretch; min-width: 120px; }
+    .lp .lp-table .lp-actions > * { justify-content: center; padding: 6px 12px; }
+    .lp .lp-pill-date { font-size: 10.5px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; }
+    .lp input[type=date].lp-pill { max-width: 150px; }
+}
+</style>
+<div class="scroll-content mvp lp" data-testid="missed-vessels-page">
 <?php $back_url = ''; $page_testid = 'missed-vessels'; include 'includes/top_app_bar.php'; ?>
-<div class="mvp-wrap">
-    <div class="mvp-head">
-        <span class="mvp-logo"><i class="fa-solid fa-triangle-exclamation"></i></span>
-        <div><h1>Missed Vessels</h1><div class="mvp-sub">Surveys our team could not attend, moved here from Pending Vessels with a reason.</div></div>
-        <div class="mvp-total" data-testid="mv-total"><b data-mv-count="missed"><?= (int)$allMissed ?></b> missed vessel<?= $allMissed === 1 ? '' : 's' ?></div>
+<div class="lp-wrap">
+    <div class="lp-hero" data-testid="mv-hero">
+        <i class="fa-solid fa-triangle-exclamation lp-hero-icon-bg" aria-hidden="true"></i>
+        <div>
+            <div class="lp-hero-title">Missed Vessels</div>
+            <div class="lp-hero-sub">Surveys our team could not attend, moved here from Pending Vessels with a reason</div>
+        </div>
+        <div class="lp-hero-stats">
+            <div class="lp-hero-stat" data-testid="mv-total"><div class="n" data-mv-count="missed"><?= (int)$allMissed ?></div><div class="l">Missed vessels</div></div>
+            <?php if ($filtered): ?><div class="lp-hero-stat"><div class="n"><?= (int)$total ?></div><div class="l">Matching</div></div><?php endif; ?>
+        </div>
     </div>
 
     <?php if ($setupError !== ''): ?>
         <div class="alert alert-warning" data-testid="mv-setup-error"><?= sanitize($setupError) ?></div>
     <?php endif; ?>
 
-    <form class="mvp-filters<?= ($f['client'] !== '' || $f['surveyor'] !== '' || $f['port'] !== '' || $f['from'] !== '' || $f['to'] !== '' || $f['sort'] !== 'latest') ? ' show' : '' ?>" method="get" action="missed.php" data-testid="mv-filters">
-        <button type="button" class="mvp-ftog" onclick="this.form.classList.toggle('show')" aria-label="Show filters" data-testid="mv-filter-toggle"><i class="fa-solid fa-sliders"></i> Filters</button>
-        <label class="q">Search<input type="search" name="q" value="<?= sanitize($f['q']) ?>" placeholder="Vessel name or client name…" data-testid="mv-search"></label>
-        <label>Client<select name="client" data-testid="mv-f-client"><option value="">All clients</option><?php foreach ($clients as $v): ?><option<?= $v === $f['client'] ? ' selected' : '' ?>><?= sanitize($v) ?></option><?php endforeach; ?></select></label>
+    <form class="lp-toolbar<?= $moreOpen ? ' show' : '' ?>" method="get" action="missed.php" data-testid="mv-filters">
+        <label class="lp-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" name="q" value="<?= sanitize($f['q']) ?>" placeholder="Vessel or client…" aria-label="Search vessel or client" data-testid="mv-search"></label>
+        <button type="button" class="mv-ftog" onclick="this.form.classList.toggle('show')" aria-label="Show filters" data-testid="mv-filter-toggle"><i class="fa-solid fa-sliders"></i> Filters</button>
+        <select class="lp-pill mv-more" name="client" aria-label="Client" data-testid="mv-f-client"><option value="">All clients</option><?php foreach ($clients as $v): ?><option<?= $v === $f['client'] ? ' selected' : '' ?>><?= sanitize($v) ?></option><?php endforeach; ?></select>
         <?php if ($showSurveyor): ?>
-        <label>Surveyor<select name="surveyor" data-testid="mv-f-surveyor"><option value="">All surveyors</option><?php foreach ($surveyors as $v): ?><option<?= $v === $f['surveyor'] ? ' selected' : '' ?>><?= sanitize($v) ?></option><?php endforeach; ?></select></label>
+        <select class="lp-pill mv-more" name="surveyor" aria-label="Surveyor" data-testid="mv-f-surveyor"><option value="">All surveyors</option><?php foreach ($surveyors as $v): ?><option<?= $v === $f['surveyor'] ? ' selected' : '' ?>><?= sanitize($v) ?></option><?php endforeach; ?></select>
         <?php endif; ?>
-        <label>Port<select name="port" data-testid="mv-f-port"><option value="">All ports</option><?php foreach ($ports as $v): ?><option<?= $v === $f['port'] ? ' selected' : '' ?>><?= sanitize($v) ?></option><?php endforeach; ?></select></label>
-        <label>Missed from<input type="date" name="from" value="<?= sanitize($f['from']) ?>" data-testid="mv-f-from"></label>
-        <label>to<input type="date" name="to" value="<?= sanitize($f['to']) ?>" data-testid="mv-f-to"></label>
-        <label>Sort<select name="sort" data-testid="mv-sort">
+        <select class="lp-pill mv-more" name="port" aria-label="Port" data-testid="mv-f-port"><option value="">All ports</option><?php foreach ($ports as $v): ?><option<?= $v === $f['port'] ? ' selected' : '' ?>><?= sanitize($v) ?></option><?php endforeach; ?></select>
+        <span class="lp-pill-date">Missed</span>
+        <input type="date" class="lp-pill mv-more" name="from" value="<?= sanitize($f['from']) ?>" aria-label="Missed from" title="Missed from" data-testid="mv-f-from">
+        <input type="date" class="lp-pill mv-more" name="to" value="<?= sanitize($f['to']) ?>" aria-label="Missed to" title="Missed to" data-testid="mv-f-to">
+        <select class="lp-pill mv-more" name="sort" aria-label="Sort" data-testid="mv-sort">
             <option value="latest"<?= $f['sort'] === 'latest' ? ' selected' : '' ?>>Latest missed first</option>
             <option value="oldest"<?= $f['sort'] === 'oldest' ? ' selected' : '' ?>>Oldest missed first</option>
             <option value="vessel"<?= $f['sort'] === 'vessel' ? ' selected' : '' ?>>Vessel name A–Z</option>
-        </select></label>
-        <div class="mvp-fbtn"><button type="submit" data-testid="mv-apply"><i class="fa-solid fa-filter"></i> Apply</button><?php if ($filtered || $f['sort'] !== 'latest'): ?><a href="missed.php" data-testid="mv-clear">Clear</a><?php endif; ?></div>
+        </select>
+        <button type="submit" class="lp-btn-apply" data-testid="mv-apply"><i class="fa-solid fa-filter"></i> Apply</button>
+        <?php if ($filtered || $f['sort'] !== 'latest'): ?><a class="lp-btn-clear" href="missed.php" data-testid="mv-clear"><i class="fa-solid fa-rotate-left"></i> Clear</a><?php endif; ?>
     </form>
 
-    <div class="mvp-card">
-        <?php if (!$rows): ?>
-            <div class="mvp-empty" data-testid="mv-empty"><i class="fa-solid fa-triangle-exclamation"></i><?= $filtered ? 'No missed vessels match these filters.' : 'No missed vessels.' ?></div>
-        <?php else: ?>
-        <div class="mvp-t-wrap table-responsive">
-            <table class="mvp-t" data-testid="mv-table">
-                <thead><tr><th>#</th><th>Vessel</th><th>Client</th><th>Port</th><th>Survey Type</th><?php if ($showSurveyor): ?><th>Surveyor</th><?php endif; ?><th>Missed On / By</th><th>Reason / Remarks</th><th>Actions</th></tr></thead>
+    <div class="lp-strip"><span>Missed vessels <b data-mv-count="missed"><?= (int)$allMissed ?></b></span><?php if ($filtered): ?><span class="r"><?= (int)$total ?> matching</span><?php endif; ?></div>
+    <div class="lp-meta" data-testid="mv-meta"><?= $total ? 'Showing <b>' . (($page - 1) * $per + 1) . '–' . min($total, $page * $per) . '</b> of <b>' . $total . '</b>' . ($filtered ? ' matching' : '') . ' · ' . (['latest' => 'Latest missed first', 'oldest' => 'Oldest missed first', 'vessel' => 'Vessel name A–Z'][$f['sort']] ?? 'Latest missed first') : '0 vessels' ?></div>
+
+    <?php if (!$rows): ?>
+        <div class="lp-table-card"><div class="lp-empty" data-testid="mv-empty"><i class="fa-solid fa-triangle-exclamation"></i><?= $filtered ? 'No missed vessels match these filters.' : 'No missed vessels.' ?></div></div>
+    <?php else: ?>
+    <div class="lp-table-card lp-desk-only">
+        <div class="lp-table-wrap">
+            <table class="lp-table" data-testid="mv-table">
+                <thead><tr><th>#</th><th>Vessel</th><th>Client</th><th>Port</th><th>Survey Type</th><?php if ($showSurveyor): ?><th>Surveyor</th><?php endif; ?><th>Missed On / By</th><th>Reason / Remarks</th><th style="text-align:right">Actions</th></tr></thead>
                 <tbody>
                 <?php foreach ($rows as $i => $r): ?>
                     <tr data-mv-row="<?= $r['id'] ?>" data-testid="mv-row-<?= $r['id'] ?>">
-                        <td class="mvp-mut"><?= ($page - 1) * $per + $i + 1 ?></td>
-                        <td><a class="vn" href="vessel_detail.php?id=<?= $r['id'] ?>"><?= sanitize($r['vessel']) ?></a><div><span class="mvp-pill">Missed</span></div></td>
-                        <td><?= sanitize($r['client']) ?: '—' ?><?php if ($r['agent'] !== ''): ?><div class="mvp-mut">Agent: <?= sanitize($r['agent']) ?></div><?php endif; ?></td>
+                        <td class="lp-num nw"><?= ($page - 1) * $per + $i + 1 ?></td>
+                        <td><a class="lp-vessel" href="vessel_detail.php?id=<?= $r['id'] ?>"><?= sanitize($r['vessel']) ?></a><div style="margin-top:4px"><span class="lp-badge amber"><span class="dot"></span>Missed</span></div></td>
+                        <td><?= sanitize($r['client']) ?: '—' ?><?php if ($r['agent'] !== ''): ?><div class="lp-sub">Agent: <?= sanitize($r['agent']) ?></div><?php endif; ?></td>
                         <td><?= sanitize($r['port']) ?: '—' ?></td>
-                        <td><?= sanitize($r['type']) ?: '—' ?></td>
+                        <td><?= $r['type'] !== '' ? '<span class="lp-badge"><span class="dot"></span>' . sanitize($r['type']) . '</span>' : '—' ?></td>
                         <?php if ($showSurveyor): ?><td><?= sanitize($r['surveyor']) ?: '—' ?></td><?php endif; ?>
-                        <td style="white-space:nowrap"><?= $fmtDate($r['missed_at']) ?><div class="mvp-mut"><?= $fmtTime($r['missed_at']) ?></div><div class="mvp-by" data-testid="mv-marked-by-<?= $r['id'] ?>">by <?= sanitize($r['marked_by']) ?: '—' ?></div></td>
-                        <td><div class="mvp-rem" data-mv-remarks-of="<?= $r['id'] ?>" data-testid="mv-remarks-<?= $r['id'] ?>"><?= sanitize($r['remarks']) ?: '—' ?></div>
-                            <?php if ($r['edited_at'] !== ''): ?><div class="mvp-mut">Edited <?= missedWhen($r['edited_at']) ?><?= $r['edited_by'] !== '' ? ' by ' . sanitize($r['edited_by']) : '' ?></div><?php endif; ?></td>
-                        <td><div class="mvp-act">
+                        <td class="nw"><?= $fmtDate($r['missed_at']) ?><div class="lp-sub"><?= $fmtTime($r['missed_at']) ?></div><div class="lp-sub" data-testid="mv-marked-by-<?= $r['id'] ?>">by <?= sanitize($r['marked_by']) ?: '—' ?></div></td>
+                        <td><div class="mv-rem" data-mv-remarks-of="<?= $r['id'] ?>" data-testid="mv-remarks-<?= $r['id'] ?>"><?= sanitize($r['remarks']) ?: '—' ?></div>
+                            <?php if ($r['edited_at'] !== ''): ?><div class="lp-sub">Edited <?= missedWhen($r['edited_at']) ?><?= $r['edited_by'] !== '' ? ' by ' . sanitize($r['edited_by']) : '' ?></div><?php endif; ?></td>
+                        <td><div class="lp-actions">
                             <a href="vessel_detail.php?id=<?= $r['id'] ?>" data-testid="mv-view-<?= $r['id'] ?>"><i class="fa-solid fa-eye"></i> View</a>
                             <?php if ($r['can_edit']): ?><button type="button" class="ed" <?= missedBtnData('edit', $r) ?> data-testid="mv-edit-<?= $r['id'] ?>"><i class="fa-solid fa-pen"></i> Edit Remarks</button><?php endif; ?>
                             <?php if ($r['can_restore']): ?><button type="button" class="rs" <?= missedBtnData('restore', $r) ?> data-testid="mv-restore-<?= $r['id'] ?>"><i class="fa-solid fa-rotate-left"></i> Restore</button><?php endif; ?>
@@ -129,45 +187,41 @@ echo missedAssets();
                 </tbody>
             </table>
         </div>
-        <div class="mvp-cards" data-testid="mv-cards">
-            <?php foreach ($rows as $r): ?>
-            <div class="mvc" data-mv-row="<?= $r['id'] ?>" data-testid="mv-card-<?= $r['id'] ?>">
-                <div class="mvc-h"><a href="vessel_detail.php?id=<?= $r['id'] ?>"><?= sanitize($r['vessel']) ?></a><span class="mvp-pill">Missed</span></div>
-                <div class="mvc-g">
-                    <div><span>Client</span><b><?= sanitize($r['client']) ?: '—' ?></b></div>
-                    <div><span>Port</span><b><?= sanitize($r['port']) ?: '—' ?></b></div>
-                    <div><span>Survey Type</span><b><?= sanitize($r['type']) ?: '—' ?></b></div>
-                    <?php if ($showSurveyor): ?><div><span>Surveyor</span><b><?= sanitize($r['surveyor']) ?: '—' ?></b></div><?php endif; ?>
-                    <div><span>Missed On</span><b><?= $fmtDate($r['missed_at']) ?> <?= $fmtTime($r['missed_at']) ?></b></div>
-                    <div><span>Marked By</span><b><?= sanitize($r['marked_by']) ?: '—' ?></b></div>
-                </div>
-                <div class="mvc-r"><span>Reason / Remarks</span><p data-mv-remarks-of="<?= $r['id'] ?>"><?= sanitize($r['remarks']) ?: '—' ?></p></div>
-                <div class="mvp-act">
-                    <a href="vessel_detail.php?id=<?= $r['id'] ?>"><i class="fa-solid fa-eye"></i> View Details</a>
-                    <?php if ($r['can_edit']): ?><button type="button" class="ed" <?= missedBtnData('edit', $r) ?> data-testid="mvc-edit-<?= $r['id'] ?>"><i class="fa-solid fa-pen"></i> Edit Remarks</button><?php endif; ?>
-                    <?php if ($r['can_restore']): ?><button type="button" class="rs" <?= missedBtnData('restore', $r) ?> data-testid="mvc-restore-<?= $r['id'] ?>"><i class="fa-solid fa-rotate-left"></i> Restore</button><?php endif; ?>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
-        <div class="mvp-pager" data-testid="mv-pager">
-            <div data-testid="mv-meta"><?= $total ? 'Showing ' . (($page - 1) * $per + 1) . '–' . min($total, $page * $per) . ' of ' . $total . ($filtered ? ' matching' : '') : '0 vessels' ?></div>
-            <?php if ($pages > 1): ?>
-            <div class="mvp-pg">
-                <?= $page > 1 ? '<a href="missed.php' . sanitize(mvQs($f, ['page' => $page - 1])) . '" aria-label="Previous page" data-testid="mv-prev"><i class="fa-solid fa-chevron-left"></i></a>' : '<span class="dis"><i class="fa-solid fa-chevron-left"></i></span>' ?>
-                <?php for ($p = max(1, $page - 2); $p <= min($pages, $page + 2); $p++): ?>
-                    <?= $p === $page ? '<span class="on">' . $p . '</span>' : '<a href="missed.php' . sanitize(mvQs($f, ['page' => $p])) . '">' . $p . '</a>' ?>
-                <?php endfor; ?>
-                <?= $page < $pages ? '<a href="missed.php' . sanitize(mvQs($f, ['page' => $page + 1])) . '" aria-label="Next page" data-testid="mv-next"><i class="fa-solid fa-chevron-right"></i></a>' : '<span class="dis"><i class="fa-solid fa-chevron-right"></i></span>' ?>
-            </div>
-            <?php endif; ?>
-        </div>
+        <?php if ($pages > 1): ?><div class="lp-pager"><span>25 per page</span><?= $mvPager ?? '' ?></div><?php endif; ?>
     </div>
+
+    <div class="vessel-list-container lp-mob-only" data-testid="mv-cards">
+        <?php foreach ($rows as $r): ?>
+        <div class="vessel-card cc-card pvz pvz-amber" data-mv-row="<?= $r['id'] ?>" data-testid="mv-card-<?= $r['id'] ?>">
+            <div class="pvz-head"><span class="pvz-bar" aria-hidden="true"></span><span class="cc-name pvz-name"><a href="vessel_detail.php?id=<?= $r['id'] ?>"><?= sanitize($r['vessel']) ?></a></span><span class="lp-badge amber" style="flex:none">Missed</span></div>
+            <div class="pvz-grid<?= $showSurveyor ? '' : ' pvz-no-surveyor' ?>">
+                <?= $mvItem('client', 'Client', $r['client']) ?>
+                <?= $mvItem('port', 'Port', $r['port']) ?>
+                <?= $mvItem('type', 'Survey Type', $r['type']) ?>
+                <?php if ($showSurveyor): ?><?= $mvItem('person', 'Surveyor', $r['surveyor']) ?><?php endif; ?>
+                <?= $mvItem('date', 'Missed On', trim($fmtDate($r['missed_at']) . ' ' . $fmtTime($r['missed_at']))) ?>
+                <?= $mvItem('person', 'Marked By', $r['marked_by']) ?>
+            </div>
+            <div class="pvz-upd">
+                <div class="pvz-upd-k"><svg viewBox="0 0 24 24" aria-hidden="true"><?= $mvSvg['note'] ?></svg><span>Reason</span></div>
+                <span class="pvz-upd-bar" aria-hidden="true"></span>
+                <div class="pvz-upd-text" data-mv-remarks-of="<?= $r['id'] ?>"><?= sanitize($r['remarks']) ?: '—' ?></div>
+            </div>
+            <div class="lp-actions">
+                <a href="vessel_detail.php?id=<?= $r['id'] ?>"><i class="fa-solid fa-eye"></i> View</a>
+                <?php if ($r['can_edit']): ?><button type="button" class="ed" <?= missedBtnData('edit', $r) ?> data-testid="mvc-edit-<?= $r['id'] ?>"><i class="fa-solid fa-pen"></i> Edit Remarks</button><?php endif; ?>
+                <?php if ($r['can_restore']): ?><button type="button" class="rs" <?= missedBtnData('restore', $r) ?> data-testid="mvc-restore-<?= $r['id'] ?>"><i class="fa-solid fa-rotate-left"></i> Restore</button><?php endif; ?>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <?php if ($pages > 1): ?><div class="lp-pager lp-mob-only" style="border:0;background:none;padding:6px 0"><span></span><?= $mvPager ?? '' ?></div><?php endif; ?>
+    <?php endif; ?>
+    <div data-testid="mv-pager"></div>
 </div>
 </div>
 <script>
 // a restored vessel leaves this list: reload once the last one on this page is gone (keeps paging right)
-document.addEventListener('mv:removed', function () { if (!document.querySelector('.mvp-t [data-mv-row], .mvp-cards [data-mv-row]')) location.reload(); });
+document.addEventListener('mv:removed', function () { if (!document.querySelector('[data-mv-row]')) location.reload(); });
 </script>
 <?php include 'includes/nav.php'; include 'includes/footer.php'; ?>

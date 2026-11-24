@@ -44,6 +44,19 @@ self.addEventListener('fetch', function (ev) {
     if (a === 'get' || a === 'list') { ev.respondWith(networkFirst(req)); return; }
     return; // files (downloads) and the rest: network only
   }
-  if (req.mode === 'navigate') { ev.respondWith(networkFirst(req)); return; }
+  if (req.mode === 'navigate') {
+    // ?draft=<x> (a report started without internet) and a landing page with a query: the copy kept on the device
+    var shell = same && url.searchParams.has('draft') ? new URL('survey_report_public.php?draft=shell', self.registration.scope).href : null;
+    ev.respondWith(fetch(req).then(function (res) {
+      if (res && res.ok && !shell) { var copy = res.clone(); caches.open(CACHE).then(function (c) { c.put(req, copy); }); }
+      return res;
+    }).catch(function () {
+      var landing = !shell && !url.searchParams.has('t') && !url.searchParams.has('id'); // never another report's page
+      return caches.match(shell || req)
+        .then(function (hit) { return hit || (landing ? caches.match(new URL('survey_report_public.php', self.registration.scope).href) : undefined); })
+        .then(function (hit) { return hit || Response.error(); });
+    }));
+    return;
+  }
   if (['script', 'style', 'font', 'image'].indexOf(req.destination) >= 0) { ev.respondWith(staleWhileRevalidate(req)); return; }
 });

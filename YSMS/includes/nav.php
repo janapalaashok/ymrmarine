@@ -1,5 +1,7 @@
 <?php
 $current_page = basename($_SERVER['PHP_SELF']);
+// Add Completed Vessel (assign_vessel.php?completed=1) opens from Admin Controls → Completed Surveys
+if ($current_page === 'assign_vessel.php' && ($_GET['completed'] ?? '') === '1') $current_page = 'admin_controls.php';
 // సెషన్‌లో ఉన్న యూజర్ రోల్‌ను తెచ్చుకోవడం (Admin లేదా Surveyor)
 $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
 $sidebar_user_name = isset($_SESSION['full_name']) ? $_SESSION['full_name'] : (isset($_SESSION['username']) ? $_SESSION['username'] : 'User');
@@ -136,6 +138,13 @@ $sidebar_has_logo = is_file(__DIR__ . '/../' . $sidebar_logo_path);
             <i class="fa-solid fa-gas-pump"></i>
             <span>Recovery</span>
         </a>
+        <?php if (in_array($user_role, ['Admin', 'Super Admin'], true)): ?>
+        <!-- Monthly Data (Appointments / Survey Completed / Recovery of a month): sidebar + drawer only -->
+        <a href="monthly_data.php" class="nav-item-btn desktop-only-nav drawer-reveal <?= ($current_page == 'monthly_data.php') ? 'active' : '' ?>" data-testid="navigation-monthly-data-link">
+            <i class="fa-solid fa-calendar-days"></i>
+            <span>Monthly Data</span>
+        </a>
+        <?php endif; ?>
 
         <?php if ($user_role === 'Admin'): ?>
         <!-- Desktop sidebar + mobile drawer. Sales Team, Word / Photo Templates, Possible Duplicates,

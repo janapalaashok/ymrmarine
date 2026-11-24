@@ -5,6 +5,8 @@
  *   survey_report_public.php            choose the report type → a new report (a private link)
  *   survey_report_public.php?t=<token>  that report (the secret link; keep it to continue later).
  *                                       Rules and limits: includes/survey_report_guest.php; API ajax/survey_report_public.php
+ *   survey_report_public.php?draft=<x>  a report started without internet: kept on this device (the editor
+ *                                       reads it there) and made on the server as soon as there is a connection
  *   survey_report_public.php?id=<id>    a report of a vessel (or any report, for the Admin) — signed in only
  *                                       (survey_report.php sends here). Access: includes/survey_reports.php; API ajax/survey_reports.php
  */
@@ -15,7 +17,8 @@ header('X-Robots-Tag: noindex, nofollow');
 header('Referrer-Policy: no-referrer'); // the secret link never leaves in a Referer header
 
 $token = srgToken($_GET['t'] ?? '');
-$rid = $token === '' ? (int)($_GET['id'] ?? 0) : 0;
+$draft = $token === '' && preg_match('/^[a-z0-9]{4,24}$/', (string)($_GET['draft'] ?? '')) ? (string)$_GET['draft'] : '';
+$rid = $token === '' && $draft === '' ? (int)($_GET['id'] ?? 0) : 0;
 $kinds = [];
 $notFound = false;
 $srBack = 'survey_report_public.php'; $srBackLabel = 'New report';
@@ -36,11 +39,11 @@ try {
             $srBackLabel = (string)$sv['vessel_name'];
         } else { $srBack = 'survey_reports.php'; $srBackLabel = 'Survey Reports'; }
     }
-    if ($token === '' && $rid === 0) $kinds = srgKinds($db);
+    if ($token === '' && $rid === 0 && $draft === '') $kinds = srgKinds($db);
 } catch (Throwable $e) {
     error_log('survey_report_public: ' . $e->getMessage());
 }
-$editing = $token !== '' || $rid > 0;
+$editing = $token !== '' || $rid > 0 || $draft !== '';
 $v = fn(string $f) => @filemtime(__DIR__ . '/' . $f);
 $signedIn = !empty($_SESSION['user_id']);
 $signedName = (string)($_SESSION['full_name'] ?? $_SESSION['username'] ?? '');
@@ -107,6 +110,9 @@ $kindIcons = ['rob' => 'fa-gas-pump', 'offhire' => 'fa-anchor-circle-xmark', 'on
         .srp-who { display: flex; align-items: center; gap: 10px; background: #f0f7ff; border: 1px solid #d5e6fb; border-radius: 12px; padding: 10px 14px; margin-bottom: 18px; font-size: 13.5px; color: #1e3a8a; }
         .srp-last { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: #fffbeb; border: 1px solid #fde68a; font-size: 13.5px; color: #92400e; }
         .srp-last[hidden] { display: none; }
+        .srp-drafts { margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: #eff6ff; border: 1px solid #bfdbfe; font-size: 13.5px; }
+        .srp-drafts[hidden] { display: none; }
+        .srp-drafts a { display: block; font-weight: 700; color: #1d4ed8; text-decoration: none; margin-top: 6px; }
         .srp-last a { font-weight: 700; color: #b45309; text-decoration: none; }
         .srp-feat { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
         .srp-feat div { display: flex; gap: 10px; align-items: center; font-size: 12.5px; color: #475569; background: #fff; border: 1px solid #e6edf7; border-radius: 14px; padding: 12px 14px; }
@@ -129,6 +135,13 @@ $kindIcons = ['rob' => 'fa-gas-pump', 'offhire' => 'fa-anchor-circle-xmark', 'on
         @media (min-width: 992px) {
             body.sr-public.sr-pv-open::after { content: ''; position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 1999; }
             body.sr-public.sr-pv-open .sr-v4 .sr-pv { inset: 3vh auto 3vh 50%; transform: translateX(-50%); width: min(980px, 94vw); border-radius: 14px; overflow: hidden; box-shadow: 0 24px 60px rgba(15,23,42,.35); }
+        }
+        /* phone: Previous / Next fixed to the very bottom (this page has no app menu below), no Preview button on Tank Details */
+        @media (max-width: 991.98px) {
+            .sr-public .sr-wiz-nav { bottom: 0; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -4px 14px rgba(11,30,70,.08); }
+            .sr-public .sr-wrap { padding-bottom: 96px; }
+            body.sr-public[data-sr-step=tanks] .srp-pv-btn { display: none !important; }
+            .srp-pv-btn { bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important; } /* other steps: above Previous / Next */
         }
         @media (max-width: 991.98px) { .srp-pv-btn { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 1040; height: 46px; border-radius: 999px; } }
         .srp-link { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: #eef5ff; border: 1px solid #cfe0fb; color: #1e3a8a; border-radius: 12px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px; }
@@ -156,7 +169,7 @@ $kindIcons = ['rob' => 'fa-gas-pump', 'offhire' => 'fa-anchor-circle-xmark', 'on
 <section class="srp-hero">
     <span class="tag"><i class="fa-solid fa-ship"></i> Bunker survey</span>
     <h1>Survey Report</h1>
-    <p>Enter the vessel, survey and tank readings on site. The report is saved as you type, previewed as it will print, and made from the company template.</p>
+    <p>Enter the vessel, survey and tank readings on site. The report is saved as you type, previewed as it will print, and made on the YMR letterhead.</p>
 </section>
 <main class="srp-main">
     <?php if ($notFound): ?>
@@ -184,13 +197,14 @@ $kindIcons = ['rob' => 'fa-gas-pump', 'offhire' => 'fa-anchor-circle-xmark', 'on
                     <button type="button" class="srp-kind" data-new-kind="<?= sanitize($k) ?>" data-testid="srp-new-<?= sanitize($k) ?>"><span class="ic"><i class="fa-solid <?= sanitize($kindIcons[$k] ?? 'fa-file-lines') ?>"></i></span><span><b><?= sanitize($l) ?></b><span>New report</span></span><i class="fa-solid fa-chevron-right go"></i></button>
                 <?php endforeach; ?>
             </div>
+            <div class="srp-drafts" data-drafts hidden data-testid="srp-drafts"></div>
             <div class="srp-last" data-last hidden data-testid="srp-last"><span><i class="fa-solid fa-clock-rotate-left"></i> You have a report on this device.</span><a href="#" data-last-link>Continue it <i class="fa-solid fa-arrow-right"></i></a></div>
             <div class="sr-note err mt-3" data-new-err hidden data-testid="srp-new-err"></div>
         <?php endif; ?>
     </section>
     <div class="srp-feat">
         <div><i class="fa-solid fa-floppy-disk"></i> Saved as you type</div>
-        <div><i class="fa-solid fa-file-pdf"></i> Preview and PDF from the company template</div>
+        <div><i class="fa-solid fa-file-pdf"></i> Preview and PDF on the YMR letterhead</div>
         <div><i class="fa-solid fa-link"></i> Private link to continue later</div>
     </div>
 </main>
@@ -204,13 +218,66 @@ $kindIcons = ['rob' => 'fa-gas-pump', 'offhire' => 'fa-anchor-circle-xmark', 'on
   try { if (sessionStorage.getItem('ysms_srp_guest') === '1') guest(); } catch (e) {}
   var gb = document.querySelector('[data-srp-guest]'); if (gb) gb.addEventListener('click', guest);
   try { var last = localStorage.getItem('ysms_srp_last'); if (last && /^[0-9a-f]{64}$/.test(last)) { var l = document.querySelector('[data-last]'); if (l) { l.hidden = false; lastA.href = '?t=' + last; } } } catch (e) {}
+  // ---- without internet: this page, the editor and the starting form of each report type are kept on the device ----
+  var KINDS = Array.prototype.map.call(document.querySelectorAll('[data-new-kind]'), function (x) { return x.getAttribute('data-new-kind'); });
+  function rd(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+  function wr(k, v) { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('survey_report_sw.js', { scope: './survey_report' }).catch(function () {});
+  function keepOffline() {
+    if (!navigator.onLine) return;
+    KINDS.forEach(function (k) { // the form a new report of this type starts with (template fields, grades, wording)
+      fetch('ajax/survey_report_public.php?a=starter&kind=' + encodeURIComponent(k), { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+        .then(function (j) { if (j && j.ok) wr('ysms_srp_starter_' + k, { at: Date.now(), res: j }); }).catch(function () {});
+    });
+    if (!('caches' in window)) return;
+    var shell = new URL('survey_report_public.php?draft=shell', location.href).href;
+    caches.open('ysms-sr-v1').then(function (c) {
+      fetch(location.href, { credentials: 'same-origin' }).then(function (r) { if (r.ok) c.put(location.href.split('#')[0], r); }).catch(function () {});
+      return fetch(shell, { credentials: 'same-origin' }).then(function (r) {
+        if (!r.ok) return;
+        c.put(shell, r.clone());
+        return r.text().then(function (html) { // every script, style and font the editor loads
+          var urls = [], re = /(?:src|href)="([^"]+\.(?:js|css)(?:\?[^"]*)?)"/g, m;
+          while ((m = re.exec(html))) urls.push(new URL(m[1].replace(/&amp;/g, '&'), location.href).href);
+          ['assets/images/ymr-logo-horizontal.svg', 'assets/images/survey-letterhead.png', 'assets/images/logo.png'].forEach(function (u) { urls.push(new URL(u, location.href).href); });
+          urls.forEach(function (u) {
+            var same = new URL(u).origin === location.origin;
+            c.match(u).then(function (hit) { if (hit) return; fetch(u, same ? { credentials: 'same-origin' } : { mode: 'no-cors' }).then(function (x) { if (x.ok || x.type === 'opaque') c.put(u, x); }).catch(function () {}); });
+          });
+        });
+      }).catch(function () {});
+    }).catch(function () {});
+  }
+  window.addEventListener('load', function () { setTimeout(keepOffline, 800); });
+  // reports started without internet, waiting to be sent
+  (function () {
+    var box = document.querySelector('[data-drafts]'), list = [];
+    try { Object.keys(localStorage).forEach(function (k) { var m = /^ysms_srp_draft_([a-z0-9]+)$/.exec(k); if (m) { var d = rd(k); if (d) list.push({ id: m[1], d: d }); } }); } catch (e) {}
+    if (!box || !list.length) return;
+    box.hidden = false;
+    box.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Reports started without internet (sent when online):' + list.map(function (x) {
+      var dt = x.d.res && x.d.res.report ? x.d.res.report : {}, ed = rd('ysms_sr_draft-' + x.id), v = (ed && ed.data && ed.data.fields && ed.data.fields.vessel_name) || 'New report';
+      return '<a href="?draft=' + x.id + '" data-testid="srp-draft-' + x.id + '">' + String(v).replace(/[<>&"]/g, '') + ' · ' + String(dt.kind_label || '').replace(/[<>&"]/g, '') + ' <i class="fa-solid fa-arrow-right"></i></a>';
+    }).join('');
+  })();
+  function offlineNew(kind, b) {
+    var st = rd('ysms_srp_starter_' + kind), m = document.querySelector('[data-new-err]');
+    if (!st || !st.res) { busy = false; b.disabled = false; if (m) { m.hidden = false; m.textContent = 'No internet. Open this page once while online, then a new report can be started without internet on this device.'; } return; }
+    var id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    wr('ysms_srp_draft_' + id, { kind: kind, at: Date.now(), res: st.res });
+    location.href = '?draft=' + id;
+  }
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-new-kind]'); if (!b || busy) return;
     busy = true; b.disabled = true;
-    var f = new FormData(); f.append('csrf_token', csrf); f.append('a', 'new'); f.append('kind', b.getAttribute('data-new-kind'));
+    var kind = b.getAttribute('data-new-kind');
+    if (!navigator.onLine) { offlineNew(kind, b); return; }
+    var f = new FormData(); f.append('csrf_token', csrf); f.append('a', 'new'); f.append('kind', kind);
     fetch('ajax/survey_report_public.php', { method: 'POST', body: f, credentials: 'same-origin', headers: { 'X-CSRF-Token': csrf } })
-      .then(function (r) { return r.json(); })
-      .then(function (j) { if (j && j.ok && j.token) { location.replace('?t=' + j.token); return; } throw new Error(j && j.error || 'Could not make the report.'); })
+      .then(function (r) { return r.json(); }, function () { return { offline: true }; })
+      .then(function (j) {
+        if (j && j.offline) { offlineNew(kind, b); return; } // no connection after all: start it on this device
+        if (j && j.ok && j.token) { location.replace('?t=' + j.token); return; } throw new Error(j && j.error || 'Could not make the report.'); })
       .catch(function (err) { busy = false; b.disabled = false; var m = document.querySelector('[data-new-err]'); if (m) { m.hidden = false; m.textContent = err.message || 'No connection.'; } });
   });
 })();
@@ -278,10 +345,11 @@ $kindIcons = ['rob' => 'fa-gas-pump', 'offhire' => 'fa-anchor-circle-xmark', 'on
 })();
 </script>
 <?php endif; ?>
-<script>window.SR_PAGE = <?= json_encode(($token !== '' ? ['id' => $token, 'guest' => true, 'api' => 'ajax/survey_report_public.php'] : ['id' => $rid, 'api' => 'ajax/survey_reports.php'])
+<script>window.SR_PAGE = <?= json_encode(($token !== '' ? ['id' => $token, 'guest' => true, 'api' => 'ajax/survey_report_public.php']
+    : ($draft !== '' ? ['id' => 'draft-' . $draft, 'draft' => $draft, 'guest' => true, 'api' => 'ajax/survey_report_public.php'] : ['id' => $rid, 'api' => 'ajax/survey_reports.php']))
     + ['std' => true, 'csrf' => csrf_token(),
-    // Tank Details on a computer: the Excel-style sheet, loaded by the page only on a wide screen (false = the plain grid)
-    'xl' => ['js' => 'assets/js/survey-report-xl.js?v=' . $v('assets/js/survey-report-xl.js'), 'css' => 'assets/css/survey-report-xl.css?v=' . $v('assets/css/survey-report-xl.css')],
+    // Tank Details on a computer: one plain 9-column table per grade (the Excel-style sheet, survey-report-xl.js, is off)
+    'xl' => false,
     'pdfjs' => 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'pdfjsWorker' => 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES) ?>;</script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

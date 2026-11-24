@@ -1,0 +1,4293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YMR Marine Solutions | Global Marine Survey & Inspection Solutions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+   /* YMR BRAND COLOURS */
+  --brand-green: #004535;
+  --brand-green-dark: #003326;
+  --brand-blue: #00536B;
+  --brand-cream: #F7F7F2;
+  --brand-white: #FFFFFF;
+  --brand-charcoal: #192523;
+  --brand-sage: #A3B4AC;
+  --brand-border: #E3E7E5;
+  --navy: #050D1A;
+  --navy-2: #091525;
+  --navy-3: #0D1F36;
+  --ocean: #0A2B52;
+  --deep: #0E3A70;
+  --blue: #1565C0;
+  --vivid: #1976D2;
+  --sky: #1E88E5;
+  --accent: #00B4D8;
+  --teal: #00ACC1;
+  --teal-light: #4DD0E1;
+  --white: #FFFFFF;
+  --off-white: #F0F4F8;
+  --silver: #B0BEC5;
+  --muted: #607D8B;
+  --glass: rgba(255,255,255,0.05);
+  --glass-border: rgba(255,255,255,0.10);
+  --card-bg: rgba(9,21,37,0.85);
+  --section-gap: 100px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--navy);color:var(--white);font-family:'Inter',sans-serif;overflow-x:hidden;line-height:1.6}
+h1,h2,h3,h4,h5{font-family:'Space Grotesk',sans-serif;letter-spacing:-0.02em}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--navy)}
+::-webkit-scrollbar-thumb{background:var(--deep);border-radius:3px}
+
+/* =========================================
+   NAVIGATION
+========================================= */
+
+#navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    width: 100%;
+    height: 66px;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    padding: 0;
+    background: #ffffff;
+    border-bottom: 1px solid #DADFD9;
+    font-family: 'Inter', sans-serif;
+    box-shadow: none;
+}
+
+#navbar.scrolled {
+    background: #ffffff;
+    box-shadow: none;
+}
+
+/* BRAND */
+
+#navbar .nav-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 0 22px;
+    background: #004535;
+    text-decoration: none;
+    flex-shrink: 0;
+    border: none;
+}
+
+#navbar .nav-logo-icon {
+    width: 32px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+}
+
+#navbar .nav-logo-icon svg {
+    width: 100%;
+    height: 100%;
+    color: #ffffff;
+}
+
+#navbar .nav-logo-text {
+    font-size: 17px;
+    font-weight: 600;
+    color: #ffffff;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+}
+
+#navbar .nav-logo-sub {
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: 0.16em;
+    color: #D2E2DB;
+    text-transform: uppercase;
+    margin-top: 4px;
+}
+
+/* PRIMARY NAVIGATION */
+
+#navbar .nav-links {
+    display: flex;
+    flex: 1;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 0 16px;
+    margin: 0;
+}
+
+#navbar .nav-links > a,
+#navbar .nav-dropdown-toggle {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
+    padding: 0 18px;
+    color: #192523;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    text-decoration: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+/* UNDERLINE INDICATOR */
+
+#navbar .nav-dropdown-toggle::after,
+#navbar .nav-links > a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 18px;
+    right: 18px;
+    height: 3px;
+    background: #004535;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.2s ease;
+}
+
+#navbar .nav-dropdown:hover .nav-dropdown-toggle::after,
+#navbar .nav-dropdown:focus-within .nav-dropdown-toggle::after,
+#navbar .nav-links > a:hover::after {
+    transform: scaleX(1);
+}
+
+/* DROPDOWN */
+
+.nav-dropdown {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+}
+
+.nav-chevron {
+    width: 6px;
+    height: 6px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg);
+    margin-top: -4px;
+    transition: transform 0.2s ease;
+}
+
+.nav-dropdown:hover .nav-chevron {
+    transform: rotate(225deg);
+}
+
+.nav-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 280px;
+    background: #ffffff;
+    padding: 12px 0;
+    border: 1px solid #DADFD9;
+    border-top: 3px solid #004535;
+}
+
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown:focus-within .nav-dropdown-menu {
+    display: block;
+}
+
+#navbar .nav-dropdown-menu a {
+    display: block;
+    padding: 15px 24px;
+    font-size: 14px;
+    font-weight: 400;
+    color: #192523;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+#navbar .nav-dropdown-menu a:hover {
+    background: #F7F7F2;
+    color: #004535;
+}
+
+/* UTILITY NAVIGATION */
+
+#navbar .nav-actions {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin-left: auto;
+    padding: 0 12px;
+    border-left: 1px solid #DADFD9;
+}
+
+.nav-utility-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 18px;
+    color: #192523;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color 0.2s ease;
+}
+
+.nav-utility-link:hover {
+    color: #00536B;
+}
+
+.nav-utility-link svg {
+    width: 15px;
+    height: 15px;
+}
+
+/* MOBILE BUTTON */
+
+#navbar .hamburger {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: 66px;
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    border-left: 1px solid #DADFD9;
+    cursor: pointer;
+}
+
+#navbar .hamburger span {
+    width: 21px;
+    height: 1.5px;
+    background: #004535;
+}
+/* =========================================
+   HERO SECTION
+========================================= */
+
+#hero {
+    position: relative;
+    min-height: 75vh;
+    display: flex;
+    align-items: center;
+    padding: 100px 7%;
+    overflow: hidden;
+    background: #003326;
+}
+
+/* BACKGROUND IMAGE */
+
+.hero-background {
+    position: absolute;
+    inset: 0;
+    background-image: url('./hero-vessel.jpeg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* IMAGE OVERLAY */
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(0, 25, 20, 0.85) 0%,
+        rgba(0, 25, 20, 0.65) 35%,
+        rgba(0, 25, 20, 0.20) 75%,
+        rgba(0, 25, 20, 0.05) 100%
+    );
+}
+
+/* HERO CONTENT */
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 850px;
+}
+
+.hero-eyebrow {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #D2E2DB;
+    margin-bottom: 28px;
+}
+
+.hero-title {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(42px, 5.5vw, 84px);
+    font-weight: 500;
+    letter-spacing: -0.045em;
+    line-height: 1.08;
+    color: #FFFFFF;
+    margin-bottom: 28px;
+}
+
+.hero-desc {
+    max-width: 580px;
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1.8;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 40px;
+}
+
+/* HERO BUTTONS */
+
+.hero-ctas {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.hero-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 36px;
+    padding: 18px 26px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.hero-btn-primary {
+    background: #004535;
+    border: 1px solid #004535;
+    color: #FFFFFF;
+}
+
+.hero-btn-primary:hover {
+    background: #00634C;
+}
+
+.hero-btn-secondary {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.65);
+    color: #FFFFFF;
+}
+
+.hero-btn-secondary:hover {
+    background: #FFFFFF;
+    color: #004535;
+}
+
+/* STATISTICS STRIP */
+
+.hero-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: #F7F7F2;
+    padding: 40px 7%;
+}
+
+.hero-metric {
+    padding: 18px 32px;
+    border-right: 1px solid #DADFD9;
+}
+
+.hero-metric:last-child {
+    border-right: none;
+}
+
+.hero-metric-value {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(32px, 4vw, 52px);
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    line-height: 1.2;
+    color: #004535;
+    margin-bottom: 8px;
+}
+
+.hero-metric-label {
+    font-size: 14px;
+    font-weight: 400;
+    color: #52615B;
+}
+
+/* SECTIONS COMMON */
+section{padding:var(--section-gap) 40px}
+.section-tag{display:inline-block;font-size:11px;font-weight:700;color:#00a3df;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:14px;padding:6px 16px;border-radius:20px;background:rgba(0,180,216,0.1);border:1px solid rgba(0,180,216,0.2)}
+.section-title{font-size:clamp(28px,4vw,48px);font-weight:800;line-height:1.1;margin-bottom:16px;letter-spacing:-0.02em;color:#00a3df}
+.section-sub{font-size:17px;color:rgba(255,255,255,0.6);max-width:600px;line-height:1.7}
+.text-grad{background:linear-gradient(135deg,#00a3df,var(--teal-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.divider-line{width:60px;height:3px;background:linear-gradient(90deg,#00a3df,transparent);border-radius:2px;margin:20px 0}
+.centered{text-align:center}
+.centered .section-sub{margin:0 auto}
+.centered .divider-line{margin:20px auto}
+.animate-in{opacity:0;transform:translateY(30px);transition:all 0.6s ease}
+.animate-in.visible{opacity:1;transform:translateY(0)}
+/* =========================================
+   ABOUT SECTION
+========================================= */
+
+#about {
+    background: #F7F7F2;
+    padding: 100px 7%;
+    color: #192523;
+}
+
+.about-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.about-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #004535;
+    margin-bottom: 20px;
+}
+
+.about-heading {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(32px, 4.5vw, 60px);
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    line-height: 1.15;
+    color: #004535;
+    margin-bottom: 50px;
+}
+
+.about-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 80px;
+    align-items: center;
+}
+
+.about-photo {
+    width: 100%;
+    min-height: 480px;
+    background-color: #D2E2DB;
+    background-image: url('./about-surveyor.jpeg');
+    background-size: cover;
+    background-position: center;
+}
+
+.about-content h3 {
+    font-family: 'Inter', sans-serif;
+    font-size: 28px;
+    font-weight: 500;
+    color: #004535;
+    margin-bottom: 24px;
+}
+
+.about-content p {
+    font-size: 16px;
+    line-height: 1.85;
+    color: #52615B;
+    margin-bottom: 22px;
+}
+
+.about-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 40px;
+    padding-bottom: 10px;
+    margin-top: 16px;
+    color: #004535;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px solid #004535;
+    transition: gap 0.2s ease;
+}
+
+.about-link:hover {
+    gap: 55px;
+}
+/* =========================================
+   SERVICES SECTION
+========================================= */
+
+#services {
+    background: #FFFFFF;
+    padding: 100px 7%;
+    color: #192523;
+}
+
+.services-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.services-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #004535;
+    margin-bottom: 20px;
+}
+
+.services-heading {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(32px, 4.5vw, 60px);
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    line-height: 1.15;
+    color: #004535;
+    margin-bottom: 24px;
+}
+
+.services-intro {
+    font-size: 17px;
+    line-height: 1.8;
+    color: #52615B;
+    max-width: 750px;
+    margin-bottom: 50px;
+}
+
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 28px;
+}
+
+/* SERVICE CARDS */
+
+.service-card {
+    background: #F7F7F2;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+}
+
+.service-image-wrap {
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    background: #004535;
+}
+
+.service-image {
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    transition: transform 0.5s ease;
+}
+
+.service-card:hover .service-image {
+    transform: scale(1.045);
+}
+
+.service-content {
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.service-name {
+    font-family: 'Inter', sans-serif;
+    font-size: 25px;
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 1.3;
+    color: #004535;
+    margin-bottom: 16px;
+}
+
+.service-desc {
+    font-size: 14px;
+    line-height: 1.8;
+    color: #52615B;
+    margin-bottom: 30px;
+}
+
+.service-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid #DADFD9;
+    font-size: 13px;
+    font-weight: 600;
+    color: #004535;
+}
+
+.service-link span {
+    font-size: 22px;
+    transition: transform 0.2s ease;
+}
+
+.service-card:hover .service-link span {
+    transform: translateX(5px);
+}
+
+/* CONSULTANCY BANNER */
+
+.consultancy-banner {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    margin-top: 28px;
+    background: #004535;
+    color: #FFFFFF;
+    text-decoration: none;
+    overflow: hidden;
+}
+
+.consultancy-content {
+    padding: 45px;
+}
+
+.consultancy-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #B7CEC4;
+    margin-bottom: 20px;
+}
+
+.consultancy-title {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(26px, 3vw, 40px);
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+    margin-bottom: 20px;
+}
+
+.consultancy-desc {
+    font-size: 15px;
+    line-height: 1.8;
+    color: #D2E2DB;
+    max-width: 520px;
+    margin-bottom: 28px;
+}
+
+.consultancy-link {
+    display: inline-flex;
+    gap: 35px;
+    align-items: center;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #FFFFFF;
+    font-size: 14px;
+}
+
+.consultancy-image {
+    min-height: 300px;
+    background-color: #003326;
+    background-image: url('./service-consultancy.jpg');
+    background-size: cover;
+    background-position: center;
+}
+
+/* =========================================
+   INDUSTRIES SECTION
+========================================= */
+
+#industries {
+    background: #004535;
+    padding: 100px 7%;
+    color: #FFFFFF;
+}
+
+.industries-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.industries-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #B7CEC4;
+    margin-bottom: 20px;
+}
+
+.industries-heading {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(32px, 4.5vw, 60px);
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    line-height: 1.15;
+    color: #FFFFFF;
+    margin-bottom: 50px;
+}
+
+.industries-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 70px;
+    align-items: start;
+}
+
+/* INDUSTRY SELECTOR */
+
+.industry-tabs {
+    display: flex;
+    flex-direction: column;
+}
+
+.industry-tab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    width: 100%;
+    padding: 27px 24px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    color: #FFFFFF;
+    font-family: 'Inter', sans-serif;
+    font-size: 20px;
+    font-weight: 400;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.25s, color 0.25s;
+}
+
+.industry-tab:hover {
+    background: rgba(255,255,255,0.08);
+}
+
+.industry-tab.active {
+    background: #F7F7F2;
+    color: #004535;
+}
+
+.industry-tab span {
+    font-size: 24px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.industry-tab.active span,
+.industry-tab:hover span {
+    opacity: 1;
+}
+
+/* INDUSTRY DISPLAY */
+
+.industry-display {
+    background: #003326;
+    overflow: hidden;
+}
+
+.industry-photo {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background-color: #003C30;
+    background-size: cover;
+    background-position: center;
+}
+
+.industry-details {
+    padding: 36px;
+}
+
+.industry-display-title {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(24px, 3vw, 34px);
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 1.3;
+    color: #FFFFFF;
+    margin-bottom: 18px;
+}
+
+.industry-display-desc {
+    color: #D2E2DB;
+    font-size: 15px;
+    line-height: 1.85;
+    margin-bottom: 28px;
+}
+
+.industry-display-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 40px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #FFFFFF;
+    text-decoration: none;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.industry-display.is-changing {
+    animation: industryReveal 0.4s ease;
+}
+
+@keyframes industryReveal {
+    from { opacity: 0.5; }
+    to { opacity: 1; }
+}
+
+/* WHY US */
+/* =========================================
+   WHY CHOOSE YMR
+========================================= */
+
+#why-us {
+    background: #F7F7F2;
+    padding: 100px 7%;
+    color: #192523;
+}
+
+.why-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.why-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #004535;
+    margin-bottom: 32px;
+}
+
+.why-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 100px;
+    align-items: start;
+}
+
+/* LEFT COLUMN */
+
+.why-intro {
+    position: sticky;
+    top: 110px;
+}
+
+.why-heading {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(36px, 4.5vw, 64px);
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -0.045em;
+    color: #004535;
+    margin-bottom: 30px;
+}
+
+.why-description {
+    font-size: 17px;
+    line-height: 1.85;
+    color: #52615B;
+    max-width: 460px;
+    margin-bottom: 35px;
+}
+
+.why-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+    padding: 18px 26px;
+    background: #004535;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.why-cta:hover {
+    background: #00634C;
+}
+
+/* RIGHT COLUMN */
+
+.why-principles {
+    display: flex;
+    flex-direction: column;
+}
+
+.why-principle {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 20px;
+    padding: 32px 0;
+    border-bottom: 1px solid #DADFD9;
+}
+
+.why-principle:first-child {
+    padding-top: 0;
+}
+
+.why-principle:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.why-number {
+    font-family: 'Inter', sans-serif;
+    font-size: 30px;
+    font-weight: 300;
+    letter-spacing: -0.04em;
+    color: #A3B4AC;
+    line-height: 1.3;
+}
+
+.why-principle-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 25px;
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    line-height: 1.3;
+    color: #004535;
+    margin-bottom: 12px;
+}
+
+.why-principle-desc {
+    font-size: 15px;
+    line-height: 1.85;
+    color: #52615B;
+}
+
+/* =========================================
+   PORT COVERAGE
+========================================= */
+
+#coverage {
+    background: #FFFFFF;
+    padding: 100px 7%;
+    color: #192523;
+}
+
+.coverage-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.coverage-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #004535;
+    margin-bottom: 20px;
+}
+
+.coverage-heading {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(32px, 4.5vw, 60px);
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    line-height: 1.15;
+    color: #004535;
+    margin-bottom: 24px;
+}
+
+.coverage-intro {
+    font-size: 17px;
+    line-height: 1.8;
+    color: #52615B;
+    max-width: 750px;
+    margin-bottom: 50px;
+}
+
+/* COVERAGE LAYOUT */
+
+.coverage-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+    gap: 0;
+    align-items: stretch;
+}
+
+/* MAP */
+
+.map-container {
+    background: #003326;
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.map-header {
+    padding: 24px 30px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+.map-header h3 {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: #FFFFFF;
+}
+
+.map-svg-wrap {
+    position: relative;
+    padding: 20px;
+    background: #003326;
+}
+
+.map-svg-wrap svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.port-label {
+    font-size: 11px;
+    fill: #FFFFFF;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+}
+
+/* NETWORK INFORMATION */
+
+.coverage-panel {
+    background: #004535;
+    padding: 40px;
+    color: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.coverage-panel-label {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #B7CEC4;
+    margin-bottom: 24px;
+}
+
+.coverage-panel-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 30px;
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 1.3;
+    margin-bottom: 20px;
+}
+
+.coverage-panel-desc {
+    font-size: 14px;
+    line-height: 1.8;
+    color: #D2E2DB;
+    margin-bottom: 24px;
+}
+
+.coverage-stat {
+    padding: 24px 0;
+    border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.coverage-stat-value {
+    font-family: 'Inter', sans-serif;
+    font-size: 48px;
+    font-weight: 400;
+    letter-spacing: -0.04em;
+    line-height: 1.2;
+    color: #FFFFFF;
+}
+
+.coverage-stat-label {
+    font-size: 14px;
+    color: #D2E2DB;
+    margin-top: 6px;
+}
+
+.coverage-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    background: #F7F7F2;
+    color: #004535;
+    text-decoration: none;
+    padding: 18px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 24px;
+    transition: background 0.2s ease;
+}
+
+.coverage-link:hover {
+    background: #D2E2DB;
+}
+
+/* CERTIFICATIONS */
+#certifications{background:var(--navy)}
+.certs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;max-width:1300px;margin:50px auto 0}
+.cert-card{background:var(--card-bg);border:1px solid var(--glass-border);border-radius:14px;padding:24px;text-align:center;transition:all 0.3s;cursor:pointer}
+.cert-card:hover{border-color:rgba(0,180,216,0.4);transform:translateY(-3px)}
+.cert-icon{font-size:32px;margin-bottom:12px}
+.cert-name{font-size:13px;font-weight:700;color:var(--white);margin-bottom:4px}
+.cert-body{font-size:11.5px;color:rgba(255,255,255,0.45)}
+
+/* PROCESS */
+/* =========================================
+   OUR SURVEY PROCESS
+========================================= */
+
+#process {
+    background: #F7F7F2;
+    padding: 100px 7%;
+    color: #192523;
+}
+
+.process-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.process-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #004535;
+    margin-bottom: 20px;
+}
+
+.process-heading {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(32px, 4.5vw, 60px);
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    line-height: 1.15;
+    color: #004535;
+    margin-bottom: 24px;
+}
+
+.process-intro {
+    font-size: 17px;
+    line-height: 1.85;
+    color: #52615B;
+    max-width: 750px;
+    margin-bottom: 70px;
+}
+
+/* PROCESS STEPS */
+
+.process-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 35px;
+}
+
+.process-step {
+    position: relative;
+}
+
+.process-step-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.process-number {
+    font-family: 'Inter', sans-serif;
+    font-size: 52px;
+    font-weight: 300;
+    letter-spacing: -0.05em;
+    color: #004535;
+    line-height: 1;
+}
+
+.process-line {
+    height: 1px;
+    background: #A3B4AC;
+    flex: 1;
+}
+
+.process-step:last-child .process-line {
+    display: none;
+}
+
+.process-step-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 1.4;
+    letter-spacing: -0.025em;
+    color: #004535;
+    margin-bottom: 16px;
+}
+
+.process-step-desc {
+    font-size: 14px;
+    line-height: 1.85;
+    color: #52615B;
+}
+
+/* PROCESS BOTTOM CTA */
+
+.process-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 30px;
+    border-top: 1px solid #DADFD9;
+    padding-top: 35px;
+    margin-top: 65px;
+}
+
+.process-bottom-text {
+    font-family: 'Inter', sans-serif;
+    font-size: 23px;
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    color: #004535;
+}
+
+.process-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+    padding: 18px 26px;
+    background: #004535;
+    color: #FFFFFF;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.25s ease;
+}
+
+.process-cta:hover {
+    background: #00634C;
+}
+/* TESTIMONIALS */
+#testimonials{background:var(--navy)}
+.testimonials-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;max-width:1300px;margin:50px auto 0}
+.testimonial-card{background:var(--card-bg);border:1px solid var(--glass-border);border-radius:18px;padding:30px;transition:all 0.3s}
+.testimonial-card:hover{border-color:rgba(0,180,216,0.25);transform:translateY(-3px)}
+.quote-mark{font-size:60px;font-family:Georgia,serif;color:rgba(0,180,216,0.2);line-height:0.5;margin-bottom:20px;display:block}
+.testimonial-text{font-size:14.5px;color:rgba(255,255,255,0.75);line-height:1.75;margin-bottom:24px;font-style:italic}
+.testimonial-author{display:flex;align-items:center;gap:14px}
+.author-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#00a3df,var(--vivid));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0}
+.author-name{font-size:14px;font-weight:700;color:var(--white)}
+.author-role{font-size:12px;color:rgba(255,255,255,0.45)}
+.stars-row{color:#FFB800;font-size:13px;margin-bottom:16px;letter-spacing:2px}
+
+/* CTA SECTION */
+#cta-section{background:linear-gradient(135deg,var(--ocean) 0%,var(--deep) 50%,#0A3B82 100%);position:relative;overflow:hidden;text-align:center}
+#cta-section::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+.cta-content{position:relative;z-index:1;max-width:700px;margin:0 auto}
+.cta-content h2{font-size:clamp(28px,5vw,52px);font-weight:800;margin-bottom:20px;line-height:1.1}
+.cta-content p{font-size:18px;color:rgba(255,255,255,0.75);margin-bottom:40px;line-height:1.7}
+.cta-buttons{display:flex;justify-content:center;gap:16px;flex-wrap:wrap}
+
+/* =========================================
+   CONTACT & SURVEY REQUEST
+========================================= */
+
+#contact {
+    background: #004535;
+    padding: 100px 7%;
+    color: #FFFFFF;
+}
+
+.contact-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.contact-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #B7CEC4;
+    margin-bottom: 20px;
+}
+
+.contact-heading {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(32px, 4.5vw, 60px);
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    line-height: 1.15;
+    color: #FFFFFF;
+    margin-bottom: 60px;
+}
+
+/* CONTACT LAYOUT */
+
+.contact-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+    gap: 80px;
+    align-items: start;
+}
+
+/* CONTACT INFORMATION */
+
+.contact-information {
+    position: sticky;
+    top: 110px;
+    align-self: start;
+}
+
+.contact-info-title {
+    font-size: 26px;
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    color: #FFFFFF;
+    margin-bottom: 20px;
+}
+
+.contact-info-intro {
+    font-size: 15px;
+    line-height: 1.85;
+    color: #D2E2DB;
+    margin-bottom: 35px;
+}
+
+.contact-detail {
+    padding: 26px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.18);
+}
+
+.contact-detail:last-child {
+    border-bottom: none;
+}
+
+.contact-detail-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #B7CEC4;
+    margin-bottom: 12px;
+}
+
+.contact-detail-value {
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #FFFFFF;
+    overflow-wrap: anywhere;
+}
+
+.contact-detail-value a {
+    color: #FFFFFF;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.contact-detail-value a:hover {
+    color: #A8E6CF;
+}
+
+/* SURVEY REQUEST FORM */
+
+.survey-form-panel {
+    background: #F7F7F2;
+    padding: 45px;
+    color: #192523;
+    min-width: 0;
+}
+
+.survey-form-title {
+    font-size: 30px;
+    font-weight: 500;
+    letter-spacing: -0.035em;
+    color: #004535;
+    margin-bottom: 12px;
+}
+
+.survey-form-intro {
+    font-size: 14px;
+    line-height: 1.8;
+    color: #52615B;
+    margin-bottom: 30px;
+}
+
+.survey-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 20px;
+}
+
+.survey-field {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    min-width: 0;
+}
+
+.survey-field.full-width {
+    grid-column: 1 / -1;
+}
+
+.survey-field label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #004535;
+}
+
+.survey-field input,
+.survey-field select,
+.survey-field textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    background: #FFFFFF;
+    border: 1px solid #D2DAD5;
+    border-radius: 0;
+    padding: 15px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #192523;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.survey-field input:focus,
+.survey-field select:focus,
+.survey-field textarea:focus {
+    border-color: #004535;
+    outline: 1px solid #004535;
+}
+
+.survey-field input::placeholder,
+.survey-field textarea::placeholder {
+    color: #89958F;
+}
+
+.survey-field textarea {
+    min-height: 130px;
+    resize: vertical;
+}
+
+.survey-form-note {
+    font-size: 12px;
+    line-height: 1.7;
+    color: #52615B;
+    margin-top: 22px;
+    margin-bottom: 22px;
+}
+
+.survey-submit {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    width: 100%;
+    padding: 20px 24px;
+    border: none;
+    border-radius: 0;
+    background: #004535;
+    color: #FFFFFF;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.survey-submit:hover {
+    background: #00634C;
+}
+
+.survey-submit span {
+    font-size: 20px;
+}
+
+.survey-form-status {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #52615B;
+    margin-top: 16px;
+}
+
+.survey-form-status:empty {
+    display: none;
+}
+/* =========================================
+   FOOTER
+========================================= */
+
+#footer {
+    background: #00291F;
+    padding: 75px 7% 28px;
+    color: #FFFFFF;
+}
+
+.footer-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.footer-layout {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1.2fr 1fr;
+    gap: 60px;
+    padding-bottom: 60px;
+}
+
+/* FOOTER BRAND */
+
+.footer-brand-logo {
+    display: inline-block;
+    margin-bottom: 25px;
+    text-decoration: none;
+}
+
+.footer-brand-logo img {
+    display: block;
+    width: 190px;
+    max-width: 100%;
+    height: auto;
+}
+
+.footer-brand-desc {
+    font-size: 14px;
+    line-height: 1.85;
+    color: #B7CEC4;
+    max-width: 320px;
+    margin-bottom: 25px;
+}
+
+.footer-location {
+    font-size: 13px;
+    color: #B7CEC4;
+    line-height: 1.8;
+}
+
+/* FOOTER COLUMNS */
+
+.footer-column {
+    min-width: 0;
+}
+
+.footer-column-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #FFFFFF;
+    margin-bottom: 26px;
+}
+
+.footer-nav-links {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-nav-links a {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #B7CEC4;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.footer-nav-links a:hover {
+    color: #FFFFFF;
+}
+
+/* FOOTER CONTACT */
+
+.footer-contact-block {
+    margin-top: 35px;
+}
+
+.footer-contact-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #B7CEC4;
+    margin-bottom: 15px;
+}
+
+.footer-contact-block a {
+    display: block;
+    color: #FFFFFF;
+    font-size: 15px;
+    line-height: 1.8;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.footer-contact-block a:hover {
+    color: #A8E6CF;
+}
+
+/* FOOTER BOTTOM */
+
+.footer-bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 30px;
+    padding-top: 28px;
+    border-top: 1px solid rgba(255,255,255,0.15);
+}
+
+.footer-copyright {
+    font-size: 12px;
+    line-height: 1.8;
+    color: #B7CEC4;
+}
+
+.footer-legal-links {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 28px;
+}
+
+.footer-legal-links a {
+    font-size: 12px;
+    color: #B7CEC4;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.footer-legal-links a:hover {
+    color: #FFFFFF;
+}
+
+/* BACK TO TOP */
+
+.footer-back-top {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.footer-back-top span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #FFFFFF;
+    font-size: 18px;
+    transition: background 0.25s ease,
+                color 0.25s ease;
+}
+
+.footer-back-top:hover span {
+    background: #F7F7F2;
+    color: #004535;
+}
+/* MOBILE NAV */
+
+#mobile-menu {
+    display: none;
+    position: fixed;
+    top: 72px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--brand-white);
+    z-index: 999;
+    flex-direction: column;
+    padding: 24px 28px;
+    overflow-y: auto;
+}
+
+#mobile-menu.open {
+    display: flex;
+}
+
+#mobile-menu a {
+    display: block;
+    color: var(--brand-charcoal);
+    text-decoration: none;
+    font-size: 19px;
+    font-weight: 500;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--brand-border);
+}
+
+#mobile-menu a:hover {
+    color: var(--brand-green);
+}
+
+.mobile-actions {
+    margin-top: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#mobile-menu .mobile-cta {
+    background: var(--brand-green);
+    color: white;
+    padding: 18px 24px;
+    font-size: 16px;
+}
+
+/* RESPONSIVE */
+@media(max-width:1100px){
+  .about-grid{grid-template-columns:1fr;gap:40px}
+  .footer-grid{grid-template-columns:1fr 1fr}
+  .hero-stats{position:static;transform:none;flex-direction:row;flex-wrap:wrap;justify-content:flex-start;margin-top:40px;animation:fadeInUp 1s 0.4s ease both}
+}
+@media(max-width:900px){
+  :root{--section-gap:70px}
+  section{padding:var(--section-gap) 24px}
+  #navbar{padding:0 24px}
+  #hero{padding:0 24px}
+  .nav-links,.nav-contact-links,.btn-nav-cta{display:none}
+  .hamburger{display:flex}
+  .contact-grid{grid-template-columns:1fr}
+  .counters-row{grid-template-columns:repeat(2,1fr)}
+  .process-steps::before{display:none}
+}
+@media(max-width:600px){
+  .footer-grid{grid-template-columns:1fr}
+  .hero-stats{flex-direction:column}
+  .form-row{grid-template-columns:1fr}
+  .counters-row{grid-template-columns:1fr 1fr}
+  .footer-bottom{flex-direction:column;text-align:center}
+}
+
+/* WHATSAPP FLOAT */
+.float-wa{position:fixed;bottom:24px;right:24px;z-index:900;width:52px;height:52px;border-radius:50%;background:#00a3df;display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;box-shadow:0 8px 25px rgba(37,211,102,0.4);transition:all 0.3s;text-decoration:none}
+.float-wa:hover{transform:scale(1.1);box-shadow:0 12px 35px rgba(37,211,102,0.6)}
+
+/* NAVIGATION RESPONSIVE OVERRIDES */
+
+html {
+    scroll-padding-top: 66px;
+}
+
+#navbar,
+#navbar * {
+    box-sizing: border-box;
+}
+
+#mobile-menu {
+    top: 66px;
+    padding: 24px 28px;
+    box-sizing: border-box;
+}
+
+#navbar a:focus-visible,
+#navbar button:focus-visible {
+    outline: 2px solid #00536B;
+    outline-offset: -4px;
+}
+
+@media (max-width: 1050px) {
+
+    #navbar {
+        height: 66px;
+        padding: 0;
+    }
+
+    #navbar .nav-logo {
+        padding: 0 18px;
+    }
+
+    #navbar .nav-links,
+    #navbar .nav-actions {
+        display: none;
+    }
+
+    #navbar .hamburger {
+        display: flex;
+    }
+
+}
+
+@media (min-width: 1051px) {
+
+    #mobile-menu.open {
+        display: none;
+    }
+
+}
+
+/* HERO RESPONSIVE */
+
+@media (max-width: 900px) {
+
+    #hero {
+        min-height: 80vh;
+        padding: 80px 6%;
+    }
+
+    .hero-background {
+        background-position: 65% center;
+    }
+
+    .hero-title {
+        font-size: clamp(38px, 7vw, 60px);
+    }
+
+    .hero-desc {
+        font-size: 16px;
+    }
+
+    .hero-metrics {
+        grid-template-columns: repeat(2, 1fr);
+        padding: 24px;
+    }
+
+    .hero-metric {
+        padding: 24px;
+        border-bottom: 1px solid #DADFD9;
+    }
+
+    .hero-metric:nth-child(2) {
+        border-right: none;
+    }
+
+    .hero-metric:nth-child(n+3) {
+        border-bottom: none;
+    }
+
+}
+
+@media (max-width: 600px) {
+
+    #hero {
+        min-height: 75vh;
+        padding: 70px 24px;
+    }
+
+    .hero-eyebrow {
+        font-size: 10px;
+        margin-bottom: 20px;
+    }
+
+    .hero-title {
+        font-size: 40px;
+    }
+
+    .hero-ctas {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .hero-btn {
+        width: 100%;
+    }
+
+    .hero-overlay {
+        background: rgba(0, 25, 20, 0.65);
+    }
+
+    .hero-metric-label {
+        font-size: 12px;
+    }
+
+    .hero-metric-value {
+        font-size: 34px;
+    }
+
+}
+
+/* SERVICES RESPONSIVE */
+
+@media (max-width: 1100px) {
+
+    .services-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+}
+
+@media (max-width: 900px) {
+
+    #services {
+        padding: 70px 6%;
+    }
+
+    .consultancy-banner {
+        grid-template-columns: 1fr;
+    }
+
+    .consultancy-image {
+        min-height: 280px;
+    }
+
+}
+
+@media (max-width: 600px) {
+
+    #services {
+        padding: 60px 24px;
+    }
+
+    .services-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .service-content {
+        padding: 24px;
+    }
+
+    .service-name {
+        font-size: 23px;
+    }
+
+    .consultancy-content {
+        padding: 30px 24px;
+    }
+
+    .consultancy-image {
+        min-height: 220px;
+    }
+
+    .services-heading br,
+    .consultancy-title br {
+        display: none;
+    }
+
+}
+#services {
+    background: #FFFFFF !important;
+}
+
+#services::before {
+    display: none;
+}
+
+/* WHY CHOOSE YMR RESPONSIVE */
+
+@media (max-width: 1100px) {
+
+    .why-layout {
+        gap: 60px;
+    }
+
+}
+
+@media (max-width: 900px) {
+
+    #why-us {
+        padding: 70px 6%;
+    }
+
+    .why-layout {
+        grid-template-columns: 1fr;
+        gap: 50px;
+    }
+
+    .why-intro {
+        position: static;
+    }
+
+    .why-description {
+        max-width: 100%;
+    }
+
+}
+
+@media (max-width: 600px) {
+
+    #why-us {
+        padding: 60px 24px;
+    }
+
+    .why-layout {
+        gap: 40px;
+    }
+
+    .why-heading {
+        font-size: 38px;
+    }
+
+    .why-description {
+        font-size: 15px;
+    }
+
+    .why-principle {
+        grid-template-columns: 36px 1fr;
+        gap: 16px;
+        padding: 24px 0;
+    }
+
+    .why-number {
+        font-size: 24px;
+    }
+
+    .why-principle-title {
+        font-size: 21px;
+    }
+
+    .why-principle-desc {
+        font-size: 14px;
+    }
+
+}
+
+/* PORT COVERAGE RESPONSIVE */
+
+@media (max-width: 1100px) {
+
+    .coverage-layout {
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    }
+
+    .coverage-panel {
+        padding: 30px;
+    }
+
+}
+
+@media (max-width: 900px) {
+
+    #coverage {
+        padding: 70px 6%;
+    }
+
+    .coverage-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .coverage-panel {
+        padding: 36px;
+    }
+
+}
+
+@media (max-width: 600px) {
+
+    #coverage {
+        padding: 60px 24px;
+    }
+
+    .map-header {
+        padding: 20px;
+    }
+
+    .map-svg-wrap {
+        padding: 8px;
+    }
+
+    .coverage-panel {
+        padding: 28px 24px;
+    }
+
+    .coverage-stat-value {
+        font-size: 40px;
+    }
+
+}
+
+
+/* =========================================
+   MAP BRAND COLOURS
+========================================= */
+
+/* Ocean */
+#coverage svg rect[fill="#040E1E"] {
+    fill: #003326;
+    rx: 0;
+}
+
+/* Landmass */
+#coverage svg path[fill="#0A2B52"] {
+    fill: #527D6C;
+    stroke: #A3B4AC;
+}
+
+/* Major port markers */
+#coverage svg circle[fill="#00ACC1"] {
+    fill: #4DD0E1;
+}
+
+/* Secondary port markers */
+#coverage svg circle[fill="#1E88E5"] {
+    fill: #A8E6CF;
+}
+
+/* Animated glow */
+#coverage svg stop[stop-color="#00ACC1"] {
+    stop-color: #4DD0E1;
+}
+
+/* Major port labels */
+#coverage svg text[fill="#4DD0E1"] {
+    fill: #FFFFFF;
+}
+
+/* Secondary port labels */
+#coverage svg text[fill="#90CAF9"] {
+    fill: #D2E2DB;
+}
+
+/* Ocean names */
+#coverage svg text[fill="#1565C0"] {
+    fill: #A3B4AC;
+    opacity: 0.65;
+}
+
+/* Legend background */
+#coverage svg rect[rx="8"] {
+    fill: #00291F;
+    stroke: #527D6C;
+    rx: 0;
+}
+
+/* Legend text */
+#coverage svg text[fill="rgba(255,255,255,0.4)"] {
+    fill: #A3B4AC;
+}
+
+/* SURVEY PROCESS RESPONSIVE */
+
+@media (max-width: 1100px) {
+
+    .process-grid {
+        gap: 22px;
+    }
+
+    .process-number {
+        font-size: 44px;
+    }
+
+    .process-step-title {
+        font-size: 19px;
+    }
+
+}
+
+@media (max-width: 900px) {
+
+    #process {
+        padding: 70px 6%;
+    }
+
+    .process-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 40px;
+    }
+
+    .process-intro {
+        margin-bottom: 45px;
+    }
+
+    .process-bottom {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .process-line {
+        display: none;
+    }
+
+}
+
+@media (max-width: 600px) {
+
+    #process {
+        padding: 60px 24px;
+    }
+
+    .process-heading br {
+        display: none;
+    }
+
+    .process-intro {
+        font-size: 15px;
+        margin-bottom: 35px;
+    }
+
+    .process-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .process-step {
+        display: grid;
+        grid-template-columns: 55px minmax(0, 1fr);
+        column-gap: 20px;
+        padding: 28px 0;
+        border-bottom: 1px solid #DADFD9;
+    }
+
+    .process-step-header {
+        grid-row: 1 / 3;
+        margin-bottom: 0;
+        align-items: flex-start;
+    }
+
+    .process-number {
+        font-size: 36px;
+    }
+
+    .process-step-title {
+        font-size: 21px;
+        margin-bottom: 10px;
+    }
+
+    .process-step-desc {
+        grid-column: 2;
+    }
+
+    .process-step:last-child {
+        border-bottom: none;
+    }
+
+    .process-bottom {
+        margin-top: 30px;
+    }
+
+    .process-bottom-text {
+        font-size: 22px;
+    }
+
+}
+/* CONTACT RESPONSIVE */
+
+@media (max-width: 1100px) {
+
+    .contact-layout {
+        gap: 45px;
+    }
+
+    .survey-form-panel {
+        padding: 35px;
+    }
+
+}
+
+@media (max-width: 900px) {
+
+    #contact {
+        padding: 70px 6%;
+    }
+
+    .contact-layout {
+        grid-template-columns: 1fr;
+        gap: 50px;
+    }
+
+}
+
+@media (max-width: 600px) {
+
+    #contact {
+        padding: 60px 24px;
+    }
+
+    .contact-heading {
+        margin-bottom: 35px;
+    }
+
+    .contact-heading br {
+        display: none;
+    }
+
+    .survey-form-panel {
+        padding: 24px;
+    }
+
+    .survey-form-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .survey-form-title {
+        font-size: 26px;
+    }
+
+    .contact-detail-value {
+        font-size: 18px;
+    }
+
+    .survey-field input,
+    .survey-field select,
+    .survey-field textarea {
+        font-size: 16px;
+    }
+
+}
+
+/* CONTACT STICKY RESPONSIVE */
+
+@media (max-width: 900px) {
+
+    .contact-information {
+        position: static;
+    }
+
+}
+
+/* ANIMATED STATISTICS */
+
+.stat-counter {
+    font-variant-numeric: tabular-nums;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+
+<nav id="navbar" aria-label="Main navigation">
+
+    <!-- COMPANY BRAND -->
+
+    <a href="#" class="nav-logo">
+
+        <div class="nav-logo-icon">
+            <svg viewBox="0 0 48 48"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2"
+                 stroke-linecap="round"
+                 stroke-linejoin="round"
+                 aria-hidden="true">
+
+                <circle cx="24" cy="7" r="4"/>
+                <path d="M24 11V43"/>
+                <path d="M16 17H32"/>
+                <path d="M5 30C5 47 43 47 43 30"/>
+                <path d="M2 35L5 29L12 32"/>
+                <path d="M36 32L43 29L46 35"/>
+
+            </svg>
+        </div>
+
+        <div>
+            <div class="nav-logo-text">YMR MARINE</div>
+            <div class="nav-logo-sub">Solutions LLP</div>
+        </div>
+
+    </a>
+
+
+    <!-- PRIMARY NAVIGATION -->
+
+    <div class="nav-links">
+
+        <!-- ABOUT US -->
+
+        <div class="nav-dropdown">
+
+            <button type="button" class="nav-dropdown-toggle">
+                About Us
+                <span class="nav-chevron"></span>
+            </button>
+
+            <div class="nav-dropdown-menu">
+                <a href="#about">Our Company</a>
+                <a href="#why-us">Why YMR</a>
+                <a href="#contact">Get in Touch</a>
+            </div>
+
+        </div>
+
+
+        <!-- EXPERTISE -->
+
+        <div class="nav-dropdown">
+
+            <button type="button" class="nav-dropdown-toggle">
+                Expertise
+                <span class="nav-chevron"></span>
+            </button>
+
+            <div class="nav-dropdown-menu">
+                <a href="#services">Bunker Surveys</a>
+                <a href="#services">Pre-Purchase Inspections</a>
+                <a href="#services">Draft Surveys</a>
+                <a href="#services">Cargo Surveys</a>
+                <a href="#services">Condition Surveys</a>
+                <a href="#services">On-Hire / Off-Hire Surveys</a>
+                <a href="#services">Consultancy & Port Captains</a>
+            </div>
+
+        </div>
+
+
+        <!-- PORT COVERAGE -->
+
+        <div class="nav-dropdown">
+
+            <button type="button" class="nav-dropdown-toggle">
+                Port Coverage
+                <span class="nav-chevron"></span>
+            </button>
+
+            <div class="nav-dropdown-menu">
+                <a href="#coverage">Asia Pacific</a>
+                <a href="#coverage">Middle East</a>
+                <a href="#coverage">Africa</a>
+                <a href="#coverage">Europe</a>
+                <a href="#coverage">Americas</a>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- UTILITY NAVIGATION -->
+
+    <div class="nav-actions">
+
+        <a href="EMPLOYEE_LOGIN_URL" class="nav-utility-link">
+
+            Employee Login
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="1.5"
+                 aria-hidden="true">
+
+                <circle cx="12" cy="12" r="9"/>
+                <circle cx="12" cy="9" r="3"/>
+                <path d="M6.5 18C6.5 12 17.5 12 17.5 18"/>
+
+            </svg>
+
+        </a>
+
+        <a href="#contact" class="nav-utility-link">
+
+            Contact Us
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="1.5"
+                 aria-hidden="true">
+
+                <rect x="3" y="5" width="18" height="14"/>
+                <path d="M3 5L12 13L21 5"/>
+
+            </svg>
+
+        </a>
+
+    </div>
+
+
+    <!-- MOBILE TOGGLE -->
+
+    <button type="button"
+            class="hamburger"
+            id="hamburgerBtn"
+            aria-label="Toggle navigation"
+            aria-expanded="false"
+            aria-controls="mobile-menu"
+            onclick="toggleMenu()">
+
+        <span></span>
+        <span></span>
+        <span></span>
+
+    </button>
+
+</nav>
+
+
+<!-- MOBILE MENU -->
+
+<div id="mobile-menu">
+
+    <a href="#services" onclick="toggleMenu()">Expertise</a>
+
+    <a href="#about" onclick="toggleMenu()">About Us</a>
+
+    <a href="#why-us" onclick="toggleMenu()">Why YMR</a>
+
+    <a href="#coverage" onclick="toggleMenu()">Port Coverage</a>
+
+    <a href="#contact" onclick="toggleMenu()">Contact</a>
+
+    <div class="mobile-actions">
+
+        <a href="#contact"
+           class="mobile-cta"
+           onclick="toggleMenu()">
+            Request a Survey →
+        </a>
+
+        <a href="tel:+919820482713">
+            Call Operations
+        </a>
+
+    </div>
+
+</div>
+
+<!-- HERO -->
+
+<section id="hero">
+
+    <div class="hero-background"></div>
+    <div class="hero-overlay"></div>
+
+    <div class="hero-content">
+
+        <div class="hero-eyebrow">
+            YMR Marine Solutions LLP
+        </div>
+
+        <h1 class="hero-title">
+            Expertise at Sea.<br>
+            Confidence Ashore.
+        </h1>
+
+        <p class="hero-desc">
+            Independent marine surveys, inspections
+            and maritime consultancy services.
+        </p>
+
+        <div class="hero-ctas">
+
+            <a href="#services"
+               class="hero-btn hero-btn-primary">
+
+                Explore Our Services
+                <span>→</span>
+
+            </a>
+
+            <a href="#contact"
+               class="hero-btn hero-btn-secondary">
+
+                Contact Us
+                <span>→</span>
+
+            </a>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- COMPANY STATISTICS -->
+
+<div class="hero-metrics">
+
+    <div class="hero-metric">
+        <div class="hero-metric-value"><span class="stat-counter" data-target="4000">4,000+</span>+</div>
+        <div class="hero-metric-label">Surveys Completed</div>
+    </div>
+
+    <div class="hero-metric">
+        <div class="hero-metric-value"><span class="stat-counter" data-target="120">120+</span></div>
+        <div class="hero-metric-label">Ports Covered</div>
+    </div>
+
+    <div class="hero-metric">
+        <div class="hero-metric-value"><span class="stat-counter" data-target="50">50+</span></div>
+        <div class="hero-metric-label">Clients Served</div>
+    </div>
+
+    <div class="hero-metric">
+        <div class="hero-metric-value"><span class="stat-counter" data-target="20">20+</span></div>
+        <div class="hero-metric-label">Years of Experience</div>
+    </div>
+
+</div>
+<!-- ABOUT -->
+
+<section id="about">
+
+    <div class="about-container">
+
+        <div class="about-eyebrow">
+            About YMR Marine
+        </div>
+
+        <h2 class="about-heading">
+            Independent expertise.<br>
+            Uncompromising integrity.
+        </h2>
+
+        <div class="about-grid">
+
+            <div class="about-photo"
+                 role="img"
+                 aria-label="Marine surveyor onboard a commercial vessel">
+            </div>
+
+            <div class="about-content">
+
+                <h3>Who we are</h3>
+
+                <p>
+                    YMR Marine Solutions LLP is an independent
+                    marine survey, inspection and maritime
+                    consultancy company, headquartered in
+                    Mumbai, India.
+                </p>
+
+                <p>
+                    We provide professional survey and inspection
+                    services to shipowners, charterers, vessel
+                    operators, cargo interests and other
+                    stakeholders across the maritime industry.
+                </p>
+
+                <p>
+                    Through technical expertise, operational
+                    experience and impartial reporting, we help
+                    our clients protect their interests and make
+                    informed decisions.
+                </p>
+
+                <p>
+                    Our approach is built on accuracy,
+                    integrity, transparency and a commitment
+                    to professional excellence.
+                </p>
+
+                <a href="#services" class="about-link">
+                    Discover Our Expertise
+                    <span>→</span>
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+<!-- SERVICES -->
+
+<section id="services">
+
+    <div class="services-container">
+
+        <div class="services-eyebrow">
+            Our Expertise
+        </div>
+
+        <h2 class="services-heading">
+            Supporting the maritime industry<br>
+            through independent expertise.
+        </h2>
+
+        <p class="services-intro">
+            We deliver professional marine survey, inspection
+            and consultancy solutions tailored to the operational
+            and commercial requirements of our clients.
+        </p>
+
+        <div class="services-grid">
+
+            <!-- BUNKER SURVEYS -->
+
+            <a href="#contact" class="service-card">
+
+                <div class="service-image-wrap">
+                    <div class="service-image"
+                         style="background-image:url('service-bunker.jpeg')">
+                    </div>
+                </div>
+
+                <div class="service-content">
+
+                    <h3 class="service-name">
+                        Bunker Surveys
+                    </h3>
+
+                    <p class="service-desc">
+                        Independent bunker quantity verification,
+                        remaining-on-board assessments and
+                        bunkering operation monitoring.
+                    </p>
+
+                    <div class="service-link">
+                        Learn more <span>→</span>
+                    </div>
+
+                </div>
+
+            </a>
+
+
+            <!-- DRAFT SURVEYS -->
+
+            <a href="#contact" class="service-card">
+
+                <div class="service-image-wrap">
+                    <div class="service-image"
+                         style="background-image:url('service-draft.jpeg')">
+                    </div>
+                </div>
+
+                <div class="service-content">
+
+                    <h3 class="service-name">
+                        Draft Surveys
+                    </h3>
+
+                    <p class="service-desc">
+                        Independent determination of cargo
+                        quantities through vessel displacement
+                        measurements and technical calculations.
+                    </p>
+
+                    <div class="service-link">
+                        Learn more <span>→</span>
+                    </div>
+
+                </div>
+
+            </a>
+
+
+            <!-- CARGO SURVEYS -->
+
+            <a href="#contact" class="service-card">
+
+                <div class="service-image-wrap">
+                    <div class="service-image"
+                         style="background-image:url('service-cargo.jpeg')">
+                    </div>
+                </div>
+
+                <div class="service-content">
+
+                    <h3 class="service-name">
+                        Cargo Surveys
+                    </h3>
+
+                    <p class="service-desc">
+                        Cargo condition and quantity assessments,
+                        loading and discharge supervision,
+                        and independent damage inspections.
+                    </p>
+
+                    <div class="service-link">
+                        Learn more <span>→</span>
+                    </div>
+
+                </div>
+
+            </a>
+
+
+            <!-- PRE-PURCHASE INSPECTIONS -->
+
+            <a href="#contact" class="service-card">
+
+                <div class="service-image-wrap">
+                    <div class="service-image"
+                         style="background-image:url('service-prepurchase.jpeg')">
+                    </div>
+                </div>
+
+                <div class="service-content">
+
+                    <h3 class="service-name">
+                        Pre-Purchase Inspections
+                    </h3>
+
+                    <p class="service-desc">
+                        Comprehensive vessel assessments to
+                        support informed acquisition decisions
+                        and identify potential technical risks.
+                    </p>
+
+                    <div class="service-link">
+                        Learn more <span>→</span>
+                    </div>
+
+                </div>
+
+            </a>
+
+
+            <!-- CONDITION SURVEYS -->
+
+            <a href="#contact" class="service-card">
+
+                <div class="service-image-wrap">
+                    <div class="service-image"
+                         style="background-image:url('service-condition.jpeg')">
+                    </div>
+                </div>
+
+                <div class="service-content">
+
+                    <h3 class="service-name">
+                        Condition Surveys
+                    </h3>
+
+                    <p class="service-desc">
+                        Independent evaluation of vessel condition,
+                        operational readiness and documented
+                        observations for maritime stakeholders.
+                    </p>
+
+                    <div class="service-link">
+                        Learn more <span>→</span>
+                    </div>
+
+                </div>
+
+            </a>
+
+
+            <!-- ON-HIRE / OFF-HIRE SURVEYS -->
+
+            <a href="#contact" class="service-card">
+
+                <div class="service-image-wrap">
+                    <div class="service-image"
+                         style="background-image:url('service-onoffhire.jpeg')">
+                    </div>
+                </div>
+
+                <div class="service-content">
+
+                    <h3 class="service-name">
+                        On-Hire / Off-Hire Surveys
+                    </h3>
+
+                    <p class="service-desc">
+                        Independent documentation of vessel
+                        condition and bunker quantities at
+                        delivery and redelivery.
+                    </p>
+
+                    <div class="service-link">
+                        Learn more <span>→</span>
+                    </div>
+
+                </div>
+
+            </a>
+
+        </div>
+
+
+        <!-- MARITIME CONSULTANCY -->
+
+        <a href="#contact" class="consultancy-banner">
+
+            <div class="consultancy-content">
+
+                <div class="consultancy-label">
+                    Specialist Solutions
+                </div>
+
+                <h3 class="consultancy-title">
+                    Maritime Consultancy &amp;<br>
+                    Port Captain Services
+                </h3>
+
+                <p class="consultancy-desc">
+                    Professional operational support,
+                    technical advisory and port captain
+                    services to assist clients in managing
+                    complex maritime operations.
+                </p>
+
+                <div class="consultancy-link">
+                    Explore Our Solutions <span>→</span>
+                </div>
+
+            </div>
+
+            <div class="consultancy-image"></div>
+
+        </a>
+
+    </div>
+
+</section>
+<!-- INDUSTRIES -->
+
+<section id="industries">
+
+    <div class="industries-container">
+
+        <div class="industries-eyebrow">
+            Industries We Serve
+        </div>
+
+        <h2 class="industries-heading">
+            Expertise across the<br>
+            maritime value chain.
+        </h2>
+
+        <div class="industries-layout">
+
+            <!-- INDUSTRY SELECTOR -->
+
+            <div class="industry-tabs">
+
+                <button type="button"
+                        class="industry-tab active"
+                        aria-pressed="true"
+                        onclick="selectIndustry(0, this)">
+                    Shipping &amp; Ship Management
+                    <span>→</span>
+                </button>
+
+                <button type="button"
+                        class="industry-tab"
+                        aria-pressed="false"
+                        onclick="selectIndustry(1, this)">
+                    Commodity Trading
+                    <span>→</span>
+                </button>
+
+                <button type="button"
+                        class="industry-tab"
+                        aria-pressed="false"
+                        onclick="selectIndustry(2, this)">
+                    Oil &amp; Gas
+                    <span>→</span>
+                </button>
+
+                <button type="button"
+                        class="industry-tab"
+                        aria-pressed="false"
+                        onclick="selectIndustry(3, this)">
+                    Ports &amp; Terminals
+                    <span>→</span>
+                </button>
+
+                <button type="button"
+                        class="industry-tab"
+                        aria-pressed="false"
+                        onclick="selectIndustry(4, this)">
+                    Marine Insurance
+                    <span>→</span>
+                </button>
+
+                <button type="button"
+                        class="industry-tab"
+                        aria-pressed="false"
+                        onclick="selectIndustry(5, this)">
+                    Logistics &amp; Freight
+                    <span>→</span>
+                </button>
+
+            </div>
+
+
+            <!-- INDUSTRY DISPLAY -->
+
+            <div class="industry-display"
+                 id="industryDisplay">
+
+                <div class="industry-photo"
+                     id="industryPhoto"
+                     style="background-image:url('./industry-shipping.jpg')">
+                </div>
+
+                <div class="industry-details" aria-live="polite">
+
+                    <h3 class="industry-display-title"
+                        id="industryTitle">
+                        Shipping &amp; Ship Management
+                    </h3>
+
+                    <p class="industry-display-desc"
+                       id="industryDescription">
+                        Supporting shipowners, charterers and
+                        vessel managers with independent marine
+                        surveys, vessel inspections and technical
+                        expertise throughout the operational
+                        lifecycle of a vessel.
+                    </p>
+
+                    <a href="#services"
+                       class="industry-display-link">
+                        Explore Our Services
+                        <span>→</span>
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+<!-- WHY CHOOSE US -->
+
+<section id="why-us">
+
+    <div class="why-container">
+
+        <div class="why-eyebrow">
+            The YMR Difference
+        </div>
+
+        <div class="why-layout">
+
+            <!-- LEFT COLUMN -->
+
+            <div class="why-intro">
+
+                <h2 class="why-heading">
+                    Your interests.<br>
+                    Our responsibility.
+                </h2>
+
+                <p class="why-description">
+                    At YMR Marine, we believe that trust is
+                    earned through every inspection, every
+                    assessment and every report.
+                </p>
+
+                <p class="why-description">
+                    We combine maritime expertise with
+                    professional integrity to deliver
+                    solutions our clients can depend on.
+                </p>
+
+                <a href="#contact" class="why-cta">
+                    Speak to Our Team
+                    <span>→</span>
+                </a>
+
+            </div>
+
+
+            <!-- RIGHT COLUMN -->
+
+            <div class="why-principles">
+
+                <div class="why-principle">
+
+                    <div class="why-number">01</div>
+
+                    <div>
+
+                        <h3 class="why-principle-title">
+                            Measurement Accuracy
+                        </h3>
+
+                        <p class="why-principle-desc">
+                            Calibrated instruments, verified procedures, and double-checked calculations mean our figures stand up to dispute — every time.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="why-principle">
+
+                    <div class="why-number">02</div>
+
+                    <div>
+
+                        <h3 class="why-principle-title">
+                            Seasoned Professionals
+                        </h3>
+
+                        <p class="why-principle-desc">
+                            Our surveyors carry deep sea, port, and terminal experience. They know what to look for before the paperwork begins.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="why-principle">
+
+                    <div class="why-number">03</div>
+
+                    <div>
+
+                        <h3 class="why-principle-title">
+                            Fast Turnaround
+                        </h3>
+
+                        <p class="why-principle-desc">
+                            Draft reports delivered within hours of survey completion. <br>Laytime doesn't wait — neither do we.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="why-principle">
+
+                    <div class="why-number">04</div>
+
+                    <div>
+
+                        <h3 class="why-principle-title">
+                            International Standards
+                        </h3>
+
+                        <p class="why-principle-desc">
+                            Every survey follows IMO, SOLAS, ASTM, and ISO guidelines so your counterparty in London or Singapore can rely on our reports without question.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="why-principle">
+
+                    <div class="why-number">05</div>
+
+                    <div>
+
+                        <h3 class="why-principle-title">
+                            Independent &amp; Transparent
+                        </h3>
+
+                        <p class="why-principle-desc">
+                            We work for our clients, not for the cargo or the vessel. Our neutrality is non-negotiable.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+<!-- PORT COVERAGE MAP -->
+
+<section id="coverage">
+
+    <div class="coverage-container">
+
+        <div class="coverage-eyebrow">
+            Our Global Presence
+        </div>
+
+        <h2 class="coverage-heading">
+            Local knowledge. Global reach.
+        </h2>
+
+        <p class="coverage-intro">
+            Supporting maritime operations across strategic
+            ports through a network of marine surveyors
+            and maritime professionals.
+        </p>
+
+        <div class="coverage-layout">
+
+            <div class="map-container">
+
+                <div class="map-header">
+
+                    <h3>
+                        Port Coverage — Indian Subcontinent
+                    </h3>
+
+                </div>
+    <div class="map-svg-wrap">
+      <svg width="100%" viewBox="0 0 900 560" xmlns="http://www.w3.org/2000/svg" style="max-height:500px">
+        <defs>
+          <radialGradient id="portGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#00ACC1" stop-opacity="0.6"/>
+            <stop offset="100%" stop-color="#00ACC1" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <!-- Ocean bg -->
+        <rect width="900" height="560" fill="#040E1E" rx="12"/>
+        <!-- India outline (simplified) -->
+        <path d="M300 40 L460 40 L510 80 L540 120 L555 165 L560 210 L550 260 L530 305 L500 350 L460 390 L420 430 L380 460 L360 490 L350 510 L340 490 L320 465 L295 440 L265 415 L240 385 L225 350 L220 300 L230 255 L245 210 L255 165 L270 120 L285 80 Z" fill="#0A2B52" stroke="#1565C0" stroke-width="1.5" stroke-linejoin="round"/>
+        <!-- Sri Lanka -->
+        <path d="M430 490 L445 475 L460 480 L465 500 L455 520 L440 525 L428 510 Z" fill="#0A2B52" stroke="#1565C0" stroke-width="1"/>
+        <!-- Bay of Bengal hint -->
+        <text x="600" y="300" fill="#1565C0" font-size="12" font-family="Inter,sans-serif" opacity="0.5" font-style="italic">Bay of Bengal</text>
+        <!-- Arabian Sea hint -->
+        <text x="100" y="300" fill="#1565C0" font-size="12" font-family="Inter,sans-serif" opacity="0.5" font-style="italic">Arabian Sea</text>
+        <!-- Indian Ocean -->
+        <text x="320" y="550" fill="#1565C0" font-size="11" font-family="Inter,sans-serif" opacity="0.4" font-style="italic">Indian Ocean</text>
+        
+        <!-- Port markers with glow + pulse -->
+        <!-- Vizag/Visakhapatnam -->
+        <circle cx="538" cy="252" r="18" fill="url(#portGlow)" opacity="0.7">
+          <animate attributeName="r" values="14;20;14" dur="2.5s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="0.7;0.3;0.7" dur="2.5s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="538" cy="252" r="6" fill="#00ACC1"/>
+        <circle cx="538" cy="252" r="3" fill="white"/>
+        <text class="port-label" x="548" y="248" font-size="10" fill="#4DD0E1" font-family="Inter,sans-serif" font-weight="700">Visakhapatnam ★</text>
+        
+        <!-- Chennai -->
+        <circle cx="478" cy="352" r="14" fill="url(#portGlow)" opacity="0.6">
+          <animate attributeName="r" values="10;16;10" dur="3s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="478" cy="352" r="5" fill="#00ACC1"/>
+        <circle cx="478" cy="352" r="2.5" fill="white"/>
+        <text class="port-label" x="488" y="348" font-size="10" fill="#4DD0E1" font-family="Inter,sans-serif" font-weight="700">Chennai</text>
+        
+        <!-- Mumbai -->
+        <circle cx="248" cy="272" r="14" fill="url(#portGlow)" opacity="0.6">
+          <animate attributeName="r" values="10;16;10" dur="3.5s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="248" cy="272" r="5" fill="#00ACC1"/>
+        <circle cx="248" cy="272" r="2.5" fill="white"/>
+        <text class="port-label" x="185" y="268" font-size="10" fill="#4DD0E1" font-family="Inter,sans-serif" font-weight="700">Mumbai</text>
+        
+        <!-- Kandla -->
+        <circle cx="234" cy="172" r="5" fill="#1E88E5"/><circle cx="234" cy="172" r="2.5" fill="white"/>
+        <text class="port-label" x="170" y="168" font-size="9" fill="#90CAF9" font-family="Inter,sans-serif">Kandla</text>
+        
+        <!-- Mundra -->
+        <circle cx="222" cy="152" r="5" fill="#1E88E5"/><circle cx="222" cy="152" r="2.5" fill="white"/>
+        <text class="port-label" x="158" y="148" font-size="9" fill="#90CAF9" font-family="Inter,sans-serif">Mundra</text>
+        
+        <!-- Kolkata/Haldia -->
+        <circle cx="548" cy="202" r="5" fill="#1E88E5"/><circle cx="548" cy="202" r="2.5" fill="white"/>
+        <text class="port-label" x="558" y="198" font-size="9" fill="#90CAF9" font-family="Inter,sans-serif">Kolkata/Haldia</text>
+        
+        <!-- Paradip -->
+        <circle cx="536" cy="225" r="5" fill="#1E88E5"/><circle cx="536" cy="225" r="2.5" fill="white"/>
+        <text class="port-label" x="546" y="221" font-size="9" fill="#90CAF9" font-family="Inter,sans-serif">Paradip</text>
+        
+        <!-- Tuticorin -->
+        <circle cx="418" cy="430" r="5" fill="#1E88E5"/><circle cx="418" cy="430" r="2.5" fill="white"/>
+        <text class="port-label" x="428" y="426" font-size="9" fill="#90CAF9" font-family="Inter,sans-serif">Tuticorin</text>
+        
+        <!-- Cochin -->
+        <circle cx="318" cy="388" r="5" fill="#1E88E5"/><circle cx="318" cy="388" r="2.5" fill="white"/>
+        <text class="port-label" x="258" y="384" font-size="9" fill="#90CAF9" font-family="Inter,sans-serif">Kochi</text>
+        
+        <!-- Mangalore -->
+        <circle cx="290" cy="330" r="5" fill="#1E88E5"/><circle cx="290" cy="330" r="2.5" fill="white"/>
+        <text class="port-label" x="228" y="326" font-size="9" fill="#90CAF9" font-family="Inter,sans-serif">Mangalore</text>
+        
+        <!-- Goa -->
+        <circle cx="262" cy="298" r="4" fill="#1E88E5"/><circle cx="262" cy="298" r="2" fill="white"/>
+        <text class="port-label" x="200" y="294" font-size="9" fill="#90CAF9" font-family="Inter,sans-serif">Goa</text>
+        
+        <!-- Ennore -->
+        <circle cx="488" cy="338" r="4" fill="#1E88E5"/><circle cx="488" cy="338" r="2" fill="white"/>
+        <!-- Kakinada -->
+        <circle cx="532" cy="280" r="4" fill="#1E88E5"/><circle cx="532" cy="280" r="2" fill="white"/>
+        <text class="port-label" x="542" y="276" font-size="9" fill="#90CAF9" font-family="Inter,sans-serif">Kakinada</text>
+        
+        <!-- Legend -->
+        <rect x="18" y="18" width="180" height="80" rx="8" fill="rgba(9,21,37,0.9)" stroke="rgba(0,180,216,0.3)" stroke-width="0.5"/>
+        <circle cx="36" cy="40" r="6" fill="#00ACC1"/><circle cx="36" cy="40" r="3" fill="white"/>
+        <text x="50" y="44" font-size="10" fill="#4DD0E1" font-family="Inter,sans-serif" font-weight="700">Major Hub — Resident surveyor</text>
+        <circle cx="36" cy="64" r="5" fill="#1E88E5"/><circle cx="36" cy="64" r="2.5" fill="white"/>
+        <text x="50" y="68" font-size="10" fill="#90CAF9" font-family="Inter,sans-serif">Secondary port coverage</text>
+        <circle cx="36" cy="85" r="6" fill="url(#portGlow)" opacity="0.6"/>
+        <text x="50" y="90" font-size="10" fill="rgba(255,255,255,0.4)" font-family="Inter,sans-serif">Pulsing = Major survey hub</text>
+                      </svg>
+
+                </div>
+
+            </div>
+
+            <!-- NETWORK INFORMATION -->
+
+            <div class="coverage-panel">
+
+                <div class="coverage-panel-label">
+                    Our Network
+                </div>
+
+                <h3 class="coverage-panel-title">
+                    Wherever your operations take you.
+                </h3>
+
+                <p class="coverage-panel-desc">
+                    Coordinated marine survey and inspection
+                    services to support your vessels and cargo
+                    across strategic maritime locations.
+                </p>
+
+                <div class="coverage-stat">
+                    <div class="coverage-stat-value">120+</div>
+                    <div class="coverage-stat-label">Ports Covered</div>
+                </div>
+
+                <div class="coverage-stat">
+                    <div class="coverage-stat-value">24/7</div>
+                    <div class="coverage-stat-label">Operational Support</div>
+                </div>
+
+                <a href="#contact" class="coverage-link">
+                    Enquire About Port Coverage
+                    <span>→</span>
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+<!-- CERTIFICATIONS 
+<section id="certifications">
+  <div class="centered animate-in">
+    <div class="section-tag">Accreditations</div>
+    <h2 class="section-title">Certifications &amp; <span class="text-grad">Memberships</span></h2>
+    <div class="divider-line"></div>
+    <p class="section-sub">Our credentials reflect our commitment to the highest standards in marine survey practice worldwide.</p>
+  </div>
+  <div class="certs-grid animate-in">
+    <div class="cert-card"><div class="cert-icon">🏅</div><div class="cert-name">ISO 9001:2015</div><div class="cert-body">Quality Management System Certified</div></div>
+    <div class="cert-card"><div class="cert-icon">⚓</div><div class="cert-name">IIMS Member</div><div class="cert-body">International Institute of Marine Surveying</div></div>
+    <div class="cert-card"><div class="cert-icon">🌐</div><div class="cert-name">IMCA</div><div class="cert-body">International Marine Contractors Association</div></div>
+    <div class="cert-card"><div class="cert-icon">🛡️</div><div class="cert-name">DGS Approved</div><div class="cert-body">Directorate General of Shipping, India</div></div>
+    <div class="cert-card"><div class="cert-icon">📋</div><div class="cert-name">BIMCO</div><div class="cert-body">Baltic & International Maritime Council</div></div>
+    <div class="cert-card"><div class="cert-icon">🔬</div><div class="cert-name">FSSAI</div><div class="cert-body">Food Commodity Inspection Authorization</div></div>
+    <div class="cert-card"><div class="cert-icon">⚖️</div><div class="cert-name">Court Approved</div><div class="cert-body">Expert witness recognized in Indian High Courts</div></div>
+    <div class="cert-card"><div class="cert-icon">🌊</div><div class="cert-name">P&I Accepted</div><div class="cert-body">Approved by major P&I clubs worldwide</div></div>
+  </div>
+</section> -->
+
+<!-- OUR SURVEY PROCESS -->
+
+<section id="process">
+
+    <div class="process-container">
+
+        <div class="process-eyebrow">
+            How We Work
+        </div>
+
+        <h2 class="process-heading">
+            From enquiry to delivery.<br>
+            Professional at every step.
+        </h2>
+
+        <p class="process-intro">
+            A structured approach to marine surveys and
+            inspections, with clear communication, operational
+            coordination and professional accountability
+            throughout every engagement.
+        </p>
+
+        <div class="process-grid">
+
+            <!-- STEP 01 -->
+
+            <div class="process-step">
+
+                <div class="process-step-header">
+                    <div class="process-number">01</div>
+                    <div class="process-line"></div>
+                </div>
+
+                <h3 class="process-step-title">
+                    Survey Request
+                </h3>
+
+                <p class="process-step-desc">
+                    Share your survey requirements, vessel
+                    details, port of attendance and expected
+                    operational schedule with our team.
+                </p>
+
+            </div>
+
+
+            <!-- STEP 02 -->
+
+            <div class="process-step">
+
+                <div class="process-step-header">
+                    <div class="process-number">02</div>
+                    <div class="process-line"></div>
+                </div>
+
+                <h3 class="process-step-title">
+                    Scope &amp; Coordination
+                </h3>
+
+                <p class="process-step-desc">
+                    Our operations team reviews the requirements,
+                    confirms the scope of work and coordinates
+                    surveyor attendance.
+                </p>
+
+            </div>
+
+
+            <!-- STEP 03 -->
+
+            <div class="process-step">
+
+                <div class="process-step-header">
+                    <div class="process-number">03</div>
+                    <div class="process-line"></div>
+                </div>
+
+                <h3 class="process-step-title">
+                    Survey Execution
+                </h3>
+
+                <p class="process-step-desc">
+                    The appointed surveyor carries out the
+                    inspection, records observations and
+                    collects relevant measurements and
+                    supporting documentation.
+                </p>
+
+            </div>
+
+
+            <!-- STEP 04 -->
+
+            <div class="process-step">
+
+                <div class="process-step-header">
+                    <div class="process-number">04</div>
+                    <div class="process-line"></div>
+                </div>
+
+                <h3 class="process-step-title">
+                    Quality Review
+                </h3>
+
+                <p class="process-step-desc">
+                    Survey findings, calculations and
+                    documentation are reviewed for accuracy,
+                    consistency and completeness.
+                </p>
+
+            </div>
+
+
+            <!-- STEP 05 -->
+
+            <div class="process-step">
+
+                <div class="process-step-header">
+                    <div class="process-number">05</div>
+                    <div class="process-line"></div>
+                </div>
+
+                <h3 class="process-step-title">
+                    Report Delivery
+                </h3>
+
+                <p class="process-step-desc">
+                    The completed survey report and relevant
+                    supporting documentation are delivered
+                    to the client, with further clarification
+                    available as required.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- PROCESS CTA -->
+
+        <div class="process-bottom">
+
+            <div class="process-bottom-text">
+                Have an upcoming survey requirement?
+            </div>
+
+            <a href="#contact" class="process-cta">
+                Request a Survey
+                <span>→</span>
+            </a>
+
+        </div>
+
+    </div>
+
+</section>
+<!-- TESTIMONIALS 
+<section id="testimonials">
+  <div class="centered animate-in">
+    <div class="section-tag">Client Testimonials</div>
+    <h2 class="section-title">What Our <span class="text-grad">Clients Say</span></h2>
+    <div class="divider-line"></div>
+  </div>
+  <div class="testimonials-grid animate-in">
+    <div class="testimonial-card">
+      <div class="stars-row">★★★★★</div>
+      <span class="quote-mark">"</span>
+      <p class="testimonial-text">OceanGuard has been our go-to surveyor at Vizag port for the past 6 years. Their draft survey accuracy is unmatched and their reports hold up in any dispute. Extremely professional team.</p>
+      <div class="testimonial-author"><div class="author-avatar">RS</div><div><div class="author-name">Rajeev Sharma</div><div class="author-role">Operations Head, BHP Billiton Shipping — Mumbai</div></div></div>
+    </div>
+    <div class="testimonial-card">
+      <div class="stars-row">★★★★★</div>
+      <span class="quote-mark">"</span>
+      <p class="testimonial-text">We needed an emergency P&I survey on a cargo damage claim at Chennai port at 2 AM. OceanGuard had a surveyor on site within 90 minutes. That kind of response saves deals.</p>
+      <div class="testimonial-author"><div class="author-avatar">PK</div><div><div class="author-name">Priya Kumar</div><div class="author-role">Marine Claims Manager, GIC Re — Chennai</div></div></div>
+    </div>
+    <div class="testimonial-card">
+      <div class="stars-row">★★★★★</div>
+      <span class="quote-mark">"</span>
+      <p class="testimonial-text">Their pre-shipment inspection service has saved us from several costly disputes with overseas buyers. Thorough, fast, and independent. Exactly what an exporter needs.</p>
+      <div class="testimonial-author"><div class="author-avatar">AM</div><div><div class="author-name">Anil Mehta</div><div class="author-role">Director, Mehta Steels Export — Mundra</div></div></div>
+    </div>
+  </div>
+</section> -->
+
+
+
+<!-- CONTACT -->
+
+<section id="contact">
+
+    <div class="contact-container">
+
+        <div class="contact-eyebrow">
+            Get in Touch
+        </div>
+
+        <h2 class="contact-heading">
+            Wherever you need us,<br>
+            we're ready to assist.
+        </h2>
+
+        <div class="contact-layout">
+
+            <!-- CONTACT INFORMATION -->
+
+            <div class="contact-information">
+
+                <h3 class="contact-info-title">
+                    Contact Our Team
+                </h3>
+
+                <p class="contact-info-intro">
+                    Whether you have an upcoming survey,
+                    require technical assistance or would
+                    like to discuss your maritime requirements,
+                    our team is here to assist.
+                </p>
+
+                <div class="contact-detail">
+
+                    <div class="contact-detail-label">
+                        Operations &amp; Enquiries
+                    </div>
+
+                    <div class="contact-detail-value">
+                        <a href="mailto:ops@ymrmarine.com">
+                            ops@ymrmarine.com
+                        </a>
+                    </div>
+
+                </div>
+
+                <div class="contact-detail">
+
+                    <div class="contact-detail-label">
+                        Telephone
+                    </div>
+
+                    <div class="contact-detail-value">
+                        <a href="tel:+919820482713">
+                            +91 98204 82713
+                        </a>
+                    </div>
+
+                </div>
+
+                <div class="contact-detail">
+
+                    <div class="contact-detail-label">
+                        Head Office
+                    </div>
+
+                    <div class="contact-detail-value">
+                        YMR Marine Solutions LLP<br>
+                        Mumbai, Maharashtra<br>
+                        India
+                    </div>
+
+                </div>
+
+                <div class="contact-detail">
+
+                    <div class="contact-detail-label">
+                        Operational Support
+                    </div>
+
+                    <div class="contact-detail-value">
+                        24 Hours / 7 Days
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- SURVEY REQUEST FORM -->
+
+            <div class="survey-form-panel">
+
+                <h3 class="survey-form-title">
+                    Request a Survey
+                </h3>
+
+                <p class="survey-form-intro">
+                    Please provide your requirements below.
+                    Our operations team will review your
+                    enquiry and coordinate further assistance.
+                </p>
+
+                <form id="surveyRequestForm">
+
+                    <div class="survey-form-grid">
+
+                        <div class="survey-field">
+
+                            <label for="surveyName">
+                                Full Name *
+                            </label>
+
+                            <input
+                                type="text"
+                                id="surveyName"
+                                name="full_name"
+                                autocomplete="name"
+                                placeholder="Your full name"
+                                required>
+
+                        </div>
+
+                        <div class="survey-field">
+
+                            <label for="surveyCompany">
+                                Company Name *
+                            </label>
+
+                            <input
+                                type="text"
+                                id="surveyCompany"
+                                name="company"
+                                autocomplete="organization"
+                                placeholder="Company name"
+                                required>
+
+                        </div>
+
+                        <div class="survey-field">
+
+                            <label for="surveyEmail">
+                                Email Address *
+                            </label>
+
+                            <input
+                                type="email"
+                                id="surveyEmail"
+                                name="email"
+                                autocomplete="email"
+                                placeholder="name@company.com"
+                                required>
+
+                        </div>
+
+                        <div class="survey-field">
+
+                            <label for="surveyPhone">
+                                Phone Number
+                            </label>
+
+                            <input
+                                type="tel"
+                                id="surveyPhone"
+                                name="phone"
+                                autocomplete="tel"
+                                placeholder="+91">
+
+                        </div>
+
+                        <div class="survey-field full-width">
+
+                            <label for="surveyService">
+                                Service Required *
+                            </label>
+
+                            <select
+                                id="surveyService"
+                                name="service"
+                                required>
+
+                                <option value="">
+                                    Select a service
+                                </option>
+
+                                <option>Bunker Quantity Survey</option>
+
+                                <option>Draft Survey</option>
+
+                                <option>Cargo Survey &amp; Inspection</option>
+
+                                <option>Pre-Purchase Survey</option>
+
+                                <option>Vessel Condition Survey</option>
+
+                                <option>On-Hire / Off-Hire Survey</option>
+
+                                <option>P&amp;I Survey</option>
+
+                                <option>Pre-Shipment Inspection</option>
+
+                                <option>Damage Assessment</option>
+
+                                <option>Port Captain Services</option>
+
+                                <option>Maritime Consultancy</option>
+
+                                <option>Multiple Services</option>
+
+                                <option>Other Requirements</option>
+
+                            </select>
+
+                        </div>
+
+                        <div class="survey-field">
+
+                            <label for="surveyVessel">
+                                Vessel Name
+                            </label>
+
+                            <input
+                                type="text"
+                                id="surveyVessel"
+                                name="vessel"
+                                placeholder="MV / MT">
+
+                        </div>
+
+                        <div class="survey-field">
+
+                            <label for="surveyPort">
+                                Port / Location
+                            </label>
+
+                            <input
+                                type="text"
+                                id="surveyPort"
+                                name="port"
+                                placeholder="Port of attendance">
+
+                        </div>
+
+                        <div class="survey-field full-width">
+
+                            <label for="surveyDate">
+                                Expected Date of Attendance
+                            </label>
+
+                            <input
+                                type="date"
+                                id="surveyDate"
+                                name="attendance_date">
+
+                        </div>
+
+                        <div class="survey-field full-width">
+
+                            <label for="surveyMessage">
+                                Additional Requirements
+                            </label>
+
+                            <textarea
+                                id="surveyMessage"
+                                name="message"
+                                placeholder="Please describe your survey requirements, vessel schedule or any specific instructions."></textarea>
+
+                        </div>
+
+                    </div>
+
+                    <p class="survey-form-note">
+                        * Required fields. The information
+                        provided will be used to respond
+                        to your enquiry.
+                    </p>
+
+                    <button
+                        type="submit"
+                        class="survey-submit">
+
+                        Submit Survey Request
+                        <span>→</span>
+
+                    </button>
+
+                    <p class="survey-form-status"
+                       id="surveyFormStatus"
+                       role="status">
+                    </p>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+<!-- FOOTER -->
+
+<footer id="footer">
+
+    <div class="footer-container">
+
+        <div class="footer-layout">
+
+            <!-- COMPANY BRAND -->
+
+            <div class="footer-brand">
+
+                <a href="#hero" class="footer-brand-logo">
+
+                    <img
+                        src="./ymr_logo.png"
+                        alt="YMR Marine Solutions LLP">
+
+                </a>
+
+                <p class="footer-brand-desc">
+                    Independent marine surveys, inspections
+                    and maritime consultancy services.
+                    Delivering expertise, integrity and
+                    confidence across the maritime industry.
+                </p>
+
+                <div class="footer-location">
+                    YMR Marine Solutions LLP<br>
+                    Mumbai, Maharashtra, India
+                </div>
+
+                <div class="footer-contact-block">
+
+                    <div class="footer-contact-label">
+                        Get in Touch
+                    </div>
+
+                    <a href="mailto:ops@ymrmarine.com">
+                        ops@ymrmarine.com
+                    </a>
+
+                    <a href="tel:+919820482713">
+                        +91 98204 82713
+                    </a>
+
+                </div>
+
+            </div>
+
+
+            <!-- COMPANY LINKS -->
+
+            <div class="footer-column">
+
+                <h3 class="footer-column-title">
+                    Company
+                </h3>
+
+                <ul class="footer-nav-links">
+
+                    <li><a href="#about">About Us</a></li>
+
+                    <li><a href="#industries">Industries We Serve</a></li>
+
+                    <li><a href="#why-us">The YMR Difference</a></li>
+
+                    <li><a href="#coverage">Port Coverage</a></li>
+
+                    <li><a href="#process">Our Survey Process</a></li>
+
+                    <li><a href="#contact">Contact Us</a></li>
+
+                </ul>
+
+            </div>
+
+
+            <!-- EXPERTISE LINKS -->
+
+            <div class="footer-column">
+
+                <h3 class="footer-column-title">
+                    Our Expertise
+                </h3>
+
+                <ul class="footer-nav-links">
+
+                    <li><a href="#services">Bunker Quantity Surveys</a></li>
+
+                    <li><a href="#services">Draft Surveys</a></li>
+
+                    <li><a href="#services">Cargo Surveys &amp; Inspections</a></li>
+
+                    <li><a href="#services">Pre-Purchase Surveys</a></li>
+
+                    <li><a href="#services">Vessel Condition Surveys</a></li>
+
+                    <li><a href="#services">On-Hire / Off-Hire Surveys</a></li>
+
+                    <li><a href="#services">Maritime Consultancy</a></li>
+
+                    <li><a href="#services">Port Captain Services</a></li>
+
+                </ul>
+
+            </div>
+
+
+            <!-- QUICK ACCESS -->
+
+            <div class="footer-column">
+
+                <h3 class="footer-column-title">
+                    Quick Access
+                </h3>
+
+                <ul class="footer-nav-links">
+
+                    <li><a href="#contact">Request a Survey</a></li>
+
+                    <li><a href="#coverage">Find a Port</a></li>
+
+                    <!-- Add employee portal URL when ready -->
+
+                </ul>
+
+            </div>
+
+        </div>
+
+
+        <!-- FOOTER BOTTOM -->
+
+        <div class="footer-bottom-bar">
+
+            <div class="footer-copyright">
+
+                &copy; <span id="footerYear">2026</span>
+                YMR Marine Solutions LLP.<br>
+
+                All rights reserved.
+
+            </div>
+
+            <div class="footer-legal-links">
+
+                <!-- Add Privacy Policy and legal links when ready -->
+
+                <a href="#hero" class="footer-back-top">
+
+                    Back to Top
+
+                    <span>↑</span>
+
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</footer>
+<!-- WHATSAPP FLOAT -->
+<a href="https://wa.me/+919820482713" class="float-wa" title="Chat on WhatsApp">➤</a>
+
+<script>
+
+// Navbar scroll effect
+window.addEventListener('scroll', () => {
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
+});
+
+// Mobile menu
+function toggleMenu() {
+    const menu = document.getElementById('mobile-menu');
+    const button = document.getElementById('hamburgerBtn');
+
+    const isOpen = menu.classList.toggle('open');
+
+    button.setAttribute('aria-expanded', String(isOpen));
+}
+
+// Animate on scroll
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry, i) => {
+    if(entry.isIntersecting) {
+      setTimeout(() => entry.target.classList.add('visible'), i * 80);
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+
+// Counter animation
+function animateCounter(el, target, suffix='') {
+  const duration = 2000;
+  const start = performance.now();
+  const update = (now) => {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(eased * target);
+    el.textContent = current.toLocaleString() + (target >= 100 ? '+' : '');
+    if(progress < 1) requestAnimationFrame(update);
+  };
+  requestAnimationFrame(update);
+}
+
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting) {
+      const el = entry.target;
+      const target = parseInt(el.dataset.target);
+      animateCounter(el, target);
+      counterObserver.unobserve(el);
+    }
+  });
+}, { threshold: 0.5 });
+document.querySelectorAll('.counter-val[data-target]').forEach(el => counterObserver.observe(el));
+
+// Form submit
+function handleSubmit() {
+  const btn = document.querySelector('.btn-submit');
+  btn.textContent = '✓ Request Sent — We\'ll contact you within 2 hours';
+  btn.style.background = 'linear-gradient(135deg,#00897B,#00695C)';
+  btn.disabled = true;
+}
+
+// INDUSTRY SELECTOR
+
+const industryData = [
+
+    {
+        title: "Shipping & Ship Management",
+        image: "./industry-shipping.jpg",
+        description: "Supporting shipowners, charterers and vessel managers with independent marine surveys, vessel inspections and technical expertise throughout the operational lifecycle of a vessel."
+    },
+
+    {
+        title: "Commodity Trading",
+        image: "./industry-commodity.jpg",
+        description: "Providing independent cargo quantity and condition assessments to support commodity traders, importers and exporters in protecting their commercial interests."
+    },
+
+    {
+        title: "Oil & Gas",
+        image: "./industry-oilgas.jpg",
+        description: "Supporting maritime fuel and energy operations through bunker quantity surveys, vessel inspections and independent operational assessments."
+    },
+
+    {
+        title: "Ports & Terminals",
+        image: "./industry-ports.jpg",
+        description: "Delivering cargo supervision, marine inspections and port captain services to support efficient and reliable port and terminal operations."
+    },
+
+    {
+        title: "Marine Insurance",
+        image: "./industry-insurance.jpg",
+        description: "Providing independent factual assessments, condition surveys and damage documentation to assist insurers and maritime stakeholders in evaluating claims and risks."
+    },
+
+    {
+        title: "Logistics & Freight",
+        image: "./industry-logistics.jpg",
+        description: "Supporting freight forwarders and logistics providers through independent cargo inspections, condition assessments and loading and discharge supervision."
+    }
+
+];
+
+function selectIndustry(index, button) {
+
+    const industry = industryData[index];
+
+    if (!industry) return;
+
+    document.querySelectorAll('.industry-tab').forEach(tab => {
+        tab.classList.remove('active');
+        tab.setAttribute('aria-pressed', 'false');
+    });
+
+    button.classList.add('active');
+    button.setAttribute('aria-pressed', 'true');
+
+    document.getElementById('industryTitle').textContent =
+        industry.title;
+
+    document.getElementById('industryDescription').textContent =
+        industry.description;
+
+    document.getElementById('industryPhoto').style.backgroundImage =
+        `url('${industry.image}')`;
+
+    const display = document.getElementById('industryDisplay');
+
+    display.classList.remove('is-changing');
+
+    void display.offsetWidth;
+
+    display.classList.add('is-changing');
+
+}
+
+// =========================================
+// SURVEY REQUEST FORM
+// =========================================
+
+document.getElementById('surveyRequestForm')
+    .addEventListener('submit', function(event) {
+
+        event.preventDefault();
+
+        const data = new FormData(this);
+
+        const subject =
+            "Survey Enquiry - " +
+            data.get('company');
+
+        const body = [
+            "Dear YMR Marine Operations Team,",
+            "",
+            "Please find our survey requirements below:",
+            "",
+            "Full Name: " + data.get('full_name'),
+            "Company: " + data.get('company'),
+            "Email: " + data.get('email'),
+            "Phone: " + (data.get('phone') || "Not provided"),
+            "Service: " + data.get('service'),
+            "Vessel: " + (data.get('vessel') || "Not provided"),
+            "Port: " + (data.get('port') || "Not provided"),
+            "Expected Attendance: " +
+                (data.get('attendance_date') || "To be confirmed"),
+            "",
+            "Additional Requirements:",
+            data.get('message') || "None",
+            "",
+            "Kind regards,",
+            data.get('full_name')
+        ].join('\r\n');
+
+        window.location.href =
+            "mailto:ops@ymrmarine.com" +
+            "?subject=" + encodeURIComponent(subject) +
+            "&body=" + encodeURIComponent(body);
+
+        document.getElementById('surveyFormStatus')
+            .textContent =
+            "Please send the prepared enquiry from your email application, or contact our operations team directly.";
+
+    });
+
+// =========================================
+// ANIMATED STATISTICS COUNTER
+// =========================================
+
+const statCounters = document.querySelectorAll('.stat-counter');
+
+function animateCounter(counter) {
+
+    const target = Number(counter.dataset.target);
+    const duration = 2200;
+    const startTime = performance.now();
+
+    function updateCounter(currentTime) {
+
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Gradually slow down towards the final number
+        const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+        const currentValue = Math.floor(target * easedProgress);
+
+        counter.textContent =
+            currentValue.toLocaleString('en-US') + '+';
+
+        if (progress < 1) {
+
+            requestAnimationFrame(updateCounter);
+
+        } else {
+
+            counter.textContent =
+                target.toLocaleString('en-US') + '+';
+
+        }
+
+    }
+
+    requestAnimationFrame(updateCounter);
+
+}
+
+const statsObserver = new IntersectionObserver((entries) => {
+
+    entries.forEach(entry => {
+
+        if (entry.isIntersecting) {
+
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                animateCounter(entry.target);
+            }
+
+            statsObserver.unobserve(entry.target);
+
+        }
+
+    });
+
+}, {
+    threshold: 0.2
+});
+
+statCounters.forEach(counter => {
+    statsObserver.observe(counter);
+});
+</script>
+</body>
+</html>

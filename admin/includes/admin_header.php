@@ -26,6 +26,21 @@ requireLogin();
 csrf_require();
 
 $current = basename($_SERVER['PHP_SELF'], '.php');
+// Sessions signed in before this check existed: look at the stored password once.
+if (!isset($_SESSION['admin_must_change_pw'])) {
+    $st = getDB()->prepare('SELECT password FROM admins WHERE id = ? LIMIT 1');
+    $st->execute([(int)$_SESSION['admin_id']]);
+    $hash = $st->fetchColumn();
+    if ($hash === false) {
+        session_destroy();
+        redirect('login.php');
+    }
+    $_SESSION['admin_must_change_pw'] = admin_hash_is_weak((string)$hash);
+}
+if (!empty($_SESSION['admin_must_change_pw']) && $current !== 'change_password') {
+    flash('error', 'Your admin password is the default (or too easy to guess). Please change it now.');
+    redirect('change_password.php');
+}
 $adminName = $_SESSION['admin_name'] ?? 'Admin';
 $flash = getFlash();
 ?>
@@ -77,6 +92,7 @@ $flash = getFlash();
       <a href="testimonials.php" class="<?= $current==='testimonials'?'active':'' ?>"><i class="fas fa-quote-left"></i> Testimonials</a>
       <a href="messages.php" class="<?= $current==='messages'?'active':'' ?>"><i class="fas fa-envelope"></i> Messages</a>
       <a href="callbacks.php" class="<?= $current==='callbacks'?'active':'' ?>"><i class="fas fa-phone-volume"></i> Callback Requests</a>
+      <a href="change_password.php" class="<?= $current==='change_password'?'active':'' ?>"><i class="fas fa-key"></i> Change Password</a>
       <a href="../index.php" target="_blank"><i class="fas fa-external-link-alt"></i> View Website</a>
     </nav>
     <div class="sidebar-footer">

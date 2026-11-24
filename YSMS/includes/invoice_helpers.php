@@ -83,6 +83,8 @@ function invoiceEnsureGenColumns(PDO $db): void {
         'recovery_pending' => 'TINYINT(1) NOT NULL DEFAULT 0',
         'rec_invoice_date' => 'DATE NULL',          // recovery invoice's own date and total
         'rec_invoice_amount' => 'DECIMAL(14,2) NULL', // (Invoice Airtable payment tracking)
+        'rec_invoice_no' => 'VARCHAR(64) NULL',     // recovery invoice number when it is not the usual
+                                                    // invoice number + "B" (NULL = invoice_no + B)
         'deleted_at' => 'DATETIME NULL',            // entry deleted from Invoices (kept, can be restored;
         'deleted_by' => 'INT NULL',                 //  stays so the vessel is not registered again)
         'delete_reason' => 'VARCHAR(255) NULL',
@@ -97,6 +99,8 @@ function invoiceEnsureGenColumns(PDO $db): void {
         'survey_completed_date' => 'DATE NULL',
         'created_by' => 'INT NULL',
         'request_id' => 'CHAR(32) NULL',           // one per Add Invoice form; stops double saves
+        'manual_service' => 'TEXT NULL',            // Add / Edit Invoice "Invoice Services" (JSON: desc, rate, qty,
+                                                    //  travel, launch) — kept for the PDF preview / download
     ];
     foreach ($add as $col => $def) {
         if (!isset($have[$col])) $db->exec("ALTER TABLE invoices ADD COLUMN `$col` $def");
@@ -259,6 +263,12 @@ function invoiceRowJson(PDO $db, array $r): array {
         'status' => (string)$r['invoice_status'],
         'has_file' => invoiceFileAbs($r['file_path'] ?? null) !== null,
         'has_rec' => invoiceFileAbs($r['rec_file_path'] ?? null) !== null,
+        'rec_no' => invoiceRecNo($r),
+        'rec_no_custom' => trim((string)($r['rec_invoice_no'] ?? '')) !== '',
+        'rec_date' => (string)($r['rec_invoice_date'] ?? ''),
+        'rec_amount' => isset($r['rec_invoice_amount']) && $r['rec_invoice_amount'] !== null ? (string)$r['rec_invoice_amount'] : '',
+        // a recovery invoice was added (Add / Edit Invoice) or made (Generate Invoice)
+        'has_rec_entry' => invoiceFileAbs($r['rec_file_path'] ?? null) !== null || !empty($r['rec_invoice_date']) || trim((string)($r['rec_invoice_no'] ?? '')) !== '',
         'rec_file_name' => (string)($r['rec_file_name'] ?? ''),
         'recovery_pending' => !empty($r['recovery_pending']),
         'generated' => !empty($r['gen_data']),
@@ -268,6 +278,7 @@ function invoiceRowJson(PDO $db, array $r): array {
         'invoice_date' => (string)($r['invoice_date'] ?? ''),
         'invoice_amount' => $r['invoice_amount'] !== null ? (string)$r['invoice_amount'] : '',
         'invoice_notes' => (string)($r['invoice_notes'] ?? ''),
+        'manual_service' => invoiceManualService($r['manual_service'] ?? null),
         'survey_completed' => $done ? date('d M Y', strtotime($r['survey_completed_date'])) : '',
         'deleted' => !empty($r['deleted_at']),
         'deleted_at' => !empty($r['deleted_at']) ? date('d M Y H:i', strtotime($r['deleted_at'])) : '',
@@ -275,6 +286,29 @@ function invoiceRowJson(PDO $db, array $r): array {
         'delete_reason' => (string)($r['delete_reason'] ?? ''),
         'can_remove' => invoiceRemoveBlocker($r) === '',
     ];
+}
+
+/** Invoice Services of a manual entry (stored JSON → [desc, rate, qty, travel, launch] as strings). */
+function invoiceManualService($json): array {
+    $d = is_string($json) && $json !== '' ? json_decode($json, true) : null;
+    $out = [];
+    foreach (['desc', 'rate', 'qty', 'travel', 'launch'] as $k) $out[$k] = is_array($d) && isset($d[$k]) && is_scalar($d[$k]) ? (string)$d[$k] : '';
+    return $out;
+}
+
+/** Invoice Services from the Add / Edit form ($_POST service_*) → JSON, or null when all are empty. */
+function invoiceManualServiceFromPost(): ?string {
+    $num = function (string $k): string {
+        $v = str_replace([',', ' ', '$'], '', trim((string)($_POST[$k] ?? '')));
+        return $v !== '' && is_numeric($v) && (float)$v >= 0 ? (string)$v : '';
+    };
+    $d = [
+        'desc' => mb_substr(trim((string)($_POST['service_desc'] ?? '')), 0, 1000),
+        'rate' => $num('service_rate'), 'qty' => $num('service_qty'),
+        'travel' => $num('travel_cost'), 'launch' => $num('launch_cost'),
+    ];
+    if ($d['desc'] === '' && $d['rate'] === '' && $d['travel'] === '' && $d['launch'] === '') return null; // quantity alone (default 1) is not a service
+    return json_encode($d, JSON_UNESCAPED_UNICODE);
 }
 
 function invoiceUserName(PDO $db, int $uid): string {
@@ -522,6 +556,45 @@ function invoiceNumberTakenBy(PDO $db, string $no, int $exceptId = 0): ?string {
     $sql = 'SELECT invoice_no FROM invoices WHERE id <> ? AND (invoice_no = ?' . ($n !== null ? ' OR invoice_no LIKE ? OR invoice_no LIKE ?' : '') . ') LIMIT 1';
     $q = $db->prepare($sql);
     $q->execute($n !== null ? [$exceptId, $no, '%-' . $n, '%-' . $n . 'B'] : [$exceptId, $no]);
+    $o = $q->fetchColumn();
+    if ($o !== false) return (string)$o;
+    // another entry's recovery invoice typed with its own number
+    $q = $db->prepare('SELECT rec_invoice_no FROM invoices WHERE id <> ? AND rec_invoice_no = ? LIMIT 1');
+    $q->execute([$exceptId, $no]);
+    $o = $q->fetchColumn();
+    return $o === false ? null : (string)$o;
+}
+
+/** The recovery invoice's number: the one typed for it, else the invoice number + "B" ('' when neither). */
+function invoiceRecNo(array $r): string {
+    $own = trim((string)($r['rec_invoice_no'] ?? ''));
+    if ($own !== '') return $own;
+    $no = trim((string)($r['invoice_no'] ?? ''));
+    return $no !== '' ? $no . 'B' : '';
+}
+
+/**
+ * A typed recovery invoice number, cleaned (upper case, no spaces): [number, null] or [null, error].
+ * Letters, digits, - and / only (e.g. YMR-BB-968B).
+ */
+function invoiceNormalizeRecNumber(string $typed): array {
+    $want = strtoupper(preg_replace('/\s+/', '', $typed));
+    if ($want === '') return [null, 'Enter the recovery invoice number.'];
+    if (!preg_match('/^[A-Z0-9][A-Z0-9\-\/]{0,62}[A-Z0-9]$/', $want)) {
+        return [null, 'Recovery invoice number: letters, digits and - only (e.g. YMR-BB-968B).'];
+    }
+    return [$want, null];
+}
+
+/**
+ * The entry whose invoice or recovery invoice already carries $recNo (deleted entries too), or null.
+ * The entry's own vessel invoice number ($ownNo) is never allowed as its recovery number.
+ */
+function invoiceRecNumberTakenBy(PDO $db, string $recNo, int $exceptId, string $ownNo): ?string {
+    if ($ownNo !== '' && strcasecmp($recNo, $ownNo) === 0) return $ownNo;
+    $q = $db->prepare("SELECT COALESCE(NULLIF(invoice_no, ''), rec_invoice_no) FROM invoices WHERE id <> ?
+        AND (invoice_no = ? OR rec_invoice_no = ? OR (rec_invoice_no IS NULL AND CONCAT(invoice_no, 'B') = ?)) LIMIT 1");
+    $q->execute([$exceptId, $recNo, $recNo, $recNo]);
     $o = $q->fetchColumn();
     return $o === false ? null : (string)$o;
 }

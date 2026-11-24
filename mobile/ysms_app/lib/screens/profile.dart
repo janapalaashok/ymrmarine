@@ -116,7 +116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final role = s(me['role']);
     final all = allActions(me);
     final unread = (me['unread'] as num?)?.toInt() ?? 0;
-    const workKeys = ['inbox', 'chat', 'recovery', 'word', 'surveyreports', 'livesr', 'formats', 'cancelled', 'permission', 'lineups'];
+    const workKeys = ['inbox', 'chat', 'recovery', 'word', 'surveyreports', 'srnative', 'livesr', 'formats', 'cancelled', 'permission', 'lineups'];
     const adminKeys = [
       'assign',
       'surveyor',
