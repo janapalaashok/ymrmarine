@@ -135,25 +135,21 @@ if (in_array($role, ['Admin', 'Super Admin'], true)) {
     unset($sfrRow);
     if ($sfr_total) $sfrAvg($sfr_total);
 
-    // 🌟 Client Performance — Full Report: the same figures per client (each vessel belongs to one
-    //    client, so the rows add up to the footer). Clients with at least one ship attended.
-    $client_full_report = [];
+    // 🌟 Client-wise Ships per Month: ships attended (Pending Report + Completed) per client and month of
+    //    the Survey Completed Date — the month figures' rule (no date = in no month).
+    $cmShips = []; // [year][client name][month 1..12] => ships
     try {
-        $client_full_report = $db->query("
-            SELECT c.id, COALESCE(NULLIF(TRIM(c.company_name), ''), 'Client not recorded') AS full_name,
-                   COUNT(*) AS ships_total,
-                   COUNT(CASE WHEN $sfrMonth THEN 1 END) AS ships_month,
-                   COALESCE(SUM($sfrRec), 0) AS recovery_total,
-                   COALESCE(SUM(CASE WHEN $sfrMonth THEN $sfrRec END), 0) AS recovery_month,
-                   COUNT(CASE WHEN $sfrApplies THEN 1 END) AS ships_rec, MIN($sfrCd) AS first_done
+        $q = $db->query("
+            SELECT COALESCE(NULLIF(TRIM(c.company_name), ''), 'Client not recorded') AS client,
+                   YEAR($sfrCd) AS y, MONTH($sfrCd) AS m, COUNT(*) AS n
             FROM surveys s LEFT JOIN clients c ON c.id = s.client_id
-            WHERE $sfrDone
-            GROUP BY c.id, c.company_name
-            ORDER BY full_name ASC
-        ")->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($client_full_report as &$cfrRow) $sfrAvg($cfrRow);
-        unset($cfrRow);
-    } catch (Throwable $e) { error_log('dashboard client full report: ' . $e->getMessage()); }
+            WHERE $sfrDone AND $sfrCd IS NOT NULL
+            GROUP BY client, y, m");
+        foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) $cmShips[(int)$r['y']][(string)$r['client']][(int)$r['m']] = (int)$r['n'];
+        krsort($cmShips);
+        foreach ($cmShips as &$cmYear) uksort($cmYear, 'strcasecmp');
+        unset($cmYear);
+    } catch (Throwable $e) { error_log('dashboard client month ships: ' . $e->getMessage()); }
 } elseif ($role === 'Client') {
     // క్లయింట్ కి కేవలం తన కంపెనీ వెసెల్స్ మాత్రమే
     $stmt_v = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Vessel' AND client_id = ?");
@@ -948,54 +944,63 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     });
     </script>
 
-    <div class="overview-section mt-4" data-share="Client Performance" data-testid="client-full-report">
-        <div class="section-title-row">
-            <span class="section-title">Client Performance — Full Report</span>
-            <span class="cs-title-acts"><a href="recovery.php" class="sfr-link" data-testid="cfr-recovery-link">Recovery details <i class="fa-solid fa-chevron-right"></i></a><?= $csBtn() ?></span>
+    <?php $cmYears = array_keys($cmShips); $cmNow = (int)date('Y'); $cmSel = in_array($cmNow, $cmYears, true) ? $cmNow : ($cmYears[0] ?? $cmNow);
+          $cmMon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']; ?>
+    <style>
+    .cm-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 820px; }
+    .cm-table th, .cm-table td { padding: 11px 8px; text-align: center; white-space: nowrap; border-bottom: 1px solid #f1f5f9; }
+    .cm-table thead th { background: #F8FAFC; color: #64748b; font-weight: 700; font-size: 10.5px; letter-spacing: .06em; }
+    .cm-table th:first-child, .cm-table td:first-child { text-align: left; position: sticky; left: 0; z-index: 1; background: #fff; min-width: 150px; white-space: normal; font-weight: 700; color: #0f172a; }
+    .cm-table thead th:first-child { background: #F8FAFC; }
+    .cm-table td.z { color: #cbd5e1; }
+    .cm-table td.n b { display: inline-block; min-width: 26px; padding: 2px 8px; border-radius: 999px; background: #EFF6FF; color: #1d4ed8; font-weight: 800; }
+    .cm-table .cm-t { font-weight: 800; color: #4B2FD6; background: #FAF8FF; }
+    .cm-table tfoot td { background: #1E1B6B; color: #fff; font-weight: 800; border: 0; }
+    .cm-table tfoot td:first-child { background: #0f172a; color: #fff; }
+    .cm-table tfoot .cm-t { background: #4B2FD6; color: #fff; }
+    .cm-table tbody tr:hover td { background: #FAF8FF; }
+    @media (max-width: 575.98px) { .cm-table { font-size: 12px; min-width: 700px; } .cm-table th:first-child, .cm-table td:first-child { min-width: 110px; } }
+    </style>
+    <div class="overview-section mt-4" data-share="Client-wise Ships per Month <?= $cmSel ?>" data-testid="client-month-ships">
+        <div class="section-title-row mc-head">
+            <span class="section-title"><i class="fa-solid fa-building me-1" style="color:#7c3aed"></i> Client-wise Ships per Month</span>
+            <span class="cs-title-acts">
+                <?php if ($cmYears): ?><select class="mc-year" data-cm-year aria-label="Year" data-testid="cm-year"><?php foreach ($cmYears as $y): ?><option value="<?= $y ?>"<?= $y === $cmSel ? ' selected' : '' ?>><?= $y ?></option><?php endforeach; ?></select><?php endif; ?>
+                <?= $csBtn() ?>
+            </span>
         </div>
-        <div class="sp-card" data-testid="client-full-report-card">
+        <div class="sp-card">
             <div class="sp-wrap">
-                <table class="sp-table" data-col="2" data-testid="client-full-report-grid">
-                    <thead>
-                        <tr>
-                            <th>Client Name</th>
-                            <?php foreach ($spCols as $ci => [$label, $cls]): ?>
-                            <th<?= $cls !== '' ? ' class="' . $cls . '"' : '' ?>><span class="sp-th"><?php if ($ci > 0): ?><button type="button" class="sp-nav" data-sp-nav="-1" aria-label="Previous column" data-testid="cfr-prev"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button><?php endif; ?><span class="sp-th-t"><?= $label ?></span><?php if ($ci < count($spCols) - 1): ?><button type="button" class="sp-nav" data-sp-nav="1" aria-label="Next column" data-testid="cfr-next"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button><?php endif; ?></span></th>
-                            <?php endforeach; ?>
-                        </tr>
-                    </thead>
+            <?php if (!$cmYears): ?>
+                <div class="sp-empty">No ships attended yet.</div>
+            <?php endif; ?>
+            <?php foreach ($cmShips as $y => $clients): $colTot = array_fill(1, 12, 0); ?>
+                <table class="cm-table" data-cm-table="<?= $y ?>" data-testid="cm-table-<?= $y ?>"<?= $y === $cmSel ? '' : ' hidden' ?>>
+                    <thead><tr><th>Client Name</th><?php foreach ($cmMon as $m): ?><th><?= $m ?></th><?php endforeach; ?><th class="cm-t">TOTAL</th></tr></thead>
                     <tbody>
-                    <?php if (!empty($client_full_report)): foreach ($client_full_report as $row): $cfrName = (string)$row['full_name']; ?>
-                        <tr data-testid="cfr-row">
-                            <td><?php if ($row['id'] !== null): ?><a class="sp-name" href="recovery.php?client=<?= rawurlencode($cfrName) ?>"><?php else: ?><span class="sp-name"><?php endif; ?><span class="sp-av" style="background:linear-gradient(135deg,<?= $spGrad[abs(crc32($cfrName)) % count($spGrad)] ?>)"><?= sanitize($spInitials($cfrName)) ?></span><span><?= sanitize($cfrName) ?></span><?= $row['id'] !== null ? '</a>' : '</span>' ?></td>
-                            <td><span class="sp-n"><?= (int)$row['ships_total'] ?></span></td>
-                            <td><span class="sp-pill<?= (int)$row['ships_month'] ? '' : ' zero' ?>"><?= (int)$row['ships_month'] ?></span></td>
-                            <td><span class="sp-rec"><?= $spMt($row['recovery_total']) ?></span><span class="sp-u">MT</span></td>
-                            <td><span class="sp-rec-m"><?= $spMt($row['recovery_month']) ?></span><span class="sp-u">MT</span></td>
-                            <td><span class="sp-avg"><?= $spMt($row['avg_ship']) ?></span><span class="sp-u">MT</span></td>
-                            <td><span class="sp-avg"><?= $spMt($row['avg_month']) ?></span><span class="sp-u">MT</span></td>
-                        </tr>
-                    <?php endforeach; else: ?>
-                        <tr><td colspan="7" class="sp-empty">No ships attended yet.</td></tr>
-                    <?php endif; ?>
+                    <?php foreach ($clients as $name => $months): $rt = 0; ?>
+                        <tr data-testid="cm-row"><td><?= sanitize(mb_strtoupper((string)$name)) ?></td>
+                        <?php for ($m = 1; $m <= 12; $m++): $n = (int)($months[$m] ?? 0); $rt += $n; $colTot[$m] += $n; ?>
+                            <td class="<?= $n ? 'n' : 'z' ?>"><?= $n ? '<b>' . $n . '</b>' : '0' ?></td>
+                        <?php endfor; ?>
+                            <td class="cm-t"><?= $rt ?></td></tr>
+                    <?php endforeach; ?>
                     </tbody>
-                    <?php if (!empty($sfr_total)): ?>
-                    <tfoot>
-                        <tr data-testid="cfr-total-row">
-                            <td>All clients<small>every vessel once</small></td>
-                            <td data-testid="cfr-total-ships"><?= (int)$sfr_total['ships_total'] ?></td>
-                            <td><?= (int)$sfr_total['ships_month'] ?></td>
-                            <td data-testid="cfr-total-recovery"><?= $spMt($sfr_total['recovery_total']) ?><span class="sp-u">MT</span></td>
-                            <td><?= $spMt($sfr_total['recovery_month']) ?><span class="sp-u">MT</span></td>
-                            <td><?= $spMt($sfr_total['avg_ship']) ?><span class="sp-u">MT</span></td>
-                            <td><?= $spMt($sfr_total['avg_month']) ?><span class="sp-u">MT</span></td>
-                        </tr>
-                    </tfoot>
-                    <?php endif; ?>
+                    <tfoot><tr data-testid="cm-total-row"><td>Total</td><?php for ($m = 1; $m <= 12; $m++): ?><td><?= $colTot[$m] ?></td><?php endfor; ?><td class="cm-t"><?= array_sum($colTot) ?></td></tr></tfoot>
                 </table>
+            <?php endforeach; ?>
             </div>
         </div>
     </div>
+    <script>
+    (function () {
+        var sel = document.querySelector('[data-cm-year]'); if (!sel) return;
+        sel.addEventListener('change', function () {
+            document.querySelectorAll('[data-cm-table]').forEach(function (t) { t.hidden = t.getAttribute('data-cm-table') !== sel.value; });
+            var box = sel.closest('[data-share]'); if (box) box.setAttribute('data-share', 'Client-wise Ships per Month ' + sel.value);
+        });
+    })();
+    </script>
     <?php endif; ?>
 
     <!-- Quick links: stacked on mobile, one neat row on desktop -->
