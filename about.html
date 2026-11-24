@@ -2166,6 +2166,77 @@ footer .footer-container {
         padding-right: 24px;
     }
 }
+/* Keep narrow grids and long contact links within the page. */
+@media (max-width: 1000px) {
+    .contact-layout > *,
+    .survey-form-grid > *,
+    .footer-layout > * {
+        min-width: 0;
+    }
+
+    .contact-detail-value,
+    .footer-contact-block {
+        overflow-wrap: anywhere;
+    }
+
+    #why-ymr .why-visual {
+        display: flex;
+        align-items: flex-end;
+    }
+
+    #why-ymr .why-visual-content {
+        position: relative;
+        inset: auto;
+        width: 100%;
+        padding: 32px 40px 55px;
+    }
+}
+
+@media (max-width: 600px) {
+    .survey-field input,
+    .survey-field select,
+    .survey-field textarea {
+        font-size: 16px;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .footer-watermark {
+        font-size: 15vw;
+    }
+}
+
+@media (max-width: 550px) {
+    #why-ymr .why-option {
+        grid-template-columns: 28px minmax(0, 1fr) 24px;
+    }
+
+    #why-ymr .why-visual-content {
+        padding: 24px 24px 45px;
+    }
+}
+
+@media (max-width: 380px) {
+    .who-title {
+        font-size: 34px;
+    }
+
+    .survey-form-panel {
+        padding: 18px;
+    }
+}
+@media (max-width: 1000px) {
+    footer .footer-layout {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 32px 24px;
+    }
+}
+@media (max-width: 600px) {
+    footer .footer-layout { gap: 28px 18px; padding-bottom: 24px; }
+    footer .footer-brand, footer .footer-contact-column { grid-column: 1 / -1; }
+    footer .footer-bottom-bar { flex-direction: column; align-items: flex-start; gap: 12px; }
+    footer .footer-watermark { font-size: 14vw; }
+}
 </style></head><body><nav aria-label="Main navigation" id="navbar">
 <!-- COMPANY BRAND -->
 <a class="nav-logo" href="ymr7.html">
