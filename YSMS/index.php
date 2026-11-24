@@ -134,6 +134,26 @@ if (in_array($role, ['Admin', 'Super Admin'], true)) {
     foreach ($surveyor_full_report as &$sfrRow) $sfrAvg($sfrRow);
     unset($sfrRow);
     if ($sfr_total) $sfrAvg($sfr_total);
+
+    // 🌟 Client Performance — Full Report: the same figures per client (each vessel belongs to one
+    //    client, so the rows add up to the footer). Clients with at least one ship attended.
+    $client_full_report = [];
+    try {
+        $client_full_report = $db->query("
+            SELECT c.id, COALESCE(NULLIF(TRIM(c.company_name), ''), 'Client not recorded') AS full_name,
+                   COUNT(*) AS ships_total,
+                   COUNT(CASE WHEN $sfrMonth THEN 1 END) AS ships_month,
+                   COALESCE(SUM($sfrRec), 0) AS recovery_total,
+                   COALESCE(SUM(CASE WHEN $sfrMonth THEN $sfrRec END), 0) AS recovery_month,
+                   COUNT(CASE WHEN $sfrApplies THEN 1 END) AS ships_rec, MIN($sfrCd) AS first_done
+            FROM surveys s LEFT JOIN clients c ON c.id = s.client_id
+            WHERE $sfrDone
+            GROUP BY c.id, c.company_name
+            ORDER BY full_name ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($client_full_report as &$cfrRow) $sfrAvg($cfrRow);
+        unset($cfrRow);
+    } catch (Throwable $e) { error_log('dashboard client full report: ' . $e->getMessage()); }
 } elseif ($role === 'Client') {
     // క్లయింట్ కి కేవలం తన కంపెనీ వెసెల్స్ మాత్రమే
     $stmt_v = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Vessel' AND client_id = ?");
@@ -927,6 +947,55 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
         t.setAttribute('data-col', String(Math.min(7, Math.max(2, c))));
     });
     </script>
+
+    <div class="overview-section mt-4" data-share="Client Performance" data-testid="client-full-report">
+        <div class="section-title-row">
+            <span class="section-title">Client Performance — Full Report</span>
+            <span class="cs-title-acts"><a href="recovery.php" class="sfr-link" data-testid="cfr-recovery-link">Recovery details <i class="fa-solid fa-chevron-right"></i></a><?= $csBtn() ?></span>
+        </div>
+        <div class="sp-card" data-testid="client-full-report-card">
+            <div class="sp-wrap">
+                <table class="sp-table" data-col="2" data-testid="client-full-report-grid">
+                    <thead>
+                        <tr>
+                            <th>Client Name</th>
+                            <?php foreach ($spCols as $ci => [$label, $cls]): ?>
+                            <th<?= $cls !== '' ? ' class="' . $cls . '"' : '' ?>><span class="sp-th"><?php if ($ci > 0): ?><button type="button" class="sp-nav" data-sp-nav="-1" aria-label="Previous column" data-testid="cfr-prev"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button><?php endif; ?><span class="sp-th-t"><?= $label ?></span><?php if ($ci < count($spCols) - 1): ?><button type="button" class="sp-nav" data-sp-nav="1" aria-label="Next column" data-testid="cfr-next"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button><?php endif; ?></span></th>
+                            <?php endforeach; ?>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php if (!empty($client_full_report)): foreach ($client_full_report as $row): $cfrName = (string)$row['full_name']; ?>
+                        <tr data-testid="cfr-row">
+                            <td><?php if ($row['id'] !== null): ?><a class="sp-name" href="recovery.php?client=<?= rawurlencode($cfrName) ?>"><?php else: ?><span class="sp-name"><?php endif; ?><span class="sp-av" style="background:linear-gradient(135deg,<?= $spGrad[abs(crc32($cfrName)) % count($spGrad)] ?>)"><?= sanitize($spInitials($cfrName)) ?></span><span><?= sanitize($cfrName) ?></span><?= $row['id'] !== null ? '</a>' : '</span>' ?></td>
+                            <td><span class="sp-n"><?= (int)$row['ships_total'] ?></span></td>
+                            <td><span class="sp-pill<?= (int)$row['ships_month'] ? '' : ' zero' ?>"><?= (int)$row['ships_month'] ?></span></td>
+                            <td><span class="sp-rec"><?= $spMt($row['recovery_total']) ?></span><span class="sp-u">MT</span></td>
+                            <td><span class="sp-rec-m"><?= $spMt($row['recovery_month']) ?></span><span class="sp-u">MT</span></td>
+                            <td><span class="sp-avg"><?= $spMt($row['avg_ship']) ?></span><span class="sp-u">MT</span></td>
+                            <td><span class="sp-avg"><?= $spMt($row['avg_month']) ?></span><span class="sp-u">MT</span></td>
+                        </tr>
+                    <?php endforeach; else: ?>
+                        <tr><td colspan="7" class="sp-empty">No ships attended yet.</td></tr>
+                    <?php endif; ?>
+                    </tbody>
+                    <?php if (!empty($sfr_total)): ?>
+                    <tfoot>
+                        <tr data-testid="cfr-total-row">
+                            <td>All clients<small>every vessel once</small></td>
+                            <td data-testid="cfr-total-ships"><?= (int)$sfr_total['ships_total'] ?></td>
+                            <td><?= (int)$sfr_total['ships_month'] ?></td>
+                            <td data-testid="cfr-total-recovery"><?= $spMt($sfr_total['recovery_total']) ?><span class="sp-u">MT</span></td>
+                            <td><?= $spMt($sfr_total['recovery_month']) ?><span class="sp-u">MT</span></td>
+                            <td><?= $spMt($sfr_total['avg_ship']) ?><span class="sp-u">MT</span></td>
+                            <td><?= $spMt($sfr_total['avg_month']) ?><span class="sp-u">MT</span></td>
+                        </tr>
+                    </tfoot>
+                    <?php endif; ?>
+                </table>
+            </div>
+        </div>
+    </div>
     <?php endif; ?>
 
     <!-- Quick links: stacked on mobile, one neat row on desktop -->
