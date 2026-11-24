@@ -301,11 +301,11 @@ if ($action === 'create' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
         $db->prepare("INSERT INTO invoices (survey_id, vessel_name, report_number, invoice_status, status_updated_by, status_updated_at, invoice_no, invoice_date,
                 invoice_amount, invoice_notes, registered_via, own_details, client_id, port_id, survey_type_ids, survey_completed_date, created_by, request_id,
-                rec_invoice_no, rec_invoice_date, rec_invoice_amount)
-            VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, 'manual', 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                rec_invoice_no, rec_invoice_date, rec_invoice_amount, manual_service)
+            VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, 'manual', 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
            ->execute([$sid, $v['vessel_name'], $v['report_number'], $v['invoice_status'], $uid ?: null, $no, $v['invoice_date'], $v['invoice_amount'], $v['invoice_notes'],
                $v['client_id'], $v['port_id'], $v['survey_type_ids'], $v['survey_completed_date'], $uid ?: null, $rid,
-               $rv['rec_invoice_no'] ?? null, $rv['rec_invoice_date'] ?? null, $rv['rec_invoice_amount'] ?? null]);
+               $rv['rec_invoice_no'] ?? null, $rv['rec_invoice_date'] ?? null, $rv['rec_invoice_amount'] ?? null, invoiceManualServiceFromPost()]);
         $newId = (int)$db->lastInsertId();
         invoiceAdvanceSequence($db, $no);
         $db->commit();
@@ -450,6 +450,7 @@ switch ($action) {
             $set = 'invoice_no = ?, invoice_date = ?, invoice_amount = ?, invoice_notes = ?, invoice_status = ?, rec_invoice_no = ?, rec_invoice_date = ?, rec_invoice_amount = ?';
             $p = [$no, $v['invoice_date'], $v['invoice_amount'], $v['invoice_notes'], $v['invoice_status'],
                 $rv['rec_invoice_no'] ?? null, $rv['rec_invoice_date'] ?? null, $rv['rec_invoice_amount'] ?? null];
+            if (isset($_POST['service_desc'])) { $set .= ', manual_service = ?'; $p[] = invoiceManualServiceFromPost(); } // the form's Invoice Services (older clients don't send them)
             if ($statusChanged) { $set .= ', status_updated_by = ?, status_updated_at = NOW()'; $p[] = $uid ?: null; }
             if ($own) {
                 $set .= ', own_details = 1, vessel_name = ?, report_number = ?, client_id = ?, port_id = ?, survey_type_ids = ?, survey_completed_date = ?';

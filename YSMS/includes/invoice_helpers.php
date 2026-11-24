@@ -99,6 +99,8 @@ function invoiceEnsureGenColumns(PDO $db): void {
         'survey_completed_date' => 'DATE NULL',
         'created_by' => 'INT NULL',
         'request_id' => 'CHAR(32) NULL',           // one per Add Invoice form; stops double saves
+        'manual_service' => 'TEXT NULL',            // Add / Edit Invoice "Invoice Services" (JSON: desc, rate, qty,
+                                                    //  travel, launch) — kept for the PDF preview / download
     ];
     foreach ($add as $col => $def) {
         if (!isset($have[$col])) $db->exec("ALTER TABLE invoices ADD COLUMN `$col` $def");
@@ -276,6 +278,7 @@ function invoiceRowJson(PDO $db, array $r): array {
         'invoice_date' => (string)($r['invoice_date'] ?? ''),
         'invoice_amount' => $r['invoice_amount'] !== null ? (string)$r['invoice_amount'] : '',
         'invoice_notes' => (string)($r['invoice_notes'] ?? ''),
+        'manual_service' => invoiceManualService($r['manual_service'] ?? null),
         'survey_completed' => $done ? date('d M Y', strtotime($r['survey_completed_date'])) : '',
         'deleted' => !empty($r['deleted_at']),
         'deleted_at' => !empty($r['deleted_at']) ? date('d M Y H:i', strtotime($r['deleted_at'])) : '',
@@ -283,6 +286,29 @@ function invoiceRowJson(PDO $db, array $r): array {
         'delete_reason' => (string)($r['delete_reason'] ?? ''),
         'can_remove' => invoiceRemoveBlocker($r) === '',
     ];
+}
+
+/** Invoice Services of a manual entry (stored JSON → [desc, rate, qty, travel, launch] as strings). */
+function invoiceManualService($json): array {
+    $d = is_string($json) && $json !== '' ? json_decode($json, true) : null;
+    $out = [];
+    foreach (['desc', 'rate', 'qty', 'travel', 'launch'] as $k) $out[$k] = is_array($d) && isset($d[$k]) && is_scalar($d[$k]) ? (string)$d[$k] : '';
+    return $out;
+}
+
+/** Invoice Services from the Add / Edit form ($_POST service_*) → JSON, or null when all are empty. */
+function invoiceManualServiceFromPost(): ?string {
+    $num = function (string $k): string {
+        $v = str_replace([',', ' ', '$'], '', trim((string)($_POST[$k] ?? '')));
+        return $v !== '' && is_numeric($v) && (float)$v >= 0 ? (string)$v : '';
+    };
+    $d = [
+        'desc' => mb_substr(trim((string)($_POST['service_desc'] ?? '')), 0, 1000),
+        'rate' => $num('service_rate'), 'qty' => $num('service_qty'),
+        'travel' => $num('travel_cost'), 'launch' => $num('launch_cost'),
+    ];
+    if ($d['desc'] === '' && $d['rate'] === '' && $d['travel'] === '' && $d['launch'] === '') return null; // quantity alone (default 1) is not a service
+    return json_encode($d, JSON_UNESCAPED_UNICODE);
 }
 
 function invoiceUserName(PDO $db, int $uid): string {
