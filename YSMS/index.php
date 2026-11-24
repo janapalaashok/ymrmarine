@@ -137,19 +137,9 @@ if (in_array($role, ['Admin', 'Super Admin'], true)) {
 
     // 🌟 Client-wise Ships per Month: ships attended (Pending Report + Completed) per client and month of
     //    the Survey Completed Date — the month figures' rule (no date = in no month).
+    require_once __DIR__ . '/includes/client_month_ships.php';
     $cmShips = []; // [year][client name][month 1..12] => ships
-    try {
-        $q = $db->query("
-            SELECT COALESCE(NULLIF(TRIM(c.company_name), ''), 'Client not recorded') AS client,
-                   YEAR($sfrCd) AS y, MONTH($sfrCd) AS m, COUNT(*) AS n
-            FROM surveys s LEFT JOIN clients c ON c.id = s.client_id
-            WHERE $sfrDone AND $sfrCd IS NOT NULL
-            GROUP BY client, y, m");
-        foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) $cmShips[(int)$r['y']][(string)$r['client']][(int)$r['m']] = (int)$r['n'];
-        krsort($cmShips);
-        foreach ($cmShips as &$cmYear) uksort($cmYear, 'strcasecmp');
-        unset($cmYear);
-    } catch (Throwable $e) { error_log('dashboard client month ships: ' . $e->getMessage()); }
+    try { $cmShips = clientMonthShips($db); } catch (Throwable $e) { error_log('dashboard client month ships: ' . $e->getMessage()); }
 } elseif ($role === 'Client') {
     // క్లయింట్ కి కేవలం తన కంపెనీ వెసెల్స్ మాత్రమే
     $stmt_v = $db->prepare("SELECT COUNT(*) FROM surveys WHERE status = 'Pending Vessel' AND client_id = ?");
@@ -945,7 +935,9 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     </script>
 
     <?php $cmYears = array_keys($cmShips); $cmNow = (int)date('Y'); $cmSel = in_array($cmNow, $cmYears, true) ? $cmNow : ($cmYears[0] ?? $cmNow);
-          $cmMon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']; ?>
+          $cmMon = CLIENT_MONTH_LABELS;
+          $cmAll = []; foreach ($cmShips as $cy) foreach (array_keys($cy) as $cn) $cmAll[mb_strtoupper((string)$cn)] = true;
+          $cmAll = array_keys($cmAll); sort($cmAll, SORT_NATURAL | SORT_FLAG_CASE); ?>
     <style>
     .cm-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 820px; }
     .cm-table th, .cm-table td { padding: 11px 8px; text-align: center; white-space: nowrap; border-bottom: 1px solid #f1f5f9; }
@@ -960,32 +952,71 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     .cm-table tfoot .cm-t { background: #4B2FD6; color: #fff; }
     .cm-table tbody tr:hover td { background: #FAF8FF; }
     @media (max-width: 575.98px) { .cm-table { font-size: 12px; min-width: 700px; } .cm-table th:first-child, .cm-table td:first-child { min-width: 110px; } }
+    .cm-th { display: flex; align-items: center; gap: 6px; }
+    .cm-fbtn { border: 1px solid #e2e8f0; background: #fff; border-radius: 8px; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; color: #64748b; font-size: 11px; cursor: pointer; padding: 0; position: relative; }
+    .cm-fbtn.on { background: #4B2FD6; border-color: #4B2FD6; color: #fff; }
+    .cm-fbtn .cm-fn { position: absolute; top: -6px; right: -7px; background: #dc2626; color: #fff; border-radius: 999px; font-size: 9px; font-weight: 800; min-width: 15px; height: 15px; line-height: 15px; padding: 0 3px; }
+    .cm-panel { position: absolute; z-index: 30; margin-top: 6px; width: 290px; max-width: calc(100vw - 40px); background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 14px 40px rgba(15,23,42,.18); padding: 10px; text-transform: none; letter-spacing: 0; font-weight: 600; }
+    .cm-panel input[type=search] { width: 100%; border: 1.5px solid #e2e8f0; border-radius: 9px; padding: 7px 10px; font-size: 13px; margin-bottom: 8px; }
+    .cm-plinks { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
+    .cm-plinks button { border: 0; background: none; color: #4B2FD6; font-weight: 700; padding: 2px 4px; cursor: pointer; }
+    .cm-plist { max-height: 240px; overflow-y: auto; }
+    .cm-plist label { display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-size: 12.5px; color: #0f172a; border-radius: 8px; cursor: pointer; }
+    .cm-plist label:hover { background: #F8FAFC; }
+    .cm-plist input { accent-color: #4B2FD6; width: 15px; height: 15px; }
+    .cm-pfoot { display: flex; justify-content: flex-end; margin-top: 8px; }
+    .cm-pfoot button { border: 0; background: #4B2FD6; color: #fff; border-radius: 9px; padding: 6px 14px; font-size: 12.5px; font-weight: 700; }
+    .cm-note { font-size: 12px; color: #475569; font-weight: 600; padding: 9px 14px; border-bottom: 1px solid #f1f5f9; }
+    .cm-note b { color: #0f172a; }
+    .cm-dl { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #e2e8f0; background: #fff; border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 700; color: #0f172a; text-decoration: none; }
+    .cm-dl:hover { border-color: #4B2FD6; color: #4B2FD6; }
+    .cs-snap .cm-fbtn, .cs-snap .cm-panel, .cs-snap .cm-dl, .cs-snap .cm-hide-snap { display: none !important; }
+    .cm-back { position: fixed; inset: 0; background: rgba(15,23,42,.35); z-index: 100000; }
+    @media (max-width: 575.98px) {
+        /* phones: a pop-up above the bottom bar and the Notes button */
+        .cm-panel { position: fixed; z-index: 100001; left: 12px !important; right: 12px; top: 50% !important; transform: translateY(-50%); width: auto; max-width: none; margin: 0; }
+        .cm-plist { max-height: 45vh; }
+    }
     </style>
     <div class="overview-section mt-4" data-share="Client-wise Ships per Month <?= $cmSel ?>" data-testid="client-month-ships">
         <div class="section-title-row mc-head">
             <span class="section-title"><i class="fa-solid fa-building me-1" style="color:#7c3aed"></i> Client-wise Ships per Month</span>
             <span class="cs-title-acts">
+                <?php if ($cmYears): ?><a class="cm-dl" href="export_client_month_ships.php" data-cm-dl data-testid="cm-download"><i class="fa-solid fa-file-excel" style="color:#16a34a"></i> Download</a><?php endif; ?>
                 <?php if ($cmYears): ?><select class="mc-year" data-cm-year aria-label="Year" data-testid="cm-year"><?php foreach ($cmYears as $y): ?><option value="<?= $y ?>"<?= $y === $cmSel ? ' selected' : '' ?>><?= $y ?></option><?php endforeach; ?></select><?php endif; ?>
                 <?= $csBtn() ?>
             </span>
         </div>
-        <div class="sp-card">
+        <div class="sp-card" style="position:relative">
+            <div class="cm-note" data-cm-note data-testid="cm-note" hidden></div>
+            <?php if ($cmYears): ?>
+            <div class="cm-panel" data-cm-panel data-testid="cm-panel" hidden>
+                <input type="search" placeholder="Search client…" data-cm-q aria-label="Search client" data-testid="cm-search">
+                <div class="cm-plinks"><button type="button" data-cm-all data-testid="cm-all">Select all</button><button type="button" data-cm-none data-testid="cm-none">Clear</button></div>
+                <div class="cm-plist" data-cm-list>
+                    <?php foreach ($cmAll as $cn): ?><label><input type="checkbox" value="<?= sanitize($cn) ?>" checked> <?= sanitize($cn) ?></label><?php endforeach; ?>
+                </div>
+                <div class="cm-pfoot"><button type="button" data-cm-done data-testid="cm-done">Done</button></div>
+            </div>
+            <div class="cm-back" data-cm-back hidden></div>
+            <?php endif; ?>
             <div class="sp-wrap">
             <?php if (!$cmYears): ?>
                 <div class="sp-empty">No ships attended yet.</div>
             <?php endif; ?>
             <?php foreach ($cmShips as $y => $clients): $colTot = array_fill(1, 12, 0); ?>
                 <table class="cm-table" data-cm-table="<?= $y ?>" data-testid="cm-table-<?= $y ?>"<?= $y === $cmSel ? '' : ' hidden' ?>>
-                    <thead><tr><th>Client Name</th><?php foreach ($cmMon as $m): ?><th><?= $m ?></th><?php endforeach; ?><th class="cm-t">TOTAL</th></tr></thead>
+                    <thead><tr><th><span class="cm-th">Client Name <button type="button" class="cm-fbtn" data-cm-fbtn aria-label="Filter clients" data-testid="cm-filter-<?= $y ?>"><i class="fa-solid fa-filter"></i></button></span></th><?php foreach ($cmMon as $m): ?><th><?= $m ?></th><?php endforeach; ?><th class="cm-t">TOTAL</th></tr></thead>
                     <tbody>
                     <?php foreach ($clients as $name => $months): $rt = 0; ?>
-                        <tr data-testid="cm-row"><td><?= sanitize(mb_strtoupper((string)$name)) ?></td>
+                        <tr data-testid="cm-row" data-cm-client="<?= sanitize(mb_strtoupper((string)$name)) ?>"><td><?= sanitize(mb_strtoupper((string)$name)) ?></td>
                         <?php for ($m = 1; $m <= 12; $m++): $n = (int)($months[$m] ?? 0); $rt += $n; $colTot[$m] += $n; ?>
                             <td class="<?= $n ? 'n' : 'z' ?>"><?= $n ? '<b>' . $n . '</b>' : '0' ?></td>
                         <?php endfor; ?>
                             <td class="cm-t"><?= $rt ?></td></tr>
                     <?php endforeach; ?>
                     </tbody>
+                    <tbody data-cm-empty hidden><tr><td colspan="14" class="sp-empty" style="position:static">No ships for the selected clients in <?= $y ?>.</td></tr></tbody>
                     <tfoot><tr data-testid="cm-total-row"><td>Total</td><?php for ($m = 1; $m <= 12; $m++): ?><td><?= $colTot[$m] ?></td><?php endfor; ?><td class="cm-t"><?= array_sum($colTot) ?></td></tr></tfoot>
                 </table>
             <?php endforeach; ?>
@@ -994,11 +1025,56 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     </div>
     <script>
     (function () {
-        var sel = document.querySelector('[data-cm-year]'); if (!sel) return;
-        sel.addEventListener('change', function () {
-            document.querySelectorAll('[data-cm-table]').forEach(function (t) { t.hidden = t.getAttribute('data-cm-table') !== sel.value; });
-            var box = sel.closest('[data-share]'); if (box) box.setAttribute('data-share', 'Client-wise Ships per Month ' + sel.value);
+        var box = document.querySelector('[data-testid=client-month-ships]'), sel = document.querySelector('[data-cm-year]'); if (!box || !sel) return;
+        var panel = box.querySelector('[data-cm-panel]'), list = box.querySelector('[data-cm-list]'), note = box.querySelector('[data-cm-note]'), dl = box.querySelector('[data-cm-dl]');
+        var boxes = function () { return Array.prototype.slice.call(list.querySelectorAll('input')); };
+        function chosen() { var all = boxes(), on = all.filter(function (c) { return c.checked; }).map(function (c) { return c.value; }); return on.length === all.length ? null : on; }
+        function apply() {
+            var pick = chosen(), y = sel.value;
+            box.querySelectorAll('[data-cm-table]').forEach(function (t) {
+                t.hidden = t.getAttribute('data-cm-table') !== y;
+                var tot = new Array(14).fill(0), shown = 0;
+                t.querySelectorAll('tbody tr[data-cm-client]').forEach(function (r) {
+                    var ok = !pick || pick.indexOf(r.getAttribute('data-cm-client')) !== -1;
+                    r.hidden = !ok; if (!ok) return; shown++;
+                    for (var i = 1; i <= 13; i++) tot[i] += +r.cells[i].textContent || 0;
+                });
+                var f = t.querySelector('tfoot tr'); for (var i = 1; i <= 13; i++) f.cells[i].textContent = tot[i];
+                t.querySelector('[data-cm-empty]').hidden = shown > 0;
+                t.querySelectorAll('[data-cm-fbtn]').forEach(function (b) {
+                    b.classList.toggle('on', !!pick);
+                    var n = b.querySelector('.cm-fn'); if (n) n.remove();
+                    if (pick) { n = document.createElement('span'); n.className = 'cm-fn'; n.textContent = pick.length; b.appendChild(n); }
+                });
+            });
+            note.hidden = !pick;
+            note.innerHTML = pick ? 'Clients: <b>' + (pick.length ? pick.map(function (n) { return n.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }).join(', ') : 'none') + '</b>' : '';
+            box.setAttribute('data-share', 'Client-wise Ships per Month ' + y);
+            var qs = ['year=' + encodeURIComponent(y)]; (pick || []).forEach(function (n) { qs.push('client[]=' + encodeURIComponent(n)); });
+            if (pick && !pick.length) qs.push('client[]=' + encodeURIComponent('-none-'));
+            dl.href = 'export_client_month_ships.php?' + qs.join('&');
+        }
+        var back = box.querySelector('[data-cm-back]'), phone = function () { return window.matchMedia('(max-width: 575.98px)').matches; };
+        function close() { panel.hidden = true; back.hidden = true; }
+        function open(btn) {
+            panel.hidden = false; back.hidden = !phone();
+            var r = btn.getBoundingClientRect(), c = panel.parentNode.getBoundingClientRect();
+            panel.style.left = Math.max(4, r.left - c.left) + 'px'; panel.style.top = (r.bottom - c.top) + 'px';
+            var q = panel.querySelector('[data-cm-q]'); q.value = ''; filterList(''); setTimeout(function () { q.focus(); }, 30);
+        }
+        function filterList(t) { t = t.trim().toUpperCase(); list.querySelectorAll('label').forEach(function (l) { l.hidden = t !== '' && l.textContent.toUpperCase().indexOf(t) === -1; }); }
+        box.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-cm-fbtn]'); if (b) { e.stopPropagation(); if (panel.hidden) open(b); else close(); return; }
+            if (e.target.closest('[data-cm-all]')) { boxes().forEach(function (c) { if (!c.closest('label').hidden) c.checked = true; }); apply(); return; }
+            if (e.target.closest('[data-cm-none]')) { boxes().forEach(function (c) { if (!c.closest('label').hidden) c.checked = false; }); apply(); return; }
+            if (e.target.closest('[data-cm-done]') || e.target.closest('[data-cm-back]')) { close(); return; }
         });
+        list.addEventListener('change', apply);
+        panel.querySelector('[data-cm-q]').addEventListener('input', function (e) { filterList(e.target.value); });
+        document.addEventListener('click', function (e) { if (!panel.hidden && !panel.contains(e.target) && !e.target.closest('[data-cm-fbtn]')) close(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.hidden) close(); });
+        sel.addEventListener('change', apply);
+        apply();
     })();
     </script>
     <?php endif; ?>
