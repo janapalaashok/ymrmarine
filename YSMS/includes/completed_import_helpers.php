@@ -27,7 +27,8 @@ function completedImportAliases(): array {
         'hsfo'           => ['hsfo', 'hsfo mt', 'hsfo recovery'],
         'lsmgo'          => ['lsmgo', 'lsmgo mt', 'lsmgo recovery'],
         'report_date'    => ['report uploaded date', 'report upload date', 'report date', 'uploaded date', 'upload date'],
-        'completed_date' => ['survey completed date', 'completed date', 'completion date'],
+        'completed_date' => ['survey completed date', 'completed date', 'completion date', 'date of survey', 'survey date'],
+        'appointment_date' => ['appointment date', 'appointment', 'appt date', 'date of appointment'],
         'assign_date'    => ['assign date', 'assigned date', 'assignment date'],
         'report_number'  => ['report no', 'report number', 'report num', 'ref no'],
         'imo'            => ['imo', 'imo number', 'imo no'],
@@ -459,7 +460,7 @@ function completedImportValidateRow(PDO $db, array $r, array &$seenKeys): array 
         'port_plan' => null, 'survey_type_ids' => [], 'survey_type_names' => [], 'surveyor_ids' => [], 'surveyor_names' => [],
         'surveyor_plan' => [], 'compare' => [],
         'recovery_amount' => null, 'vlsfo' => null, 'hsfo' => null, 'lsmgo' => null, 'recovery_na' => false,
-        'report_date' => null, 'completed_date' => null, 'assign_date' => null,
+        'report_date' => null, 'completed_date' => null, 'assign_date' => null, 'appointment_date' => null,
         'errors' => [], 'warnings' => [], 'status' => 'ready', 'existing_id' => 0,
     ];
     $err = function (string $m) use (&$res) { $res['errors'][] = $m; };
@@ -562,6 +563,8 @@ function completedImportValidateRow(PDO $db, array $r, array &$seenKeys): array 
     if (trim((string)($r['assign_date'] ?? '')) !== '' && $res['assign_date'] === null) $err('Assign date "' . $r['assign_date'] . '" is not a valid date.');
     $res['report_date'] = $dateOf($r['report_date'] ?? '');
     $res['completed_date'] = $dateOf($r['completed_date'] ?? '');
+    $res['appointment_date'] = $dateOf($r['appointment_date'] ?? ''); // optional; saved as the vessel's Appointment Date
+    if (trim((string)($r['appointment_date'] ?? '')) !== '' && $res['appointment_date'] === null) $err('Appointment date "' . $r['appointment_date'] . '" is not a valid date.');
     if ($res['report_date'] === null && $res['assign_date'] !== null) {
         $orig = trim((string)($r['report_date'] ?? ''));
         $res['report_date'] = $res['assign_date'];
@@ -761,6 +764,7 @@ function completedImportInsertRow(PDO $db, array $v, string $actorName): array {
                 'survey_type_ids'       => implode(',', $v['survey_type_ids']),
                 'port_id'               => $portId,
                 'assign_date'           => $v['assign_date'],
+                'appointment_date'      => !empty($v['appointment_date']) ? substr((string)$v['appointment_date'], 0, 10) : null,
                 'survey_completed_date' => $v['completed_date'],
                 'report_uploaded_date'  => $v['report_date'],
                 'status'                => 'Completed',
