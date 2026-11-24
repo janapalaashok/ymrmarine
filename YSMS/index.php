@@ -979,7 +979,7 @@ document.getElementById('formatPopupClose').addEventListener('click', function()
     }
     </style>
     <div class="overview-section mt-4" data-share="Client-wise Ships per Month <?= $cmSel ?>" data-testid="client-month-ships">
-        <div class="section-title-row mc-head">
+        <div class="section-title-row mc-head cm-hide-snap"><?php /* the share picture's own title already says this (with the year) */ ?>
             <span class="section-title"><i class="fa-solid fa-building me-1" style="color:#7c3aed"></i> Client-wise Ships per Month</span>
             <span class="cs-title-acts">
                 <?php if ($cmYears): ?><a class="cm-dl" href="export_client_month_ships.php" data-cm-dl data-testid="cm-download"><i class="fa-solid fa-file-excel" style="color:#16a34a"></i> Download</a><?php endif; ?>
