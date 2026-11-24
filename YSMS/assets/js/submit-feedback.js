@@ -304,7 +304,9 @@
         var fd;
         try { fd = new FormData(form, submitter || undefined); } catch (err) { fd = new FormData(form); }
         if (submitter && submitter.name && !fd.has(submitter.name)) fd.append(submitter.name, submitter.value || '');
-        var url = form.action || window.location.href;
+        // the action attribute itself: form.action is an <input name="action"> on forms that have one
+        var attr = form.getAttribute('action');
+        var url = attr ? new URL(attr, window.location.href).href : window.location.href;
         var xhr = new XMLHttpRequest();
         xhr.__ysmsOwnOverlay = true;
         xhr.open('POST', url);

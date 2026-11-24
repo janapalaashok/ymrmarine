@@ -207,8 +207,9 @@ include 'includes/top_app_bar.php';
             </div>
         </form>
         <ul class="ci-help">
-            <li>Use the same layout as the Completed list download: <b>Vessel Name, Client, Agent, Port, Country, Survey Type, Surveyor, Recovery (MT), VLSFO, HSFO, LSMGO, Report Uploaded Date</b>. Country heading rows are ignored.</li>
-            <li>Optional columns: Report No, IMO, Assign Date, Survey Completed Date, Remarks. Without a Report No, one is generated for the report's month.</li>
+            <li>Columns (in this order): <b>Appointment Date, Vessel Name, Port Name, Client Name, Type of Survey, Date of Survey, Report Date, Total Recovery, VLSFO, HSFO, LSMGO, Surveyor</b>. Columns are found by their heading, so the Completed list download (Client, Port, Survey Type, Recovery (MT), Report Uploaded Date…) works too. Country heading rows are ignored.</li>
+            <li>Required: Vessel Name, Client Name, Port Name, Type of Survey, Surveyor, Report Date. Date of Survey is the Survey Completed Date (monthly figures use it).</li>
+            <li>Optional columns: Appointment Date, Agent, Country, Report No, IMO, Assign Date, Remarks. Without a Report No, one is generated for the report's month.</li>
             <li>Combined survey types / surveyors are written with “+” (e.g. <i>Offhire + Condition Survey</i>).</li>
             <li>Names are matched to the existing clients, ports, survey types and surveyors (ignoring case, spacing and words like LTD / PTE / PORT). The preview shows each Excel value next to what will be saved.</li>
             <li>A port name with "Anchorage" is saved to that port's anchorage, otherwise to the port. Ports that don't exist are added (with their anchorage). Surveyors that don't exist are added as inactive records; a blank surveyor is saved as "Not Recorded".</li>
@@ -290,7 +291,7 @@ include 'includes/top_app_bar.php';
         <div class="ci-table-wrap">
             <table class="ci-table" data-testid="ci-preview-table">
                 <thead><tr>
-                    <th>Row</th><th>Status</th><th>Vessel</th><th>Client</th><th>Port</th><th>Survey Type</th><th>Surveyor</th><th>Recovery (MT)</th><th>Report Date</th><th>Notes</th>
+                    <th>Row</th><th>Status</th><th>Vessel</th><th>Client</th><th>Port</th><th>Survey Type</th><th>Surveyor</th><th>Recovery (MT)</th><th>Appointment</th><th>Survey Date</th><th>Report Date</th><th>Notes</th>
                 </tr></thead>
                 <tbody>
                 <?php foreach ($rows as $r): ?>
@@ -312,6 +313,8 @@ include 'includes/top_app_bar.php';
                                 if ($parts) echo '<div style="font-size:10.5px;color:#94a3b8">' . sanitize(implode(' · ', $parts)) . '</div>';
                             }
                         ?></td>
+                        <td class="nw"><?= !empty($r['appointment_date']) ? date('d-m-Y', strtotime($r['appointment_date'])) : '—' ?></td>
+                        <td class="nw"><?= !empty($r['completed_date']) ? date('d-m-Y', strtotime($r['completed_date'])) : '—' ?></td>
                         <td class="nw"><?= isset($r['compare']['report_date']) ? $cmpCell($r, 'report_date', '') : ($r['report_date'] ? date('d-m-Y', strtotime($r['report_date'])) : '') ?></td>
                         <td class="ci-msg"><?php
                             foreach ($r['errors'] as $m) echo '<div class="e">' . sanitize($m) . '</div>';
