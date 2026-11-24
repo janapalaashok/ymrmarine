@@ -26,9 +26,11 @@ register_shutdown_function(function () {
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/includes/excel_export_helpers.php';
 require_once __DIR__ . '/includes/list_filters.php';
+require_once __DIR__ . '/includes/vessel_dates.php';
 checkAuth();
 
 $db = getDB();
+vesselDatesEnsure($db); // ETA / ETB / ETC columns (selected below)
 $role = $_SESSION['role'] ?? '';
 $user_id = (int)($_SESSION['user_id'] ?? 0);
 // Admin and Super Admin see every vessel; Client sees only their own company's;
@@ -112,7 +114,7 @@ try {
 
     $baseSql = "
         SELECT s.id, s.vessel_name, s.agent_name, c.company_name, st.type_name, s.survey_type_ids,
-               u.full_name AS surveyor_name, s.custom_live_status, s.appointment_date,
+               u.full_name AS surveyor_name, s.custom_live_status, s.appointment_date, s.eta_date, s.etb_date, s.etc_date,
                p.port_name, p.country
         FROM surveys s
         LEFT JOIN clients c ON s.client_id = c.id
@@ -134,22 +136,25 @@ try {
     exit;
 }
 
-$headers = ['Vessel Name', 'Client', 'Agent', 'Port', 'Country', 'Survey Type', 'Surveyor', 'Appointment Date', 'Latest Update'];
+$headers = ['Vessel Name', 'Port', 'Survey Type', 'Client', 'Agent', 'Country', 'Surveyor', 'Appointment Date', 'ETA', 'ETB', 'ETC', 'Latest Update'];
+$xlDate = fn($v) => (!empty($v) && strpos((string)$v, '0000') !== 0) ? date('d M Y', strtotime((string)$v)) : '';
 $rows = [];
 foreach ($surveys as $row) {
     $country = $row['country'] ?? 'India';
-    $apptDate = !empty($row['appointment_date']) ? date('d M Y', strtotime($row['appointment_date'])) : '';
     $rows[] = [
         'country' => $country,
         'cells' => [
             $row['vessel_name'] ?? '',
+            $row['port_name'] ?? 'N/A',
+            getCombinedSurveyTypeNames($db, $row['survey_type_ids'] ?? '', $row['type_name'] ?? 'N/A'),
             $row['company_name'] ?? '',
             $row['agent_name'] ?? 'N/A',
-            $row['port_name'] ?? 'N/A',
             $country,
-            getCombinedSurveyTypeNames($db, $row['survey_type_ids'] ?? '', $row['type_name'] ?? 'N/A'),
             getCombinedSurveyorNames($db, $row['id'] ?? 0, $row['surveyor_name'] ?? 'N/A'),
-            $apptDate,
+            $xlDate($row['appointment_date'] ?? ''),
+            $xlDate($row['eta_date'] ?? ''),
+            $xlDate($row['etb_date'] ?? ''),
+            $xlDate($row['etc_date'] ?? ''),
             $row['custom_live_status'] ?? '',
         ],
     ];

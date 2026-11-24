@@ -265,7 +265,7 @@ function dailyEmailAssignedRows(PDO $db, int $surveyorId): array {
     return $rows;
 }
 
-const DAILY_EMAIL_EXPORT_HEADERS = ['Vessel Name', 'Client', 'Agent', 'Port', 'Country', 'Survey Type', 'Surveyor', 'Appointment Date', 'Latest Update'];
+const DAILY_EMAIL_EXPORT_HEADERS = ['Vessel Name', 'Port', 'Survey Type', 'Client', 'Agent', 'Country', 'Surveyor', 'Appointment Date', 'ETA', 'ETB', 'ETC', 'Latest Update'];
 
 /** Pending Vessels rows exactly as export_vessels.php writes them (same columns and order). */
 function dailyEmailExportRows(PDO $db, int $surveyorId = 0): array {
@@ -275,16 +275,21 @@ function dailyEmailExportRows(PDO $db, int $surveyorId = 0): array {
         $where .= ' AND (s.surveyor_id = ? OR s.id IN (SELECT survey_id FROM survey_surveyors WHERE surveyor_id = ?))';
         $params = [$surveyorId, $surveyorId];
     }
-    $st = $db->prepare(DAILY_EMAIL_SELECT . " WHERE $where ORDER BY s.id DESC");
+    require_once __DIR__ . '/vessel_dates.php';
+    vesselDatesEnsure($db);
+    $sel = str_replace('s.appointment_date, s.assign_date,', 's.appointment_date, s.assign_date, s.eta_date, s.etb_date, s.etc_date,', DAILY_EMAIL_SELECT);
+    $st = $db->prepare($sel . " WHERE $where ORDER BY s.id DESC");
     $st->execute($params);
+    $xlDate = fn($v) => (!empty($v) && strpos((string)$v, '0000') !== 0) ? date('d M Y', strtotime((string)$v)) : '';
     $rows = [];
     foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
         $country = $r['country'] ?? 'India';
         $rows[] = ['country' => $country, 'cells' => [
-            $r['vessel_name'] ?? '', $r['company_name'] ?? '', $r['agent_name'] ?? 'N/A', $r['port_name'] ?? 'N/A', $country,
+            $r['vessel_name'] ?? '', $r['port_name'] ?? 'N/A',
             getCombinedSurveyTypeNames($db, $r['survey_type_ids'] ?? '', $r['type_name'] ?? 'N/A'),
+            $r['company_name'] ?? '', $r['agent_name'] ?? 'N/A', $country,
             getCombinedSurveyorNames($db, (int)$r['id'], $r['surveyor_name'] ?? 'N/A'),
-            !empty($r['appointment_date']) ? date('d M Y', strtotime($r['appointment_date'])) : '',
+            $xlDate($r['appointment_date'] ?? ''), $xlDate($r['eta_date'] ?? ''), $xlDate($r['etb_date'] ?? ''), $xlDate($r['etc_date'] ?? ''),
             $r['custom_live_status'] ?? '',
         ]];
     }
