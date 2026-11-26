@@ -556,11 +556,47 @@
         gap: 5px;
     }
 
+    /* ANIMATED SURVEY PROGRESS BARS */
+
     .demo-progress-segment {
+        position: relative;
         height: 4px;
-        background: rgba(255,255,255,0.25);
+        background: rgba(255,255,255,0.20);
         border-radius: 3px;
         cursor: pointer;
+        overflow: hidden;
+    }
+
+    /* Loading fill */
+
+    .demo-progress-segment::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: var(--demo-fill, 0%);
+        height: 100%;
+        background: #009BD3;
+        border-radius: 3px;
+    }
+
+    /* Completed stages */
+
+    .demo-progress-segment.completed::before {
+        width: 100%;
+    }
+
+    /* Current stage */
+
+    .demo-progress-segment.active::before {
+        background: #65D8FF;
+        box-shadow: 0 0 8px rgba(101,216,255,0.5);
+    }
+
+    /* Hover effect */
+
+    .demo-progress-segment:hover {
+        background: rgba(255,255,255,0.40);
     }
 
     .demo-progress-segment.active {
@@ -1542,7 +1578,7 @@
     ========================================= */
 
     #contact {
-        background: #004535;
+        background: #082B4A;
         padding: 100px 7%;
         color: #FFFFFF;
     }
@@ -1644,7 +1680,7 @@
     .survey-form-panel {
         background: #F7F7F2;
         padding: 45px;
-        color: #192523;
+        color: #082B4A;
         min-width: 0;
     }
 
@@ -1652,7 +1688,7 @@
         font-size: 30px;
         font-weight: 500;
         letter-spacing: -0.035em;
-        color: #004535;
+        color: #082B4A;
         margin-bottom: 12px;
     }
 
@@ -1683,7 +1719,7 @@
     .survey-field label {
         font-size: 13px;
         font-weight: 500;
-        color: #004535;
+        color: #082B4A;
     }
 
     .survey-field input,
@@ -1737,7 +1773,7 @@
         padding: 20px 24px;
         border: none;
         border-radius: 0;
-        background: #004535;
+        background: #009BD3;
         color: #FFFFFF;
         font-family: 'Inter', sans-serif;
         font-size: 15px;
@@ -1747,7 +1783,7 @@
     }
 
     .survey-submit:hover {
-        background: #00634C;
+        background:  #007FB0;
     }
 
     .survey-submit span {
@@ -1769,7 +1805,7 @@
     ========================================= */
 
     #footer {
-        background: #00291F;
+        background:  #082B4A;
         padding: 75px 7% 28px;
         color: #FFFFFF;
     }
@@ -2688,7 +2724,7 @@
 
         .hero-demo {
             min-height: 400px;
-            padding: 45px;
+            padding: 34px 34px 86px;
             border-radius: 16px;
         }
 
@@ -3190,6 +3226,10 @@
     }
 
     .coverage-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+
         color: #009BD3;
         font-size: 12px;
         font-weight: 700;
@@ -3481,133 +3521,779 @@
     }
         
     /* =========================================
-   HOW AN ATTENDANCE RUNS
+    HOW AN ATTENDANCE RUNS
+    ========================================= */
+
+    #attendance-process {
+        width: 100%;
+        padding: 85px 7% 95px;
+
+        background: linear-gradient(
+            135deg,
+            #367DA8 0%,
+            #22618E 100%
+        );
+    }
+
+    .attendance-container {
+        width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+        /* SECTION LABEL */
+
+    .attendance-section-label {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 30px;
+
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: #082B4A;
+    }
+
+    .attendance-label-line {
+        width: 30px;
+        height: 1px;
+        background: #082B4A;
+        opacity: 0.6;
+    }
+
+    /* HEADING */
+
+    .attendance-heading {
+        font-size: clamp(34px, 3.8vw, 52px);
+        font-weight: 500;
+        line-height: 1.15;
+        letter-spacing: -1.5px;
+
+        color: #082B4A;
+
+        margin: 0 0 48px;
+    }
+
+    /* CARDS GRID */
+
+    .attendance-steps {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    /* INDIVIDUAL CARD */
+
+    .attendance-card {
+        background: rgba(255, 255, 255, 0.90);
+        border-radius: 14px;
+
+        padding: 32px 28px 40px;
+        min-height: 240px;
+
+        transition:
+            transform 0.3s ease,
+            box-shadow 0.3s ease,
+            background 0.3s ease;
+    }
+
+    .attendance-card:hover {
+        transform: translateY(-7px);
+        background: #FFFFFF;
+        box-shadow: 0 18px 35px rgba(0, 30, 60, 0.15);
+    }
+
+    /* STEP NUMBER */
+
+    .attendance-step-number {
+        display: block;
+
+        font-size: 13px;
+        font-weight: 700;
+        color: #17636B;
+
+        margin-bottom: 15px;
+    }
+
+    /* SHORT LINE */
+
+    .attendance-card-line {
+        display: block;
+
+        width: 34px;
+        height: 2px;
+        background: #17636B;
+
+        margin-bottom: 30px;
+    }
+
+    /* CARD HEADING */
+
+    .attendance-card h3 {
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.3;
+
+        color: #082B4A;
+
+        margin: 0 0 14px;
+    }
+
+    /* CARD DESCRIPTION */
+
+    .attendance-card p {
+        font-size: 14px;
+        line-height: 1.7;
+        color: #52677A;
+
+        margin: 0;
+    }
+
+    /* =========================================
+    TABLET
+    ========================================= */
+
+    @media (max-width: 992px) {
+
+        #attendance-process {
+            padding-left: 6%;
+            padding-right: 6%;
+        }
+
+        .attendance-steps {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .attendance-card {
+            min-height: 220px;
+        }
+    }
+
+    /* =========================================
+    MOBILE
+    ========================================= */
+
+    @media (max-width: 600px) {
+
+        #attendance-process {
+            padding: 65px 24px 75px;
+        }
+
+
+        .attendance-heading {
+            font-size: 34px;
+            letter-spacing: -0.8px;
+            margin-bottom: 35px;
+        }
+
+        .attendance-heading br {
+            display: none;
+        }
+
+        .attendance-steps {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .attendance-card {
+            min-height: auto;
+            padding: 28px;
+        }
+
+        .attendance-card-line {
+            margin-bottom: 24px;
+        }
+
+        .attendance-card h3 {
+            font-size: 21px;
+        }
+    }
+
+    /* =====================================
+    SERVICE CARDS — LIGHT BLUE BACKGROUND
+    ===================================== */
+
+    /* Default service card background */
+    #services .service-card {
+        background: #D7F0FC;
+        border: 1px solid #C5E5F5;
+        transition:
+            background 0.3s ease,
+            border-color 0.3s ease,
+            transform 0.3s ease,
+            box-shadow 0.3s ease;
+    }
+
+    /* Hover effect */
+    #services .service-card:hover {
+        background: #D7F0FC;
+        border-color: #009BD3;
+        transform: translateY(-5px);
+        box-shadow: 0 12px 30px rgba(0, 91, 156, 0.10);
+    }
+
+    /* Keep the text dark navy */
+    #services .service-card h3 {
+        color: #082B4A;
+    }
+
+    /* Keep the descriptions readable */
+    #services .service-card p {
+        color: #009BD3;
+    }
+
+    /* =====================================
+    CLIENT TESTIMONIALS
+    ===================================== */
+
+    #testimonials {
+        background: #123F69;
+        padding: 95px 7% 105px;
+        color: #FFFFFF;
+    }
+
+    .testimonials-container {
+        width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    /* LABEL */
+
+    .testimonials-label {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: #83B7D3;
+        margin-bottom: 25px;
+    }
+
+    .testimonials-line {
+        width: 26px;
+        height: 1px;
+        background: #83B7D3;
+    }
+
+    /* HEADING */
+
+    .testimonials-heading {
+        font-size: clamp(36px, 4vw, 56px);
+        font-weight: 400;
+        letter-spacing: -1.5px;
+        margin: 0 0 42px;
+        line-height: 1.2;
+    }
+
+    .testimonials-heading span {
+        color: #009BD3;
+    }
+
+    /* LAYOUT */
+
+    .testimonials-layout {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 20px;
+        align-items: stretch;
+    }
+
+    /* FEATURE CARD */
+
+    .testimonial-feature {
+        position: relative;
+        background: #FFFFFF;
+        color: #082B4A;
+        border-radius: 14px;
+        padding: 42px;
+        min-height: 365px;
+        overflow: hidden;
+
+        display: flex;
+        flex-direction: column;
+    }
+
+    .testimonial-stars {
+        color: #F5B800;
+        font-size: 20px;
+        letter-spacing: 4px;
+        margin-bottom: 24px;
+    }
+
+    .testimonial-quote-mark {
+        position: absolute;
+        top: -65px;
+        right: 0;
+        font-size: 260px;
+        line-height: 1;
+        font-family: Georgia, serif;
+        color: #EAF6FC;
+        pointer-events: none;
+    }
+
+    .testimonial-quote {
+        position: relative;
+        z-index: 1;
+        font-size: clamp(20px, 2vw, 27px);
+        line-height: 1.5;
+        font-weight: 400;
+        margin: 0 0 28px;
+        max-width: 570px;
+    }
+
+    /* AUTHOR */
+
+    .testimonial-author {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: auto;
+    }
+
+    .testimonial-avatar {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background: #009BD3;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .testimonial-name {
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .testimonial-role {
+        font-size: 12px;
+        color: #66839A;
+        margin-top: 3px;
+    }
+
+    /* DOTS */
+
+    .testimonial-dots {
+        display: flex;
+        gap: 9px;
+        margin-top: 28px;
+    }
+
+    .testimonial-dot {
+        width: 7px;
+        height: 7px;
+        padding: 0;
+        border: 0;
+        border-radius: 10px;
+        background: #B8CDD9;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .testimonial-dot.active {
+        width: 28px;
+        background: #009BD3;
+    }
+
+    /* CLIENT LIST */
+
+    .testimonial-client-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .testimonial-client {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        width: 100%;
+        flex: 1;
+
+        padding: 18px 20px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(255,255,255,0.05);
+        color: white;
+        text-align: left;
+        cursor: pointer;
+
+        transition: all 0.3s ease;
+    }
+
+    .testimonial-client:hover {
+        background: rgba(255,255,255,0.12);
+    }
+
+    .testimonial-client.active {
+        background: rgba(255,255,255,0.17);
+        border-color: rgba(255,255,255,0.25);
+    }
+
+    .client-avatar {
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.12);
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .testimonial-client strong {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .testimonial-client small {
+        display: block;
+        font-size: 12px;
+        color: #B0C9DA;
+        margin-top: 3px;
+    }
+
+    /* RESPONSIVE */
+
+    @media (max-width: 900px) {
+        .testimonials-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .testimonial-client-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        #testimonials {
+            padding: 65px 0;
+        }
+
+        .testimonial-feature {
+            padding: 28px;
+        }
+
+        .testimonial-client-list {
+            grid-template-columns: 1fr;
+        }
+
+        .testimonial-quote {
+            font-size: 20px;
+        }
+
+        .testimonials-heading {
+            font-size: 38px;
+        }
+    }
+
+    .footer-watermark {
+        width: 100%;
+        margin: 35px 0 20px;
+
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(90px, 13vw, 190px);
+        font-weight: 800;
+        line-height: 0.9;
+
+        letter-spacing: -0.07em;
+        text-align: center;
+        white-space: nowrap;
+
+        background: linear-gradient(
+            to bottom,
+            rgba(255, 255, 255, 0.12) 0%,
+            rgba(255, 255, 255, 0.07) 35%,
+            rgba(255, 255, 255, 0.025) 70%,
+            rgba(255, 255, 255, 0.005) 100%
+        );
+
+        -webkit-background-clip: text;
+        background-clip: text;
+
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+
+        user-select: none;
+        pointer-events: none;
+        overflow: hidden;
+    }
+    @media (max-width: 600px) {
+        .footer-watermark {
+            font-size: 17vw;
+            margin: 25px 0 18px;
+            letter-spacing: -0.06em;
+        }
+    }
+
+    /* =========================================
+   ATTENDANCE — HORIZONTAL TIMELINE
 ========================================= */
 
 #attendance-process {
     width: 100%;
-    padding: 85px 0 95px;
+    padding: 90px 5% 100px;
+    box-sizing: border-box;
+
     background: linear-gradient(
         135deg,
         #367DA8 0%,
         #22618E 100%
     );
+
+    overflow: hidden;
 }
 
-.attendance-container {
+#attendance-process .attendance-container {
     width: 100%;
-    max-width: 1400px;
+    max-width: 1600px;
     margin: 0 auto;
-    padding: 0 50px;
 }
 
 /* SECTION LABEL */
 
-.attendance-section-label {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 30px;
-
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    color: #082B4A;
+#attendance-process .attendance-section-label {
+    color: #BCEEFF;
+    margin-bottom: 26px;
 }
 
-.attendance-label-line {
-    width: 30px;
-    height: 1px;
-    background: #082B4A;
-    opacity: 0.6;
+#attendance-process .attendance-label-line {
+    background: #BCEEFF;
+    opacity: 1;
 }
 
 /* HEADING */
 
-.attendance-heading {
+#attendance-process .attendance-heading {
     font-size: clamp(34px, 3.8vw, 52px);
-    font-weight: 500;
-    line-height: 1.15;
+    font-weight: 400;
+    line-height: 1.2;
     letter-spacing: -1.5px;
 
-    color: #082B4A;
-
-    margin: 0 0 48px;
+    color: #FFFFFF;
+    margin: 0 0 70px;
 }
 
-/* CARDS GRID */
+#attendance-process .attendance-heading strong {
+    font-weight: 700;
+    color: #BCEEFF;
+}
 
-.attendance-steps {
+/* TIMELINE GRID */
+
+#attendance-process .attendance-timeline {
+    position: relative;
+
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
+
+    gap: 0;
 }
 
-/* INDIVIDUAL CARD */
+/* CONNECTING LINE */
 
-.attendance-card {
-    background: rgba(255, 255, 255, 0.90);
-    border-radius: 14px;
+#attendance-process .timeline-track {
+    position: absolute;
 
-    padding: 32px 28px 40px;
-    min-height: 240px;
+    top: 29px;
+    left: 12.5%;
+    right: 12.5%;
+
+    height: 2px;
+
+    background: rgba(255, 255, 255, 0.25);
+}
+
+#attendance-process .timeline-progress {
+    width: 100%;
+    height: 100%;
+
+    background: linear-gradient(
+        90deg,
+        #FFFFFF,
+        #65D8FF
+    );
+
+    box-shadow: 0 0 12px rgba(101, 216, 255, 0.5);
+}
+
+/* INDIVIDUAL STEP */
+
+#attendance-process .timeline-step {
+    position: relative;
+    z-index: 1;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    padding: 0 24px;
+    text-align: center;
+}
+
+/* NUMBERED CIRCLE */
+
+#attendance-process .timeline-node {
+    width: 60px;
+    height: 60px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 2px solid #BCEEFF;
+    border-radius: 50%;
+    box-sizing: border-box;
+
+    background: #286B97;
+    color: #FFFFFF;
+
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 1px;
+
+    margin-bottom: 35px;
 
     transition:
-        transform 0.3s ease,
-        box-shadow 0.3s ease,
-        background 0.3s ease;
+        background 0.35s ease,
+        color 0.35s ease,
+        box-shadow 0.35s ease,
+        transform 0.35s ease;
 }
 
-.attendance-card:hover {
-    transform: translateY(-7px);
-    background: #FFFFFF;
-    box-shadow: 0 18px 35px rgba(0, 30, 60, 0.15);
+/* STEP ICONS */
+
+#attendance-process .timeline-icon {
+    width: 76px;
+    height: 76px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 18px;
+
+    color: #BCEEFF;
+
+    margin-bottom: 24px;
+
+    transition:
+        transform 0.35s ease,
+        background 0.35s ease,
+        border-color 0.35s ease;
 }
 
-/* STEP NUMBER */
-
-.attendance-step-number {
-    display: block;
-
-    font-size: 13px;
-    font-weight: 700;
-    color: #17636B;
-
-    margin-bottom: 15px;
+#attendance-process .timeline-icon svg {
+    width: 36px;
+    height: 36px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
-/* SHORT LINE */
+/* STEP HEADING */
 
-.attendance-card-line {
-    display: block;
-
-    width: 34px;
-    height: 2px;
-    background: #17636B;
-
-    margin-bottom: 30px;
-}
-
-/* CARD HEADING */
-
-.attendance-card h3 {
-    font-size: 22px;
-    font-weight: 700;
+#attendance-process .timeline-step h3 {
+    font-size: clamp(20px, 1.8vw, 26px);
+    font-weight: 600;
     line-height: 1.3;
+    letter-spacing: -0.5px;
 
-    color: #082B4A;
+    color: #FFFFFF;
+    margin: 0 0 16px;
 
-    margin: 0 0 14px;
+    transition: color 0.35s ease;
 }
 
-/* CARD DESCRIPTION */
+/* STEP DESCRIPTION */
 
-.attendance-card p {
+#attendance-process .timeline-step p {
     font-size: 14px;
-    line-height: 1.7;
-    color: #52677A;
+    line-height: 1.85;
+    font-weight: 400;
+
+    color: #E2F0F8;
+    max-width: 250px;
 
     margin: 0;
+    text-align: center;
+}
+
+/* HOVER EFFECTS */
+
+#attendance-process .timeline-step:hover .timeline-node {
+    background: #BCEEFF;
+    color: #082B4A;
+
+    box-shadow: 0 0 25px rgba(101, 216, 255, 0.45);
+    transform: scale(1.1);
+}
+
+#attendance-process .timeline-step:hover .timeline-icon {
+    transform: translateY(-6px);
+    background: rgba(255, 255, 255, 0.16);
+    border-color: #BCEEFF;
+}
+
+#attendance-process .timeline-step:hover h3 {
+    color: #BCEEFF;
+}
+
+/* =========================================
+   SCROLL ANIMATION
+========================================= */
+
+#attendance-process.timeline-ready .timeline-progress {
+    width: 0;
+    transition: width 1.8s ease-in-out;
+}
+
+#attendance-process.timeline-ready .timeline-step {
+    opacity: 0;
+    transform: translateY(24px);
+
+    transition:
+        opacity 0.7s ease,
+        transform 0.7s ease;
+}
+
+#attendance-process.timeline-visible .timeline-progress {
+    width: 100%;
+}
+
+#attendance-process.timeline-visible .timeline-step {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#attendance-process .timeline-step:nth-of-type(1) {
+    transition-delay: 0.1s;
+}
+
+#attendance-process .timeline-step:nth-of-type(2) {
+    transition-delay: 0.5s;
+}
+
+#attendance-process .timeline-step:nth-of-type(3) {
+    transition-delay: 0.9s;
+}
+
+#attendance-process .timeline-step:nth-of-type(4) {
+    transition-delay: 1.3s;
 }
 
 /* =========================================
@@ -3616,351 +4302,492 @@
 
 @media (max-width: 992px) {
 
-    .attendance-container {
-        padding: 0 30px;
+    #attendance-process {
+        padding: 80px 6%;
     }
 
-    .attendance-steps {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 18px;
+    #attendance-process .timeline-step {
+        padding: 0 12px;
     }
 
-    .attendance-card {
-        min-height: 220px;
+    #attendance-process .timeline-step p {
+        font-size: 13px;
     }
 }
 
 /* =========================================
-   MOBILE
+   MOBILE — VERTICAL TIMELINE
 ========================================= */
 
-@media (max-width: 600px) {
+@media (max-width: 700px) {
 
     #attendance-process {
-        padding: 65px 0 75px;
+        padding: 65px 24px 75px;
     }
 
-    .attendance-container {
-        padding: 0 22px;
-    }
-
-    .attendance-heading {
+    #attendance-process .attendance-heading {
         font-size: 34px;
-        letter-spacing: -0.8px;
-        margin-bottom: 35px;
+        margin-bottom: 45px;
     }
 
-    .attendance-heading br {
+    #attendance-process .attendance-heading br {
         display: none;
     }
 
-    .attendance-steps {
+    #attendance-process .attendance-timeline {
         grid-template-columns: 1fr;
-        gap: 16px;
+        gap: 40px;
     }
 
-    .attendance-card {
-        min-height: auto;
-        padding: 28px;
+    #attendance-process .timeline-track {
+        top: 25px;
+        bottom: 0;
+        left: 24px;
+        right: auto;
+
+        width: 2px;
+        height: auto;
     }
 
-    .attendance-card-line {
-        margin-bottom: 24px;
+    #attendance-process .timeline-progress {
+        width: 100%;
+        height: 100%;
     }
 
-    .attendance-card h3 {
-        font-size: 21px;
+    #attendance-process .timeline-step {
+        align-items: flex-start;
+        text-align: left;
+
+        padding: 0 0 0 80px;
+    }
+
+    #attendance-process .timeline-node {
+        position: absolute;
+        top: 0;
+        left: 0;
+
+        width: 50px;
+        height: 50px;
+
+        font-size: 16px;
+        margin: 0;
+    }
+
+    #attendance-process .timeline-icon {
+        width: 58px;
+        height: 58px;
+        margin-bottom: 18px;
+    }
+
+    #attendance-process .timeline-icon svg {
+        width: 28px;
+        height: 28px;
+    }
+
+    #attendance-process .timeline-step h3 {
+        font-size: 23px;
+    }
+
+    #attendance-process .timeline-step p {
+        max-width: 100%;
+        font-size: 14px;
+        text-align: left;
+    }
+
+    #attendance-process.timeline-ready .timeline-progress {
+        width: 100%;
+        height: 0;
+        transition: height 1.8s ease-in-out;
+    }
+
+    #attendance-process.timeline-visible .timeline-progress {
+        height: 100%;
     }
 }
 
-/* =====================================
-   SERVICE CARDS — LIGHT BLUE BACKGROUND
-===================================== */
+/* ACCESSIBILITY */
 
-/* Default service card background */
-#services .service-card {
-    background: #D7F0FC;
-    border: 1px solid #C5E5F5;
-    transition:
-        background 0.3s ease,
-        border-color 0.3s ease,
-        transform 0.3s ease,
-        box-shadow 0.3s ease;
+@media (prefers-reduced-motion: reduce) {
+
+    #attendance-process *,
+    #attendance-process *::before,
+    #attendance-process *::after {
+        transition: none !important;
+        animation: none !important;
+    }
+
+    #attendance-process.timeline-ready .timeline-step {
+        opacity: 1;
+        transform: none;
+    }
+
+    #attendance-process.timeline-ready .timeline-progress {
+        width: 100%;
+        height: 100%;
+    }
 }
 
-/* Hover effect */
-#services .service-card:hover {
-    background: #D7F0FC;
-    border-color: #009BD3;
-    transform: translateY(-5px);
-    box-shadow: 0 12px 30px rgba(0, 91, 156, 0.10);
+/* ATTENDANCE — SCREEN ALIGNMENT */
+
+#attendance-process .attendance-heading {
+    font-size: clamp(36px, 3.8vw, 60px);
+    margin-bottom: 65px;
 }
 
-/* Keep the text dark navy */
-#services .service-card h3 {
-    color: #082B4A;
+#attendance-process .timeline-step {
+    padding: 0 25px;
 }
 
-/* Keep the descriptions readable */
-#services .service-card p {
-    color: #009BD3;
+#attendance-process .timeline-step p {
+    font-size: 16px;
+    line-height: 1.8;
+    max-width: 320px;
 }
 
-/* =====================================
-   CLIENT TESTIMONIALS
-===================================== */
-
-#testimonials {
-    background: linear-gradient(145deg, #123F69, #082B4A);
-    padding: 95px 0 105px;
-    color: white;
+#attendance-process .timeline-step h3 {
+    font-size: 26px;
 }
 
-.testimonials-container {
-    width: min(1250px, 90%);
-    margin: auto;
+#attendance-process .timeline-icon {
+    width: 90px;
+    height: 90px;
 }
 
-/* LABEL */
-
-.testimonials-label {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    color: #83B7D3;
-    margin-bottom: 25px;
+#attendance-process .timeline-icon svg {
+    width: 42px;
+    height: 42px;
 }
 
-.testimonials-line {
-    width: 26px;
-    height: 1px;
-    background: #83B7D3;
+@media (max-width: 700px) {
+    #attendance-process .timeline-step {
+        padding: 0 0 0 80px;
+    }
+
+    #attendance-process .timeline-step p {
+        font-size: 14px;
+    }
+
+    #attendance-process .timeline-step h3 {
+        font-size: 23px;
+    }
+
+    #attendance-process .timeline-icon {
+        width: 58px;
+        height: 58px;
+    }
+
+    #attendance-process .timeline-icon svg {
+        width: 28px;
+        height: 28px;
+    }
+}
+/* =========================================
+   GLOBAL PAGE WIDTH & ALIGNMENT
+========================================= */
+
+:root {
+    --site-content-width: 1600px;
+    --site-side-padding: 5%;
 }
 
-/* HEADING */
-
-.testimonials-heading {
-    font-size: clamp(36px, 4vw, 56px);
-    font-weight: 400;
-    letter-spacing: -1.5px;
-    margin: 0 0 42px;
-    line-height: 1.2;
-}
-
-.testimonials-heading span {
-    color: #009BD3;
-}
-
-/* LAYOUT */
-
-.testimonials-layout {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr;
-    gap: 20px;
-    align-items: stretch;
-}
-
-/* FEATURE CARD */
-
-.testimonial-feature {
-    position: relative;
-    background: #FFFFFF;
-    color: #082B4A;
-    border-radius: 14px;
-    padding: 42px;
-    min-height: 365px;
-    overflow: hidden;
-
-    display: flex;
-    flex-direction: column;
-}
-
-.testimonial-stars {
-    color: #F5B800;
-    font-size: 20px;
-    letter-spacing: 4px;
-    margin-bottom: 24px;
-}
-
-.testimonial-quote-mark {
-    position: absolute;
-    top: -65px;
-    right: 0;
-    font-size: 260px;
-    line-height: 1;
-    font-family: Georgia, serif;
-    color: #EAF6FC;
-    pointer-events: none;
-}
-
-.testimonial-quote {
-    position: relative;
-    z-index: 1;
-    font-size: clamp(20px, 2vw, 27px);
-    line-height: 1.5;
-    font-weight: 400;
-    margin: 0 0 28px;
-    max-width: 570px;
-}
-
-/* AUTHOR */
-
-.testimonial-author {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-top: auto;
-}
-
-.testimonial-avatar {
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    background: #009BD3;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 700;
-}
-
-.testimonial-name {
-    font-size: 14px;
-    font-weight: 700;
-}
-
-.testimonial-role {
-    font-size: 12px;
-    color: #66839A;
-    margin-top: 3px;
-}
-
-/* DOTS */
-
-.testimonial-dots {
-    display: flex;
-    gap: 9px;
-    margin-top: 28px;
-}
-
-.testimonial-dot {
-    width: 7px;
-    height: 7px;
-    padding: 0;
-    border: 0;
-    border-radius: 10px;
-    background: #B8CDD9;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.testimonial-dot.active {
-    width: 28px;
-    background: #009BD3;
-}
-
-/* CLIENT LIST */
-
-.testimonial-client-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.testimonial-client {
-    display: flex;
-    align-items: center;
-    gap: 15px;
+.wrap {
     width: 100%;
-    flex: 1;
-
-    padding: 18px 20px;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.05);
-    color: white;
-    text-align: left;
-    cursor: pointer;
-
-    transition: all 0.3s ease;
+    max-width: var(--site-content-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 0;
+    padding-right: 0;
+    box-sizing: border-box;
 }
 
-.testimonial-client:hover {
-    background: rgba(255,255,255,0.12);
+main > section {
+    padding-left: var(--site-side-padding);
+    padding-right: var(--site-side-padding);
+    box-sizing: border-box;
 }
 
-.testimonial-client.active {
-    background: rgba(255,255,255,0.17);
-    border-color: rgba(255,255,255,0.25);
+/* TABLET */
+
+@media (max-width: 1000px) {
+    :root {
+        --site-side-padding: 6%;
+    }
 }
 
-.client-avatar {
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.12);
+/* MOBILE */
 
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    font-size: 12px;
-    font-weight: 700;
+@media (max-width: 700px) {
+    :root {
+        --site-side-padding: 24px;
+    }
 }
 
-.testimonial-client strong {
-    display: block;
-    font-size: 14px;
-    font-weight: 600;
-}
 
-.testimonial-client small {
-    display: block;
-    font-size: 12px;
-    color: #B0C9DA;
-    margin-top: 3px;
-}
+/* =========================================
+   HERO — MOBILE RESPONSIVE
+========================================= */
 
-/* RESPONSIVE */
+@media (max-width: 768px) {
 
-@media (max-width: 900px) {
-    .testimonials-layout {
-        grid-template-columns: 1fr;
+    #hero {
+        width: 100%;
+        max-width: 100%;
+        min-height: auto;
+        height: auto;
+        padding: 50px 24px;
+        box-sizing: border-box;
     }
 
-    .testimonial-client-list {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
+    #hero h1 {
+        font-size: clamp(36px, 10vw, 48px);
+        line-height: 1.12;
+        letter-spacing: -1.5px;
+    }
+
+    #hero p {
+        font-size: 15px;
+        line-height: 1.75;
+    }
+
+    #hero .wrap {
+        width: 100%;
+        max-width: 100%;
+        padding: 0;
+        margin: 0 auto;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    #hero img,
+    #hero video {
+        max-width: 100%;
+    }
+
+}
+
+/* =========================================
+   SECTION CONTAINER ALIGNMENT
+========================================= */
+
+.attendance-container,
+.testimonials-container,
+.coverage-container,
+.services-container,
+.contact-container,
+.footer-container {
+    width: 100%;
+    max-width: var(--site-content-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 0;
+    padding-right: 0;
+    box-sizing: border-box;
+}
+
+/* FOOTER ALIGNMENT */
+
+footer {
+    padding-left: var(--site-side-padding);
+    padding-right: var(--site-side-padding);
+    box-sizing: border-box;
+}
+
+/* =========================================
+   SHARED FOOTER ALIGNMENT
+========================================= */
+
+footer {
+    width: 100%;
+    padding-left: 5%;
+    padding-right: 5%;
+    box-sizing: border-box;
+}
+
+footer .wrap,
+footer .footer-container {
+    width: 100%;
+    max-width: 1600px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 0;
+    padding-right: 0;
+    box-sizing: border-box;
+}
+
+@media (max-width: 1000px) {
+    footer {
+        padding-left: 6%;
+        padding-right: 6%;
+    }
+}
+
+@media (max-width: 700px) {
+    footer {
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+}
+
+/* PROGRESS BAR — BACKGROUND FIX */
+
+.demo-progress-segment,
+.demo-progress-segment.active,
+.demo-progress-segment.completed {
+    background: rgba(255, 255, 255, 0.15) !important;
+    box-shadow: none;
+    overflow: hidden;
+}
+
+/* Loading portion */
+
+.demo-progress-segment::before {
+    background: #009BD3;
+    width: var(--demo-fill, 0%);
+}
+
+/* Currently loading bar */
+
+.demo-progress-segment.active::before {
+    background: #65D8FF;
+}
+
+/* Completed bar */
+
+.demo-progress-segment.completed::before {
+    width: 100%;
+    background: #009BD3;
+}
+
+    /* Let the hero grow when its content needs more than one screen. */
+@media (min-width: 1001px) {
+    #hero {
+        height: auto;
+        min-height: calc(100svh - var(--nav-height) - var(--stats-height));
+    }
+
+    .hero-container {
+        height: auto;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    }
+
+    .hero-demo {
+        height: auto;
+        padding-bottom: 86px;
+    }
+}
+
+@media (max-width: 1000px) {
+    #hero {
+        height: auto;
+        min-height: 0;
+        padding: clamp(40px, 7vw, 70px) 6%;
+        background-image:
+            linear-gradient(rgba(5, 35, 65, 0.78), rgba(5, 35, 65, 0.58)),
+            url("hero-vessel.jpeg");
+    }
+
+    #hero .hero-container {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 32px;
+    }
+
+    .hero-demo {
+        height: auto;
+        padding: 24px clamp(16px, 4vw, 35px);
+    }
+
+    .demo-controls {
+        position: static;
+        margin-top: 24px;
+    }
+
+    .global-coverage-layout > *,
+    .services-grid > *,
+    .testimonials-layout > *,
+    .contact-layout > *,
+    .survey-form-grid > *,
+    .footer-layout > * {
+        min-width: 0;
+    }
+
+    .contact-detail-value,
+    .footer-contact-block,
+    .coverage-country {
+        overflow-wrap: anywhere;
     }
 }
 
 @media (max-width: 600px) {
-    #testimonials {
-        padding: 65px 0;
+    #hero h1 {
+        font-size: clamp(31px, 8vw, 46px);
     }
 
-    .testimonial-feature {
-        padding: 28px;
+    .hero-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
     }
 
-    .testimonial-client-list {
-        grid-template-columns: 1fr;
+    .hero-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 0 6%;
     }
 
-    .testimonial-quote {
-        font-size: 20px;
+    .hero-metric {
+        min-width: 0;
+        padding: 20px 12px;
     }
 
-    .testimonials-heading {
-        font-size: 38px;
+    .hero-metric-number {
+        font-size: clamp(25px, 7vw, 34px);
+    }
+
+    #ymrWorldMap {
+        height: clamp(240px, 72vw, 350px);
+    }
+
+    .survey-field input,
+    .survey-field select,
+    .survey-field textarea {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .footer-watermark {
+        font-size: 15vw;
     }
 }
-    </style>
+
+@media (max-width: 380px) {
+    .coverage-country-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .survey-form-panel {
+        padding: 18px;
+    }
+}
+@media (max-width: 1000px) {
+    footer .footer-layout {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 32px 24px;
+    }
+}
+@media (max-width: 600px) {
+    footer .footer-layout { gap: 28px 18px; padding-bottom: 24px; }
+    footer .footer-brand, footer .footer-contact-column { grid-column: 1 / -1; }
+    footer .footer-bottom-bar { flex-direction: column; align-items: flex-start; gap: 12px; }
+    footer .footer-watermark { font-size: 14vw; }
+}
+@media (max-width: 1000px) {
+    #testimonials.testimonials-section { padding-inline: 5%; }
+}
+@media (max-width: 650px) {
+    #testimonials.testimonials-section { padding: 65px 22px; }
+    .testimonials-section .testimonials-heading { font-size: clamp(30px, 8.5vw, 38px); margin-bottom: 28px; }
+    .testimonials-section .testimonial-feature { padding: 24px; min-height: auto; }
+    .testimonials-section .testimonial-quote { font-size: 18px; line-height: 1.55; }
+}
+</style>
     </head>
     <body>
 
@@ -4014,53 +4841,33 @@
 
                 <div class="nav-dropdown-menu">
                     <a href="about.html">Our Company</a>
-                    <a href="#why-us">Why YMR</a>
-                    <a href="#contact">Get in Touch</a>
+                    <a href="about.html#team">Why YMR</a>
+                    <a href="about.html#why-ymr">Get in Touch</a>
                 </div>
 
             </div>
+            <a href="#services">
+                Services
+            </a>
+
+            <a href="#global-coverage">
+                Global Coverage
+            </a>
+
+            <a href="#attendance-process">
+                How We Work
+            </a>
+
+            <a href="#testimonials">
+                Testimonials
+            </a>
+
+            
+
+            
 
 
-            <!-- EXPERTISE -->
-
-            <div class="nav-dropdown">
-
-                <button type="button" class="nav-dropdown-toggle">
-                    Expertise
-                    <span class="nav-chevron"></span>
-                </button>
-
-                <div class="nav-dropdown-menu">
-                    <a href="#services">Bunker Surveys</a>
-                    <a href="#services">Pre-Purchase Inspections</a>
-                    <a href="#services">Draft Surveys</a>
-                    <a href="#services">Cargo Surveys</a>
-                    <a href="#services">Condition Surveys</a>
-                    <a href="#services">On-Hire / Off-Hire Surveys</a>
-                    <a href="#services">Consultancy & Port Captains</a>
-                </div>
-
-            </div>
-
-
-            <!-- PORT COVERAGE -->
-
-            <div class="nav-dropdown">
-
-                <button type="button" class="nav-dropdown-toggle">
-                    Port Coverage
-                    <span class="nav-chevron"></span>
-                </button>
-
-                <div class="nav-dropdown-menu">
-                    <a href="#coverage">Asia Pacific</a>
-                    <a href="#coverage">Middle East</a>
-                    <a href="#coverage">Africa</a>
-                    <a href="#coverage">Europe</a>
-                    <a href="#coverage">Americas</a>
-                </div>
-
-            </div>
+           
 
         </div>
 
@@ -4130,15 +4937,26 @@
 
     <div id="mobile-menu">
 
-        <a href="#services" onclick="toggleMenu()">Expertise</a>
+        <a href="about.html" onclick="toggleMenu()">
+            About Us
+        </a>
 
-        <a href="#about" onclick="toggleMenu()">About Us</a>
+        <a href="#services" onclick="toggleMenu()">
+            Services
+        </a>
 
-        <a href="#why-us" onclick="toggleMenu()">Why YMR</a>
+        <a href="#global-coverage" onclick="toggleMenu()">
+            Global Coverage
+        </a>
 
-        <a href="#coverage" onclick="toggleMenu()">Port Coverage</a>
+        <a href="#attendance-process" onclick="toggleMenu()">
+            How We Work
+        </a>
 
-        <a href="#contact" onclick="toggleMenu()">Contact</a>
+        <a href="#testimonials" onclick="toggleMenu()">
+            Testimonials
+        </a>
+
 
         <div class="mobile-actions">
 
@@ -4303,14 +5121,13 @@
     <section id="global-coverage">
 
         <div class="global-coverage-container">
-
+            
             <div class="global-coverage-heading">
                 <div>
+                    
                     <div class="coverage-eyebrow">
                         <span>01</span>
-                            <span class="attendance-label-line"></span>
-                        
-
+                        <span class="attendance-label-line"></span>
                         <span>GLOBAL REACH · LOCAL EXPERTISE</span>
                     </div>
 
@@ -4386,7 +5203,7 @@
                 <div class="services-heading-left">
 
                     <div class="services-eyebrow">
-                        <span>01</span>
+                        <span>02</span>
                         <span class="services-line"></span>
                         SERVICES
                     </div>
@@ -4623,7 +5440,7 @@
     </section>
 
     <!-- =========================================
-        HOW AN ATTENDANCE RUNS
+        03 — HOW AN ATTENDANCE RUNS
     ========================================= -->
 
     <section id="attendance-process">
@@ -4631,22 +5448,38 @@
         <div class="attendance-container">
 
             <div class="attendance-section-label">
-                <span>02</span>
+                <span>03</span>
                 <span class="attendance-label-line"></span>
                 <span>HOW AN ATTENDANCE RUNS</span>
             </div>
 
             <h2 class="attendance-heading">
                 From your instruction to a<br>
-                report you can rely on.
+                <strong>report you can rely on.</strong>
             </h2>
 
-            <div class="attendance-steps">
+            <div class="attendance-timeline">
+
+                <!-- CONNECTING LINE -->
+
+                <div class="timeline-track" aria-hidden="true">
+                    <div class="timeline-progress"></div>
+                </div>
 
                 <!-- STEP 1 -->
-                <div class="attendance-card">
-                    <span class="attendance-step-number">Step 1</span>
-                    <span class="attendance-card-line"></span>
+
+                <article class="timeline-step">
+
+                    <div class="timeline-node">01</div>
+
+                    <div class="timeline-icon">
+                        <svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5">
+                            <rect x="5" y="4" width="14" height="17" rx="2"/>
+                            <rect x="9" y="2" width="6" height="4" rx="1"/>
+                            <path d="M8 11h8M8 15h8M8 18h5"/>
+                        </svg>
+                    </div>
 
                     <h3>Instruction</h3>
 
@@ -4654,12 +5487,23 @@
                         Vessel, port, timing and scope —
                         delivery, ROB or both.
                     </p>
-                </div>
+
+                </article>
 
                 <!-- STEP 2 -->
-                <div class="attendance-card">
-                    <span class="attendance-step-number">Step 2</span>
-                    <span class="attendance-card-line"></span>
+
+                <article class="timeline-step">
+
+                    <div class="timeline-node">02</div>
+
+                    <div class="timeline-icon">
+                        <svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 2v4M5 12V6h14v6"/>
+                            <path d="M12 9l10 5-4 6H6l-4-6z"/>
+                            <path d="M12 9v11M2 22h20"/>
+                        </svg>
+                    </div>
 
                     <h3>Attendance</h3>
 
@@ -4668,12 +5512,23 @@
                         time and reviews tank tables
                         and documents.
                     </p>
-                </div>
+
+                </article>
 
                 <!-- STEP 3 -->
-                <div class="attendance-card">
-                    <span class="attendance-step-number">Step 3</span>
-                    <span class="attendance-card-line"></span>
+
+                <article class="timeline-step">
+
+                    <div class="timeline-node">03</div>
+
+                    <div class="timeline-icon">
+                        <svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5">
+                            <rect x="5" y="2" width="14" height="20" rx="2"/>
+                            <rect x="8" y="5" width="8" height="4" rx="1"/>
+                            <path d="M8 13h2M14 13h2M8 17h2M14 17h2"/>
+                        </svg>
+                    </div>
 
                     <h3>Calculation</h3>
 
@@ -4682,12 +5537,23 @@
                         and density; figures agreed or
                         noted with ship's staff.
                     </p>
-                </div>
+
+                </article>
 
                 <!-- STEP 4 -->
-                <div class="attendance-card">
-                    <span class="attendance-step-number">Step 4</span>
-                    <span class="attendance-card-line"></span>
+
+                <article class="timeline-step">
+
+                    <div class="timeline-node">04</div>
+
+                    <div class="timeline-icon">
+                        <svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5">
+                            <path d="M14 2H5v20h14V7z"/>
+                            <path d="M14 2v5h5"/>
+                            <path d="M8 14l3 3 5-6"/>
+                        </svg>
+                    </div>
 
                     <h3>Report</h3>
 
@@ -4695,12 +5561,14 @@
                         A structured survey report,
                         issued promptly after attendance.
                     </p>
-                </div>
+
+                </article>
 
             </div>
 
         </div>
-        </section>
+
+    </section>
         <!-- =====================================
             04 — CLIENT TESTIMONIALS
         ===================================== -->
@@ -4856,6 +5724,8 @@
         <div class="contact-container">
 
             <div class="contact-eyebrow">
+                
+                
                 Get in Touch
             </div>
 
@@ -5149,162 +6019,135 @@
         </div>
 
     </section>
-    <!-- FOOTER -->
+    <!-- =========================================
+     YMR MARINE — SHARED FOOTER
+========================================= -->
 
-    <footer id="footer">
+<footer id="footer">
 
-        <div class="footer-container">
+    <div class="footer-container">
 
-            <div class="footer-layout">
+        <div class="footer-layout">
 
-                <!-- COMPANY BRAND -->
+            <!-- COLUMN 1 — COMPANY BRAND -->
 
-                <div class="footer-brand">
+            <div class="footer-brand">
 
-                    <a href="#hero" class="footer-brand-logo">
+                <a href="ymr7.html#hero" class="footer-brand-logo">
 
-                        <img
-                            src="./ymr_logo.png"
-                            alt="YMR Marine Solutions LLP">
+                    <img
+                        src="./ymr_logo.png"
+                        alt="YMR Marine Solutions LLP">
 
-                    </a>
+                </a>
 
-                    <p class="footer-brand-desc">
-                        Independent marine surveys, inspections
-                        and maritime consultancy services.
-                        Delivering expertise, integrity and
-                        confidence across the maritime industry.
-                    </p>
-
-                    <div class="footer-location">
-                        YMR Marine Solutions LLP<br>
-                        Mumbai, Maharashtra, India
-                    </div>
-
-                    <div class="footer-contact-block">
-
-                        <div class="footer-contact-label">
-                            Get in Touch
-                        </div>
-
-                        <a href="mailto:ops@ymrmarine.com">
-                            ops@ymrmarine.com
-                        </a>
-
-                        <a href="tel:+919820482713">
-                            +91 98204 82713
-                        </a>
-
-                    </div>
-
-                </div>
-
-
-                <!-- COMPANY LINKS -->
-
-                <div class="footer-column">
-
-                    <h3 class="footer-column-title">
-                        Company
-                    </h3>
-
-                    <ul class="footer-nav-links">
-
-                        <li><a href="#about">About Us</a></li>
-
-                        <li><a href="#industries">Industries We Serve</a></li>
-
-                        <li><a href="#why-us">The YMR Difference</a></li>
-
-                        <li><a href="#coverage">Port Coverage</a></li>
-
-                        <li><a href="#process">Our Survey Process</a></li>
-
-                        <li><a href="#contact">Contact Us</a></li>
-
-                    </ul>
-
-                </div>
-
-
-                <!-- EXPERTISE LINKS -->
-
-                <div class="footer-column">
-
-                    <h3 class="footer-column-title">
-                        Our Expertise
-                    </h3>
-
-                    <ul class="footer-nav-links">
-
-                        <li><a href="#services">Bunker Quantity Surveys</a></li>
-
-                        <li><a href="#services">Draft Surveys</a></li>
-
-                        <li><a href="#services">Cargo Surveys &amp; Inspections</a></li>
-
-                        <li><a href="#services">Pre-Purchase Surveys</a></li>
-
-                        <li><a href="#services">Vessel Condition Surveys</a></li>
-
-                        <li><a href="#services">On-Hire / Off-Hire Surveys</a></li>
-
-                        <li><a href="#services">Maritime Consultancy</a></li>
-
-                        <li><a href="#services">Port Captain Services</a></li>
-
-                    </ul>
-
-                </div>
-
-
-                <!-- QUICK ACCESS -->
-
-                <div class="footer-column">
-
-                    <h3 class="footer-column-title">
-                        Quick Access
-                    </h3>
-
-                    <ul class="footer-nav-links">
-
-                        <li><a href="#contact">Request a Survey</a></li>
-
-                        <li><a href="#coverage">Find a Port</a></li>
-
-                        <!-- Add employee portal URL when ready -->
-
-                    </ul>
-
-                </div>
+                <p class="footer-brand-desc">
+                    Independent marine surveys, inspections
+                    and maritime consultancy services.
+                    Delivering expertise, integrity and
+                    confidence across the maritime industry.
+                </p>
 
             </div>
 
 
-            <!-- FOOTER BOTTOM -->
+            <!-- COLUMN 2 — COMPANY -->
 
-            <div class="footer-bottom-bar">
+            <div class="footer-column">
 
-                <div class="footer-copyright">
+                <h3 class="footer-column-title">
+                    Company
+                </h3>
 
-                    &copy; <span id="footerYear">2026</span>
-                    YMR Marine Solutions LLP.<br>
+                <ul class="footer-nav-links">
 
-                    All rights reserved.
+                    <li>
+                        <a href="about.html#company">About Us</a>
+                    </li>
+
+                    <li>
+                        <a href="about.html#team">Our Team</a>
+                    </li>
+
+                    <li>
+                        <a href="about.html#why-ymr">Why YMR</a>
+                    </li>
+
+                    <li>
+                        <a href="ymr7.html#services">Our Services</a>
+                    </li>
+
+                    <li>
+                        <a href="ymr7.html#testimonials">Our Clients</a>
+                    </li>
+
+                </ul>
+
+            </div>
+
+
+            <!-- COLUMN 3 — QUICK ACCESS -->
+
+            <div class="footer-column">
+
+                <h3 class="footer-column-title">
+                    Quick Access
+                </h3>
+
+                <ul class="footer-nav-links">
+
+                    <li>
+                        <a href="ymr7.html#contact">Request a Survey</a>
+                    </li>
+
+                    <li>
+                        <a href="ymr7.html#global-coverage">Find a Port</a>
+                    </li>
+
+                    <li>
+                        <a href="ymr7.html#attendance-process">Our Survey Process</a>
+                    </li>
+
+                    <li>
+                        <a href="ymr7.html#contact">Contact Us</a>
+                    </li>
+
+                </ul>
+
+            </div>
+
+
+            <!-- COLUMN 4 — CONTACT -->
+
+            <div class="footer-column footer-contact-column">
+
+                <h3 class="footer-column-title">
+                    Get in Touch
+                </h3>
+
+                <div class="footer-contact-block">
+
+                    <a href="mailto:ops@ymrmarine.com">
+                        ops@ymrmarine.com
+                    </a>
+
+                    <a href="tel:+919820482713">
+                        +91 98204 82713
+                    </a>
 
                 </div>
 
-                <div class="footer-legal-links">
+                <div class="footer-location">
 
-                    <!-- Add Privacy Policy and legal links when ready -->
+                    YMR Marine Solutions LLP<br>
+                    Mumbai, Maharashtra, India
 
-                    <a href="#hero" class="footer-back-top">
+                </div>
 
-                        Back to Top
+                <div class="footer-availability">
 
-                        <span>↑</span>
-
-                    </a>
+                    <span class="footer-status-dot"></span>
+                    Available 24/7
 
                 </div>
 
@@ -5312,7 +6155,40 @@
 
         </div>
 
-    </footer>
+
+        <!-- FADING BRAND WATERMARK -->
+
+        <div class="footer-watermark" aria-hidden="true">
+            YMR MARINE
+        </div>
+
+
+        <!-- BOTTOM BAR -->
+
+        <div class="footer-bottom-bar">
+
+            <div class="footer-copyright">
+
+                &copy; <span id="footerYear">2026</span>
+                YMR Marine Solutions LLP.
+                All rights reserved.
+
+            </div>
+
+            <div class="footer-legal-links">
+
+                <a href="ymr7.html#hero">
+                    Back to Home
+                    <span>↑</span>
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</footer>
     <!-- WHATSAPP FLOAT -->
     <a href="https://wa.me/+919820482713" class="float-wa" title="Chat on WhatsApp">➤</a>
 
@@ -5616,6 +6492,11 @@
     let demoPlaying = true;
     let demoInterval;
 
+    const demoDuration = 3000;
+
+    let demoElapsed = 0;
+    let demoLastTime = null;
+
     const demoStage = document.getElementById('demoStage');
     const demoStepLabel = document.getElementById('demoStepLabel');
     const demoPlay = document.getElementById('demoPlay');
@@ -5667,25 +6548,90 @@
 
         demoStepLabel.textContent = stage.label;
 
+        demoElapsed = 0;
+        demoLastTime = null;
+
         demoSegments.forEach((segment, i) => {
-            segment.classList.toggle('active', i <= index);
+
+            segment.classList.toggle('completed', i < index);
+            segment.classList.toggle('active', i === index);
+
+            segment.style.setProperty(
+                '--demo-fill',
+                i < index ? '100%' : '0%'
+            );
+
         });
 
     }
 
     function nextDemoStage() {
+
         demoIndex = (demoIndex + 1) % demoStages.length;
+
         renderDemoStage(demoIndex);
+
     }
+
+
+    /* UPDATE LOADING BAR */
+
+    function updateDemoProgress(timestamp) {
+
+        if (!demoPlaying) return;
+
+        if (demoLastTime === null) {
+            demoLastTime = timestamp;
+        }
+
+        demoElapsed += timestamp - demoLastTime;
+        demoLastTime = timestamp;
+
+        const progress = Math.min(
+            demoElapsed / demoDuration,
+            1
+        );
+
+        demoSegments[demoIndex].style.setProperty(
+            '--demo-fill',
+            `${progress * 100}%`
+        );
+
+        if (progress >= 1) {
+            nextDemoStage();
+        }
+
+        demoInterval = requestAnimationFrame(
+            updateDemoProgress
+        );
+
+    }
+
+
+    /* START OR RESUME ANIMATION */
 
     function startDemo() {
-        clearInterval(demoInterval);
-        demoInterval = setInterval(nextDemoStage, 3000);
+
+        cancelAnimationFrame(demoInterval);
+
+        demoLastTime = null;
+
+        demoInterval = requestAnimationFrame(
+            updateDemoProgress
+        );
+
     }
 
+
+    /* PAUSE ANIMATION */
+
     function stopDemo() {
-        clearInterval(demoInterval);
-    }
+
+        cancelAnimationFrame(demoInterval);
+
+        demoLastTime = null;
+
+}
 
     demoPlay.addEventListener('click', () => {
 
@@ -5900,6 +6846,56 @@ function showTestimonial(index) {
 
 /* Show Arun Kumar initially, matching the screenshot */
 showTestimonial(2);
+</script>
+
+<script>
+
+/* ATTENDANCE TIMELINE ANIMATION */
+
+(function () {
+
+    const section = document.getElementById(
+        "attendance-process"
+    );
+
+    if (!section) return;
+
+    if (!("IntersectionObserver" in window)) return;
+
+    if (
+        window.matchMedia(
+            "(prefers-reduced-motion: reduce)"
+        ).matches
+    ) return;
+
+    section.classList.add("timeline-ready");
+
+    const observer = new IntersectionObserver(
+        (entries) => {
+
+            entries.forEach(entry => {
+
+                if (entry.isIntersecting) {
+
+                    section.classList.add(
+                        "timeline-visible"
+                    );
+
+                    observer.unobserve(section);
+                }
+
+            });
+
+        },
+        {
+            threshold: 0.15
+        }
+    );
+
+    observer.observe(section);
+
+})();
+
 </script>
 
 </body>
